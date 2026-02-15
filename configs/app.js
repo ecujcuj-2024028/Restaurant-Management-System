@@ -9,7 +9,10 @@ import { mongoConnection } from "./db-mongo.js";
 import { corsOptions } from "./cors-configuration.js";
 import { helmetConfiguration } from "./helmet-configuration.js";
 
-import authRoutes from "../src/auth/auth.routes.js";
+//import authRoutes from "../src/auth/auth.routes.js";
+import restaurantRoutes from '../src/restaurants/restaurant.routes.js';
+import tableRoutes from '../src/tables/table.routes.js';
+
 
 const BASE_PATH = '/restaurantManagement/v1';
 
@@ -22,9 +25,10 @@ const middlewares = (app) => {
 }
 
 const routes = (app) => {
-    // Registro de rutas de Autenticación y Usuarios
-    app.use(`${BASE_PATH}/auth`, authRoutes); 
-    
+
+    app.use(`${BASE_PATH}/restaurants`, restaurantRoutes);
+    app.use(`${BASE_PATH}/tables`, tableRoutes);
+
     app.get(`${BASE_PATH}/health`, (req, res) => {
         return res.status(200).json({
             status: 'Healthy',
@@ -37,7 +41,6 @@ const routes = (app) => {
         });
     });
 
-    // Manejo de rutas no encontradas
     app.use((req, res) => {
         res.status(404).json({
             success: false,
@@ -45,6 +48,7 @@ const routes = (app) => {
         });
     });
 }
+
 
 export const initServer = async () => {
     const app = express();
@@ -54,10 +58,9 @@ export const initServer = async () => {
         console.log('--- STARTING GASTROMANAGER INFRASTRUCTURE ---');
         
         // Inicializar conexiones en paralelo para mayor velocidad
-        await Promise.all([
-            postgresConnection(), // Para Usuarios y Seguridad
-            mongoConnection()     // Para el resto del sistema
-        ]);
+        // await postgresConnection();
+        await mongoConnection();
+
 
         middlewares(app);
         routes(app);
