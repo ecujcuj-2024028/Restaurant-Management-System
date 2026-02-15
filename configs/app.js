@@ -10,6 +10,7 @@ import { corsOptions } from "./cors-configuration.js";
 import { helmetConfiguration } from "./helmet-configuration.js";
 
 import authRoutes from "../src/auth/auth.routes.js";
+import analyticsRoutes from "../src/analytics/analytics.routes.js";
 
 const BASE_PATH = '/restaurantManagement/v1';
 
@@ -23,7 +24,10 @@ const middlewares = (app) => {
 
 const routes = (app) => {
     // Registro de rutas de Autenticación y Usuarios
-    app.use(`${BASE_PATH}/auth`, authRoutes); 
+    app.use(`${BASE_PATH}/auth`, authRoutes);
+    
+    // Registro de rutas de Analytics y Estadísticas
+    app.use(`${BASE_PATH}/analytics`, analyticsRoutes);
     
     app.get(`${BASE_PATH}/health`, (req, res) => {
         return res.status(200).json({
