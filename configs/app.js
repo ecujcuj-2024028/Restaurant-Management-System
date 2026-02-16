@@ -10,27 +10,34 @@ import { mongoConnection } from "./db-mongo.js";
 import { corsOptions } from "./cors-configuration.js";
 import { helmetConfiguration } from "./helmet-configuration.js";
 
-// Routes
+// ========================
+// ROUTES
+// ========================
 import authRoutes from '../src/auth/auth.routes.js';
 import analyticsRoutes from '../src/analytics/analytics.routes.js';
 import restaurantRoutes from '../src/restaurants/restaurant.routes.js';
 import tableRoutes from '../src/tables/table.routes.js';
 import inventoryRoutes from '../src/inventory/inventory.routes.js';
-import categoryRoutes from '../src/gastronomy oferts/category-routes.js';
-import productRoutes  from '../src/gastronomy oferts/product-routes.js';
+import reservationRoutes from '../src/Reservations/reservation.routes.js';
+
+// Nuevos módulos
+import categoryRoutes from '../src/gastronomy-oferts/category-routes.js';
+import productRoutes from '../src/gastronomy-oferts/product-routes.js';
 import eventRoutes from '../src/Eventos/events-routes.js';
 import menuRoutes from '../src/menu/menu-routes.js';
 import searchRoutes from '../src/search/search-routes.js';
 
-// Roles
+// ========================
+// ROLES
+// ========================
 import { Role } from '../src/auth/role.model.js';
 import { ALLOWED_ROLES } from '../helpers/role-constants.js';
 
 const BASE_PATH = '/restaurantManagement/v1';
 
-/* =========================
-Middlewares
-========================= */
+// ========================
+// MIDDLEWARES
+// ========================
 const middlewares = (app) => {
     app.use(express.urlencoded({ extended: false, limit: "10mb" }));
     app.use(express.json({ limit: '10mb' }));
@@ -39,38 +46,40 @@ const middlewares = (app) => {
     app.use(morgan('dev'));
 };
 
-/* =========================
-Routes
-========================= */
+// ========================
+// ROUTES
+// ========================
 const routes = (app) => {
 
-    // Auth
+    // 🔐 Auth
     app.use(`${BASE_PATH}/auth`, authRoutes);
 
-    // Core Modules
+    // 🏢 Core
     app.use(`${BASE_PATH}/restaurants`, restaurantRoutes);
     app.use(`${BASE_PATH}/tables`, tableRoutes);
     app.use(`${BASE_PATH}/inventory`, inventoryRoutes);
+    app.use(`${BASE_PATH}/reservations`, reservationRoutes);
 
-    // Analytics
+    // 📊 Analytics
     app.use(`${BASE_PATH}/analytics`, analyticsRoutes);
 
-    // productos y categoriassssss
-    app.use('/api/v1/categories', categoryRoutes);
-    app.use('/api/v1/products',   productRoutes);
+    // 🍽 Categorías y Productos
+    app.use(`${BASE_PATH}/categories`, categoryRoutes);
+    app.use(`${BASE_PATH}/products`, productRoutes);
 
+    // 🎉 Eventos
+    app.use(`${BASE_PATH}/events`, eventRoutes);
 
-    // eventos
-    app.use('/api/v1/events', eventRoutes);
+    // 📋 Menús
+    app.use(`${BASE_PATH}/menus`, menuRoutes);
+    app.use(`${BASE_PATH}/restaurants/:restaurantId/menus`, menuRoutes);
 
-    // MENUS
-    app.use('/api/v1/menus', menuRoutes);
-    app.use('/api/v1/restaurants/:restaurantId/menus', menuRoutes);
+    // 🔍 Búsqueda
+    app.use(`${BASE_PATH}/search`, searchRoutes);
 
-    // busqueda
-    app.use('/api/v1/search', searchRoutes);
-
-    // Health Check
+    // ========================
+    // HEALTH CHECK
+    // ========================
     app.get(`${BASE_PATH}/health`, (req, res) => {
         return res.status(200).json({
             status: 'Healthy',
@@ -83,7 +92,9 @@ const routes = (app) => {
         });
     });
 
-    // 404 Handler
+    // ========================
+    // 404 HANDLER
+    // ========================
     app.use((req, res) => {
         res.status(404).json({
             success: false,
@@ -92,9 +103,9 @@ const routes = (app) => {
     });
 };
 
-/* =========================
-Server Init
-========================= */
+// ========================
+// SERVER INIT
+// ========================
 export const initServer = async () => {
 
     const app = express();
@@ -115,7 +126,6 @@ export const initServer = async () => {
             await sequelize.sync({ alter: true });
             console.log('PostgreSQL | Tables synchronized');
 
-            // Crear roles si no existen
             const count = await Role.count();
 
             if (count === 0) {
@@ -131,8 +141,8 @@ export const initServer = async () => {
 
         app.listen(PORT, () => {
             console.log('---------------------------------------------');
-            console.log(`Server is running on port: ${PORT}`);
-            console.log(`Health check: http://localhost:${PORT}${BASE_PATH}/health`);
+            console.log(`Server running on port: ${PORT}`);
+            console.log(`Health: http://localhost:${PORT}${BASE_PATH}/health`);
             console.log('---------------------------------------------');
         });
 
