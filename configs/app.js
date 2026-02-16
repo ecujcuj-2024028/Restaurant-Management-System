@@ -16,6 +16,11 @@ import analyticsRoutes from '../src/analytics/analytics.routes.js';
 import restaurantRoutes from '../src/restaurants/restaurant.routes.js';
 import tableRoutes from '../src/tables/table.routes.js';
 import inventoryRoutes from '../src/inventory/inventory.routes.js';
+import categoryRoutes from '../src/gastronomy oferts/category-routes.js';
+import productRoutes  from '../src/gastronomy oferts/product-routes.js';
+import eventRoutes from '../src/Eventos/events-routes.js';
+import menuRoutes from '../src/menu/menu-routes.js';
+import searchRoutes from '../src/search/search-routes.js';
 
 // Roles
 import { Role } from '../src/auth/role.model.js';
@@ -49,6 +54,21 @@ const routes = (app) => {
 
     // Analytics
     app.use(`${BASE_PATH}/analytics`, analyticsRoutes);
+
+    // productos y categoriassssss
+    app.use('/api/v1/categories', categoryRoutes);
+    app.use('/api/v1/products',   productRoutes);
+
+
+    // eventos
+    app.use('/api/v1/events', eventRoutes);
+
+    // MENUS
+    app.use('/api/v1/menus', menuRoutes);
+    app.use('/api/v1/restaurants/:restaurantId/menus', menuRoutes);
+
+    // busqueda
+    app.use('/api/v1/search', searchRoutes);
 
     // Health Check
     app.get(`${BASE_PATH}/health`, (req, res) => {
