@@ -12,10 +12,10 @@ import { helmetConfiguration } from "./helmet-configuration.js";
 
 import restaurantRoutes from '../src/restaurants/restaurant.routes.js';
 import tableRoutes from '../src/tables/table.routes.js';
+import inventoryRoutes from '../src/inventory/inventory.routes.js';
 import authRoutes from '../src/auth/auth.routes.js';
 import { Role } from '../src/auth/role.model.js';
 import { ALLOWED_ROLES } from '../helpers/role-constants.js';
-
 
 const BASE_PATH = '/restaurantManagement/v1';
 
@@ -33,6 +33,7 @@ const routes = (app) => {
 
     app.use(`${BASE_PATH}/restaurants`, restaurantRoutes);
     app.use(`${BASE_PATH}/tables`, tableRoutes);
+    app.use(`${BASE_PATH}/inventory`, inventoryRoutes);
 
     app.get(`${BASE_PATH}/health`, (req, res) => {
         return res.status(200).json({
