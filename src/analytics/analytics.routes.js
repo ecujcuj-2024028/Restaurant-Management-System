@@ -4,7 +4,8 @@ import { Router } from 'express';
 import {
     crearReview,
     getReviewsPorPlato,
-    getPlatosMasVendidos
+    getPlatosMasVendidos,
+    getStatsAdmin
 } from './analytics.controller.js';
 
 const router = Router();
@@ -33,5 +34,12 @@ router.get('/reviews/plato/:platoId', getReviewsPorPlato);
  */
 router.get('/platos/mas-vendidos', getPlatosMasVendidos);
 
+/**
+ * GET /restaurantManagement/v1/analytics/stats
+ * Endpoint Admin: datos crudos de ingresos, ocupación y satisfacción.
+ * Query params opcionales:
+ *   ?meses=6  → rango de meses hacia atrás (default: 6)
+ */
+router.get('/stats', getStatsAdmin);
 
 export default router;
