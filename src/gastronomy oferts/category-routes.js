@@ -7,7 +7,7 @@ import {
     createCategory,
     updateCategory,
     deleteCategory
-} from './category.controller.js';
+} from '../gastronomy oferts/category-controller.js';
 
 const router = Router();
 
