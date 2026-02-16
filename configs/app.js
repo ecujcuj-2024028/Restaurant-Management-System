@@ -4,15 +4,17 @@ import express from "express";
 import cors from "cors";
 import helmet from "helmet";
 import morgan from "morgan";
+import { sequelize } from "./db-postgres.js";
 import { dbConnection as postgresConnection } from "./db-postgres.js";
 import { mongoConnection } from "./db-mongo.js";
 import { corsOptions } from "./cors-configuration.js";
 import { helmetConfiguration } from "./helmet-configuration.js";
 
-//import authRoutes from "../src/auth/auth.routes.js";
 import restaurantRoutes from '../src/restaurants/restaurant.routes.js';
 import tableRoutes from '../src/tables/table.routes.js';
 import authRoutes from '../src/auth/auth.routes.js';
+import { Role } from '../src/auth/role.model.js';
+import { ALLOWED_ROLES } from '../helpers/role-constants.js';
 
 
 const BASE_PATH = '/restaurantManagement/v1';
@@ -61,9 +63,19 @@ export const initServer = async () => {
         console.log('--- STARTING GASTROMANAGER INFRASTRUCTURE ---');
         
         // Inicializar conexiones en paralelo para mayor velocidad
-        // await postgresConnection();
+        await postgresConnection(); 
         await mongoConnection();
 
+        if (process.env.NODE_ENV === 'development') {
+            await sequelize.sync({ alter: true });
+            console.log('PostgreSQL | Tablas creadas o actualizadas');
+            
+            const count = await Role.count();
+            if (count === 0) {
+                await Role.bulkCreate(ALLOWED_ROLES.map(name => ({ Name: name })));
+                console.log('PostgreSQL | Roles creados');
+            }
+        }
 
         middlewares(app);
         routes(app);

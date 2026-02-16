@@ -7,33 +7,31 @@ import { generateVerificationToken } from '../../helpers/generate-jwt.js';
 import bcrypt from 'bcryptjs';
 
 export const register = async (req, res) => {
-    // Iniciamos la transacción
     const t = await sequelize.transaction();
 
     try {
         const { name, surname, username, email, password, phone } = req.body;
 
-        // 1. Encriptar la contraseña (usando el saltRounds de tu config)
+        // 1. Encriptar la contraseña
         const salt = await bcrypt.genSalt(12);
         const hashedPassword = await bcrypt.hash(password, salt);
 
-        // 2. Crear el Usuario
         const user = await User.create({
             Name: name,
             Surname: surname,
             Username: username,
             Email: email,
             Password: hashedPassword,
-            Status: true // El usuario está activo para loguearse o false si esperas verificación
+            Status: true
         }, { transaction: t });
 
-        // 3. Crear el Perfil (UserProfile)
+        // 3. Crear el Perfil
         await UserProfile.create({
             UserId: user.Id,
             Phone: phone
         }, { transaction: t });
 
-        // 4. Buscar el Rol por defecto (CLIENTE)
+        // 4. Buscar el Rol por defecto 
         const role = await Role.findOne({ where: { Name: CLIENTE } });
         if (!role) {
             throw new Error(`El rol ${CLIENTE} no existe en la base de datos.`);
@@ -50,36 +48,28 @@ export const register = async (req, res) => {
         await UserEmail.create({
             UserId: user.Id,
             EmailVerificationToken: verificationToken,
-            EmailVerificationTokenExpiry: new Date(Date.now() + (24 * 60 * 60 * 1000)) // 24h
+            EmailVerificationTokenExpiry: new Date(Date.now() + (24 * 60 * 60 * 1000))
         }, { transaction: t });
 
-        // Si todo salió bien, guardamos cambios en la DB
         await t.commit();
 
-        // 7. Enviar el correo (fuera de la transacción para no retrasar la DB)
-        // No usamos 'await' aquí si no queremos que el usuario espere a que el SMTP responda,
-        // pero es mejor manejarlo para loggear errores.
-        sendVerificationEmail(user.Email, user.Name, verificationToken).catch(err => 
-            console.error('Error enviando email de bienvenida:', err)
-        );
+        // 7. Envío "Simultáneo"
+        sendVerificationEmail(user.Email, user.Name, verificationToken)
+            .then(() => console.log(`Correo enviado a: ${user.Email}`))
+            .catch(err => console.error('Error enviando email en segundo plano:', err));
 
         return res.status(201).json({
             success: true,
-            message: 'Usuario registrado exitosamente. Revisa tu correo para verificar la cuenta.',
-            user: {
-                id: user.Id,
-                username: user.Username,
-                email: user.Email
-            }
+            message: 'Usuario registrado. El correo de verificación ha sido enviado.',
+            user: { username: user.Username, email: user.Email }
         });
 
     } catch (error) {
-        // Si algo falla, deshacemos todo lo creado en esta transacción
         if (t) await t.rollback();
-        
+
         console.error('Error en Register:', error);
-        
-        // Manejo de errores de duplicados (Email/Username)
+
+        // Manejo de errores de duplicados
         if (error.name === 'SequelizeUniqueConstraintError') {
             return res.status(400).json({
                 success: false,
@@ -90,7 +80,9 @@ export const register = async (req, res) => {
         return res.status(500).json({
             success: false,
             message: 'Error al registrar el usuario.',
-            error: error.message
+            error: error.message,
+            errorType: error.name,
+            errorFields: error.fields
         });
     }
 };
@@ -154,7 +146,7 @@ export const login = async (req, res) => {
             message: 'Error al intentar iniciar sesión.',
             error: error.message
         });
-    }    
+    }
 };
 
 export const verifyEmail = async (req, res) => {
@@ -162,8 +154,8 @@ export const verifyEmail = async (req, res) => {
         const { token } = req.body;
 
         // 1. Buscar el registro que tenga ese token
-        const userEmailRecord = await UserEmail.findOne({ 
-            where: { EmailVerificationToken: token } 
+        const userEmailRecord = await UserEmail.findOne({
+            where: { EmailVerificationToken: token }
         });
 
         if (!userEmailRecord) {
@@ -177,7 +169,7 @@ export const verifyEmail = async (req, res) => {
 
         // 3. Marcar como verificado y limpiar el token
         userEmailRecord.EmailVerified = true;
-        userEmailRecord.EmailVerificationToken = null; 
+        userEmailRecord.EmailVerificationToken = null;
         userEmailRecord.EmailVerificationTokenExpiry = null;
         await userEmailRecord.save();
 
