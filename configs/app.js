@@ -12,6 +12,7 @@ import { helmetConfiguration } from "./helmet-configuration.js";
 //import authRoutes from "../src/auth/auth.routes.js";
 import restaurantRoutes from '../src/restaurants/restaurant.routes.js';
 import tableRoutes from '../src/tables/table.routes.js';
+import authRoutes from '../src/auth/auth.routes.js';
 
 
 const BASE_PATH = '/restaurantManagement/v1';
@@ -25,6 +26,8 @@ const middlewares = (app) => {
 }
 
 const routes = (app) => {
+    app.use(`${BASE_PATH}/auth`, authRoutes);
+    app.use(`${BASE_PATH}/login`, tableRoutes);
 
     app.use(`${BASE_PATH}/restaurants`, restaurantRoutes);
     app.use(`${BASE_PATH}/tables`, tableRoutes);
