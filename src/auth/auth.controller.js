@@ -3,8 +3,10 @@ import { User, UserProfile, UserEmail } from '../user/user.model.js';
 import { Role, UserRole } from '../auth/role.model.js';
 import { CLIENTE } from '../../helpers/role-constants.js';
 import { sendVerificationEmail } from '../../helpers/email-service.js';
-import { generateVerificationToken } from '../../helpers/generate-jwt.js';
-import bcrypt from 'bcryptjs';
+// 1. IMPORTACIÓN COMBINADA Y AGREGADO HASH_PASSWORD
+import { generateJWT, generateVerificationToken } from '../../helpers/generate-jwt.js';
+import { hashPassword, verifyPassword } from '../../utils/password-utils.js'; 
+import { findUserByEmailOrUsername } from '../../helpers/user-db.js';
 
 export const register = async (req, res) => {
     const t = await sequelize.transaction();
@@ -12,38 +14,31 @@ export const register = async (req, res) => {
     try {
         const { name, surname, username, email, password, phone } = req.body;
 
-        // 1. Encriptar la contraseña
-        const salt = await bcrypt.genSalt(12);
-        const hashedPassword = await bcrypt.hash(password, salt);
+        // 2. Encriptar contraseña con el helper importado
+        const hashedPassword = await hashPassword(password);
 
         const user = await User.create({
             Name: name,
             Surname: surname,
-            Username: username,
-            Email: email,
+            Username: username.toLowerCase(),
+            Email: email.toLowerCase(),
             Password: hashedPassword,
-            Status: true
+            Status: false // CAMBIO: Empieza en false para obligar a verificar correo
         }, { transaction: t });
 
-        // 3. Crear el Perfil
         await UserProfile.create({
             UserId: user.Id,
             Phone: phone
         }, { transaction: t });
 
-        // 4. Buscar el Rol por defecto 
         const role = await Role.findOne({ where: { Name: CLIENTE } });
-        if (!role) {
-            throw new Error(`El rol ${CLIENTE} no existe en la base de datos.`);
-        }
+        if (!role) throw new Error(`El rol ${CLIENTE} no existe.`);
 
-        // 5. Asignar el Rol al Usuario
         await UserRole.create({
             UserId: user.Id,
             RoleId: role.Id
         }, { transaction: t });
 
-        // 6. Generar token de verificación y guardar en UserEmail
         const verificationToken = await generateVerificationToken(user.Id, 'EMAIL_VERIFICATION');
         await UserEmail.create({
             UserId: user.Id,
@@ -53,129 +48,96 @@ export const register = async (req, res) => {
 
         await t.commit();
 
-        // 7. Envío "Simultáneo"
+        // Envío de correo en segundo plano
         sendVerificationEmail(user.Email, user.Name, verificationToken)
             .then(() => console.log(`Correo enviado a: ${user.Email}`))
-            .catch(err => console.error('Error enviando email en segundo plano:', err));
+            .catch(err => console.error('Error enviando email:', err));
 
         return res.status(201).json({
             success: true,
-            message: 'Usuario registrado. El correo de verificación ha sido enviado.',
+            message: 'Usuario registrado. Por favor verifica tu correo para activar tu cuenta.',
             user: { username: user.Username, email: user.Email }
         });
 
     } catch (error) {
         if (t) await t.rollback();
-
         console.error('Error en Register:', error);
-
-        // Manejo de errores de duplicados
-        if (error.name === 'SequelizeUniqueConstraintError') {
-            return res.status(400).json({
-                success: false,
-                message: 'El nombre de usuario o el correo ya están en uso.'
-            });
-        }
-
-        return res.status(500).json({
-            success: false,
-            message: 'Error al registrar el usuario.',
-            error: error.message,
-            errorType: error.name,
-            errorFields: error.fields
-        });
+        return res.status(500).json({ success: false, message: error.message });
     }
 };
 
 export const login = async (req, res) => {
     try {
         const { emailOrUsername, password } = req.body;
+        const user = await findUserByEmailOrUsername(emailOrUsername);
 
-        // 1. Buscar al usuario por email o username (usando Op.or de Sequelize)
-        const user = await User.findOne({
-            where: {
-                [Op.or]: [
-                    { Email: emailOrUsername },
-                    { Username: emailOrUsername }
-                ]
-            },
-            include: [{
-                model: UserRole,
-                as: 'UserRoles',
-                include: [{ model: Role, as: 'Role' }]
-            }]
-        });
-
-        // 2. Validar existencia y estado
         if (!user) {
-            return res.status(404).json({ success: false, message: 'Usuario no encontrado.' });
+            return res.status(404).json({ success: false, message: 'Credenciales inválidas.' });
         }
 
+        // Si el Status es false, no lo deja pasar
         if (!user.Status) {
-            return res.status(403).json({ success: false, message: 'Tu cuenta está desactivada.' });
+            return res.status(403).json({ 
+                success: false, 
+                message: 'Cuenta desactivada o correo no verificado.' 
+            });
         }
 
-        // 3. Verificar contraseña (comparamos con user.Password en mayúscula como tu modelo)
-        const validPassword = await bcrypt.compare(password, user.Password);
-        if (!validPassword) {
-            return res.status(401).json({ success: false, message: 'Contraseña incorrecta.' });
+        const isMatch = await verifyPassword(user.Password, password);
+        if (!isMatch) {
+            return res.status(401).json({ success: false, message: 'Credenciales inválidas.' });
         }
 
-        // 4. Extraer roles para el token
         const roles = user.UserRoles.map(ur => ur.Role.Name);
-
-        // 5. Generar el JWT (usando tu helper generateJWT)
-        // Pasamos el ID y los roles como extraClaims
         const token = await generateJWT(user.Id, { roles });
 
         return res.status(200).json({
             success: true,
-            message: `Bienvenido de nuevo, ${user.Name}`,
+            message: `Bienvenido, ${user.Name}`,
             token,
-            user: {
-                id: user.Id,
-                username: user.Username,
-                roles
-            }
+            user: { id: user.Id, username: user.Username, roles }
         });
-
     } catch (error) {
-        console.error('Error en Login:', error);
-        return res.status(500).json({
-            success: false,
-            message: 'Error al intentar iniciar sesión.',
-            error: error.message
-        });
+        console.error('Login Error:', error);
+        return res.status(500).json({ success: false, message: 'Error interno.' });
     }
 };
 
 export const verifyEmail = async (req, res) => {
+    const t = await sequelize.transaction();
     try {
         const { token } = req.body;
 
-        // 1. Buscar el registro que tenga ese token
         const userEmailRecord = await UserEmail.findOne({
-            where: { EmailVerificationToken: token }
+            where: { EmailVerificationToken: token },
+            transaction: t
         });
 
         if (!userEmailRecord) {
             return res.status(400).json({ success: false, message: "Token inválido." });
         }
 
-        // 2. Verificar expiración
         if (new Date() > userEmailRecord.EmailVerificationTokenExpiry) {
             return res.status(400).json({ success: false, message: "El token ha expirado." });
         }
 
-        // 3. Marcar como verificado y limpiar el token
+        // 3. ACTUALIZACIÓN: Verificamos correo Y ACTIVAMOS al usuario
         userEmailRecord.EmailVerified = true;
         userEmailRecord.EmailVerificationToken = null;
         userEmailRecord.EmailVerificationTokenExpiry = null;
-        await userEmailRecord.save();
+        await userEmailRecord.save({ transaction: t });
 
-        return res.status(200).json({ success: true, message: "Correo verificado exitosamente." });
+        // Buscamos al usuario dueño de este email y lo activamos (Status: true)
+        await User.update({ Status: true }, {
+            where: { Id: userEmailRecord.UserId },
+            transaction: t
+        });
+
+        await t.commit();
+        return res.status(200).json({ success: true, message: "Correo verificado y cuenta activada." });
 
     } catch (error) {
+        if (t) await t.rollback();
         return res.status(500).json({ success: false, message: error.message });
     }
 };

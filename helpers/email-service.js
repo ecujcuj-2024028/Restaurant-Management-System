@@ -36,7 +36,7 @@ export const sendVerificationEmail = async (email, name, verificationToken) => {
     }
 
     try {
-        const frontendUrl = config.app.frontendUrl || 'http://localhost:3006/restaurantManagement/v1/';
+        const frontendUrl = config.app.frontendUrl || 'http://localhost:3006/restaurantManagement/v1/auth';
         const verificationUrl = `${frontendUrl}/verify-email?token=${verificationToken}`;
 
         const mailOptions = {
@@ -69,7 +69,7 @@ export const sendPasswordResetEmail = async (email, name, resetToken) => {
     }
 
     try {
-        const frontendUrl = config.app.frontendUrl || 'http://localhost:3006/restaurantManagement/v1/';
+        const frontendUrl = config.app.frontendUrl || 'http://localhost:3006/restaurantManagement/v1/auth';
         const resetUrl = `${frontendUrl}/reset-password?token=${resetToken}`;
 
         const mailOptions = {
