@@ -104,4 +104,58 @@ export const getReviewsPorPlato = async (req, res) => {
     }
 };
 
+export const getPlatosMasVendidos = async (req, res) => {
+    try {
+        const limite = parseInt(req.query.limite) || 10;
+        const restauranteId = req.query.restauranteId;
+
+        // pa que tengamos solo reviews activas
+        const matchStage = { estado: 'activa' };
+
+        if (restauranteId && mongoose.Types.ObjectId.isValid(restauranteId)) {
+            matchStage.restauranteId = new mongoose.Types.ObjectId(restauranteId);
+        }
+
+        const resultado = await Review.aggregate([
+            { $match: matchStage },
+
+            {
+                $group: {
+                    _id: '$platoId',
+                    vecesOrdenado: { $sum: 1 },              
+                    promedioRating: { $avg: '$rating' },
+                    totalIngresosAproximados: { $sum: '$consumo.montoTotal' },
+                    ultimaReseña: { $max: '$createdAt' }
+                }
+            },
+
+            { $sort: { vecesOrdenado: -1 } },
+
+            { $limit: limite },
+
+            {
+                $project: {
+                    _id: 0,
+                    platoId: '$_id',
+                    vecesOrdenado: 1,
+                    promedioRating: { $round: ['$promedioRating', 2] },
+                    totalIngresosAproximados: 1,
+                    ultimaReseña: 1
+                }
+            }
+        ]);
+
+        return res.status(200).json({
+            success: true,
+            message: `Top ${limite} platos más pedidos`,
+            total: resultado.length,
+            data: resultado
+        });
+
+    } catch (error) {
+        console.error('[getPlatosMasVendidos] Error:', error.message);
+        return res.status(500).json({ success: false, message: 'Error interno del servidor' });
+    }
+};
+
 
