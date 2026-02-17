@@ -2,6 +2,7 @@
 
 import Restaurant from './restaurant.model.js';
 
+/* Crear restaurante */
 export const createRestaurant = async (req, res) => {
     try {
         const data = req.body;
@@ -24,9 +25,10 @@ export const createRestaurant = async (req, res) => {
     }
 };
 
+/* Listar restaurantes */
 export const getRestaurants = async (req, res) => {
     try {
-        const restaurants = await Restaurant.find();
+        const restaurants = await Restaurant.find({ isActive: true });
 
         return res.status(200).json({
             success: true,
@@ -36,12 +38,12 @@ export const getRestaurants = async (req, res) => {
     } catch (error) {
         return res.status(500).json({
             success: false,
-            message: 'Error fetching restaurants',
-            error: error.message
+            message: error.message
         });
     }
 };
 
+/* Obtener restaurante */
 export const getRestaurantById = async (req, res) => {
     try {
         const { id } = req.params;
@@ -66,4 +68,48 @@ export const getRestaurantById = async (req, res) => {
             message: error.message
         });
     }
-}; 
+};
+
+/* Actualizar restaurante */
+export const updateRestaurant = async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        const restaurant = await Restaurant.findByIdAndUpdate(
+            id,
+            req.body,
+            { new: true }
+        );
+
+        return res.status(200).json({
+            success: true,
+            restaurant
+        });
+
+    } catch (error) {
+        return res.status(500).json({
+            success: false,
+            message: error.message
+        });
+    }
+};
+
+/* Eliminación lógica */
+export const deleteRestaurant = async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        await Restaurant.findByIdAndUpdate(id, { isActive: false });
+
+        return res.status(200).json({
+            success: true,
+            message: 'Restaurant disabled'
+        });
+
+    } catch (error) {
+        return res.status(500).json({
+            success: false,
+            message: error.message
+        });
+    }
+};
