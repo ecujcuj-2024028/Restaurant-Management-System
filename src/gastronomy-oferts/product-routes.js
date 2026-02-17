@@ -7,7 +7,7 @@ import {
     createProduct,
     updateProduct,
     deleteProduct
-} from '../gastronomy oferts/product-controller.js';
+} from '../gastronomy-oferts/product-controller.js';
 
 const router = Router();
 

@@ -1,6 +1,6 @@
 'use strict';
 
-import Category from '../gastronomy oferts/category-model.js';
+import Category from '../gastronomy-oferts/category-model.js';
 
 export const getCategories = async (req, res) => {
     try {

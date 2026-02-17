@@ -1,49 +1,44 @@
 import { sequelize } from '../../configs/db-postgres.js';
 import { User, UserProfile, UserEmail } from '../user/user.model.js';
 import { Role, UserRole } from '../auth/role.model.js';
-import { CLIENTE } from '../../helpers/role-constants.js';
-import { sendVerificationEmail } from '../../helpers/email-service.js';
-import { generateVerificationToken } from '../../helpers/generate-jwt.js';
-import bcrypt from 'bcryptjs';
+import { CLIENTE, ADMIN_RESTAURANTE, ADMIN_SISTEMA } from '../../helpers/role-constants.js';
+import { sendVerificationEmail, sendRoleRequestEmail, sendRoleUpgradeResponseEmail } from '../../helpers/email-service.js';
+import { generateJWT, generateVerificationToken } from '../../helpers/generate-jwt.js';
+import { hashPassword, verifyPassword } from '../../utils/password-utils.js';
+import { findUserByEmailOrUsername } from '../../helpers/user-db.js';
+import { RoleUpgradeRequest } from './RoleUpgradeRequest.js';
 
+/* =========================
+   REGISTER
+   ========================= */
 export const register = async (req, res) => {
     const t = await sequelize.transaction();
-
     try {
         const { name, surname, username, email, password, phone } = req.body;
-
-        // 1. Encriptar la contraseña
-        const salt = await bcrypt.genSalt(12);
-        const hashedPassword = await bcrypt.hash(password, salt);
+        const hashedPassword = await hashPassword(password);
 
         const user = await User.create({
             Name: name,
             Surname: surname,
-            Username: username,
-            Email: email,
+            Username: username.toLowerCase(),
+            Email: email.toLowerCase(),
             Password: hashedPassword,
-            Status: true
+            Status: false
         }, { transaction: t });
 
-        // 3. Crear el Perfil
         await UserProfile.create({
             UserId: user.Id,
             Phone: phone
         }, { transaction: t });
 
-        // 4. Buscar el Rol por defecto 
         const role = await Role.findOne({ where: { Name: CLIENTE } });
-        if (!role) {
-            throw new Error(`El rol ${CLIENTE} no existe en la base de datos.`);
-        }
+        if (!role) throw new Error(`El rol ${CLIENTE} no existe.`);
 
-        // 5. Asignar el Rol al Usuario
         await UserRole.create({
             UserId: user.Id,
             RoleId: role.Id
         }, { transaction: t });
 
-        // 6. Generar token de verificación y guardar en UserEmail
         const verificationToken = await generateVerificationToken(user.Id, 'EMAIL_VERIFICATION');
         await UserEmail.create({
             UserId: user.Id,
@@ -53,129 +48,185 @@ export const register = async (req, res) => {
 
         await t.commit();
 
-        // 7. Envío "Simultáneo"
         sendVerificationEmail(user.Email, user.Name, verificationToken)
             .then(() => console.log(`Correo enviado a: ${user.Email}`))
-            .catch(err => console.error('Error enviando email en segundo plano:', err));
+            .catch(err => console.error('Error enviando email:', err));
 
         return res.status(201).json({
             success: true,
-            message: 'Usuario registrado. El correo de verificación ha sido enviado.',
+            message: 'Usuario registrado. Por favor verifica tu correo para activar tu cuenta.',
             user: { username: user.Username, email: user.Email }
         });
-
     } catch (error) {
         if (t) await t.rollback();
-
-        console.error('Error en Register:', error);
-
-        // Manejo de errores de duplicados
-        if (error.name === 'SequelizeUniqueConstraintError') {
-            return res.status(400).json({
-                success: false,
-                message: 'El nombre de usuario o el correo ya están en uso.'
-            });
-        }
-
-        return res.status(500).json({
-            success: false,
-            message: 'Error al registrar el usuario.',
-            error: error.message,
-            errorType: error.name,
-            errorFields: error.fields
-        });
+        return res.status(500).json({ success: false, message: error.message });
     }
 };
 
+/* =========================
+   LOGIN
+   ========================= */
 export const login = async (req, res) => {
     try {
         const { emailOrUsername, password } = req.body;
+        const user = await findUserByEmailOrUsername(emailOrUsername);
 
-        // 1. Buscar al usuario por email o username (usando Op.or de Sequelize)
-        const user = await User.findOne({
-            where: {
-                [Op.or]: [
-                    { Email: emailOrUsername },
-                    { Username: emailOrUsername }
-                ]
-            },
-            include: [{
-                model: UserRole,
-                as: 'UserRoles',
-                include: [{ model: Role, as: 'Role' }]
-            }]
-        });
-
-        // 2. Validar existencia y estado
-        if (!user) {
-            return res.status(404).json({ success: false, message: 'Usuario no encontrado.' });
-        }
+        if (!user) return res.status(404).json({ success: false, message: 'Credenciales inválidas.' });
 
         if (!user.Status) {
-            return res.status(403).json({ success: false, message: 'Tu cuenta está desactivada.' });
+            return res.status(403).json({
+                success: false,
+                message: 'Cuenta desactivada o correo no verificado.'
+            });
         }
 
-        // 3. Verificar contraseña (comparamos con user.Password en mayúscula como tu modelo)
-        const validPassword = await bcrypt.compare(password, user.Password);
-        if (!validPassword) {
-            return res.status(401).json({ success: false, message: 'Contraseña incorrecta.' });
-        }
+        const isMatch = await verifyPassword(user.Password, password);
+        if (!isMatch) return res.status(401).json({ success: false, message: 'Credenciales inválidas.' });
 
-        // 4. Extraer roles para el token
         const roles = user.UserRoles.map(ur => ur.Role.Name);
-
-        // 5. Generar el JWT (usando tu helper generateJWT)
-        // Pasamos el ID y los roles como extraClaims
         const token = await generateJWT(user.Id, { roles });
 
         return res.status(200).json({
             success: true,
-            message: `Bienvenido de nuevo, ${user.Name}`,
+            message: `Bienvenido, ${user.Name}`,
             token,
-            user: {
-                id: user.Id,
-                username: user.Username,
-                roles
-            }
+            user: { id: user.Id, username: user.Username, roles }
         });
-
     } catch (error) {
-        console.error('Error en Login:', error);
-        return res.status(500).json({
-            success: false,
-            message: 'Error al intentar iniciar sesión.',
-            error: error.message
-        });
+        return res.status(500).json({ success: false, message: 'Error interno.' });
     }
 };
 
+/* =========================
+   EMAIL VERIFICATION
+   ========================= */
 export const verifyEmail = async (req, res) => {
+    const t = await sequelize.transaction();
     try {
         const { token } = req.body;
+        const record = await UserEmail.findOne({ where: { EmailVerificationToken: token }, transaction: t });
 
-        // 1. Buscar el registro que tenga ese token
-        const userEmailRecord = await UserEmail.findOne({
-            where: { EmailVerificationToken: token }
+        if (!record || new Date() > record.EmailVerificationTokenExpiry) {
+            return res.status(400).json({ success: false, message: "Token inválido o expirado." });
+        }
+
+        record.EmailVerified = true;
+        record.EmailVerificationToken = null;
+        record.EmailVerificationTokenExpiry = null;
+        await record.save({ transaction: t });
+
+        await User.update({ Status: true }, { where: { Id: record.UserId }, transaction: t });
+
+        await t.commit();
+        return res.status(200).json({ success: true, message: "Correo verificado y cuenta activada." });
+    } catch (error) {
+        if (t) await t.rollback();
+        return res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+/* =========================
+   ROLE UPGRADE REQUESTS
+   ========================= */
+export const requestRoleUpgrade = async (req, res) => {
+    try {
+        const { requestedRole } = req.body;
+
+        const currentRoleName = req.user.UserRoles && req.user.UserRoles.length > 0 
+            ? req.user.UserRoles[0].Role.Name 
+            : 'Sin Rol';
+
+        if (currentRoleName === requestedRole) {
+            return res.status(400).json({ success: false, message: 'Ya tienes este rol asignado' });
+        }
+
+        const existingRequest = await RoleUpgradeRequest.findOne({
+            where: { UserId: req.user.Id, Status: 'PENDING' }
         });
 
-        if (!userEmailRecord) {
-            return res.status(400).json({ success: false, message: "Token inválido." });
+        if (existingRequest) {
+            return res.status(400).json({ success: false, message: 'Ya tienes una solicitud pendiente' });
         }
 
-        // 2. Verificar expiración
-        if (new Date() > userEmailRecord.EmailVerificationTokenExpiry) {
-            return res.status(400).json({ success: false, message: "El token ha expirado." });
+        const request = await RoleUpgradeRequest.create({
+            UserId: req.user.Id,
+            RequestedRole: requestedRole,
+            Status: 'PENDING'
+        });
+
+        const adminRoot = await User.findOne({ where: { Email: process.env.ROOT_ADMIN_EMAIL } });
+
+        if (adminRoot) {
+            sendRoleRequestEmail({
+                adminEmail: adminRoot.Email,
+                userName: `${req.user.Name} ${req.user.Surname}`,
+                userEmail: req.user.Email,
+                currentRole: currentRoleName,
+                requestedRole: requestedRole,
+                requestId: request.Id
+            }).catch(err => console.error('Error enviando email al admin:', err));
         }
 
-        // 3. Marcar como verificado y limpiar el token
-        userEmailRecord.EmailVerified = true;
-        userEmailRecord.EmailVerificationToken = null;
-        userEmailRecord.EmailVerificationTokenExpiry = null;
-        await userEmailRecord.save();
+        return res.status(201).json({
+            success: true,
+            message: 'Solicitud enviada correctamente.',
+            data: request
+        });
+    } catch (error) {
+        console.error('Error requestRoleUpgrade:', error);
+        return res.status(500).json({ success: false, message: 'Error interno del servidor' });
+    }
+};
 
-        return res.status(200).json({ success: true, message: "Correo verificado exitosamente." });
+export const handleRoleRequest = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { token } = req.query;
+
+        if (token !== process.env.ROOT_ADMIN_TOKEN) {
+            return res.status(403).send('<h1>Acceso Denegado</h1>');
+        }
+
+        const request = await RoleUpgradeRequest.findByPk(id);
+        if (!request || request.Status !== 'PENDING') {
+            return res.status(404).send('<h1>Solicitud no encontrada o ya procesada</h1>');
+        }
+
+        const rootAdmin = await User.findOne({ where: { Email: process.env.ROOT_ADMIN_EMAIL } });
+
+        const isApproval = req.path.includes('approve');
+        const action = isApproval ? 'APPROVED' : 'REJECTED';
+
+        request.Status = action;
+        request.ReviewedBy = rootAdmin ? rootAdmin.Id : null;
+        await request.save();
+
+        if (isApproval) {
+            const role = await Role.findOne({ where: { Name: request.RequestedRole } });
+            await UserRole.destroy({ where: { UserId: request.UserId } });
+            await UserRole.create({ UserId: request.UserId, RoleId: role.Id });
+        }
+
+        // --- NOTIFICACIÓN AL USUARIO ---
+        const requestingUser = await User.findByPk(request.UserId);
+        if (requestingUser) {
+            sendRoleUpgradeResponseEmail({
+                userEmail: requestingUser.Email,
+                userName: requestingUser.Name,
+                requestedRole: request.RequestedRole,
+                status: action
+            }).catch(err => console.error('Error enviando respuesta al usuario:', err));
+        }
+
+        return res.send(`
+            <div style="font-family: Arial; text-align: center; margin-top: 50px;">
+                <h1 style="color: ${isApproval ? '#2e7d32' : '#c62828'};">Solicitud ${isApproval ? 'Aprobada' : 'Rechazada'}</h1>
+                <p>Se ha enviado una notificación por correo a <b>${requestingUser ? requestingUser.Email : 'el usuario'}</b>.</p>
+            </div>
+        `);
 
     } catch (error) {
-        return res.status(500).json({ success: false, message: error.message });
+        console.error('CRITICAL ERROR en handleRoleRequest:', error);
+        return res.status(500).send(`Error interno: ${error.message}`);
     }
 };

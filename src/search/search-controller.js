@@ -1,8 +1,8 @@
 'use strict';
 
 import Restaurant from '../restaurants/restaurant.model.js';
-import Category   from '../gastronomy oferts/category-model.js';
-import Product    from '../gastronomy oferts/products-model.js';
+import Category   from '../gastronomy-oferts/category-model.js';
+import Product    from '../gastronomy-oferts/products-model.js';
 
 export const globalSearch = async (req, res) => {
     try {

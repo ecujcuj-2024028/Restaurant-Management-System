@@ -1,7 +1,7 @@
 'use strict';
 
 import Menu    from '../menu/menu-models.js';
-import Product from '../gastronomy oferts/products-model.js';
+import Product from '../gastronomy-oferts/products-model.js';
 
 export const getMenus = async (req, res) => {
     try {
