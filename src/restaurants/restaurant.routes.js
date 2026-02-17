@@ -7,6 +7,7 @@ import {
     deleteRestaurant
 } from './restaurant.controller.js';
 
+import { upload } from '../../helpers/file-upload.js';
 import { validateJWT } from '../../middlewares/validate-JWT.js';
 import { hasRole } from '../../middlewares/hasRole.js';
 import { ADMIN_SISTEMA } from '../../helpers/role-constants.js';
@@ -17,6 +18,7 @@ const router = Router();
 router.post(
     '/create',
     validateJWT,
+    upload.single('image'),
     hasRole(ADMIN_SISTEMA),
     createRestaurant
 );
@@ -24,6 +26,7 @@ router.post(
 router.put(
     '/:id',
     validateJWT,
+    upload.single('image'),
     hasRole(ADMIN_SISTEMA),
     updateRestaurant
 );

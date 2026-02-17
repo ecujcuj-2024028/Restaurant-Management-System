@@ -27,14 +27,13 @@ const restaurantSchema = mongoose.Schema(
 
         category: {
             type: String,
-            required: true,
-            enum: [
-                "Comida rapida",
-                "Italiana",
-                "Mexicana",
-                "Asiatica",
-                "Other"
-            ]
+            required: [true, "La categoría es requerida"],
+            enum: ["Comida rapida", "Italiana", "Mexicana", "Asiatica", "Other"]
+        },
+
+        ownerId: {
+            type: String,
+            required: [true, "El ID del dueño es obligatorio"]
         },
 
         photos: [

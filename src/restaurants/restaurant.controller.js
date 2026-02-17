@@ -5,23 +5,29 @@ import Restaurant from './restaurant.model.js';
 /* Crear restaurante */
 export const createRestaurant = async (req, res) => {
     try {
-        const data = req.body;
+        // Obtenemos los campos principales
+        const { name, category } = req.body;
+
+        // Manejamos la dirección si viene como objeto (JSON) o como campos planos (form-data)
+        const street = req.body.street || (req.body.address && req.body.address.street);
+        const city = req.body.city || (req.body.address && req.body.address.city);
+        const country = req.body.country || (req.body.address && req.body.address.country);
 
         const restaurant = await Restaurant.create({
-            ...data,
+            name,
+            category,
+            ownerId: req.userId, // ID de Postgres
+            address: {
+                street,
+                city,
+                country
+            },
             photos: req.file ? [req.file.path] : []
         });
 
-        return res.status(201).json({
-            success: true,
-            restaurant
-        });
-
+        return res.status(201).json({ success: true, restaurant });
     } catch (error) {
-        return res.status(500).json({
-            success: false,
-            message: error.message
-        });
+        return res.status(500).json({ success: false, message: error.message });
     }
 };
 

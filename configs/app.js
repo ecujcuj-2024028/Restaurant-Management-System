@@ -89,7 +89,7 @@ const ensureRootAdmin = async () => {
    Middlewares Globales
    ========================= */
 const middlewares = (app) => {
-    app.use(express.urlencoded({ extended: false, limit: "10mb" }));
+    app.use(express.urlencoded({ extended: true, limit: "10mb" }));
     app.use(express.json({ limit: '10mb' }));
     app.use(cors(corsOptions));
     app.use(helmet(helmetConfiguration));

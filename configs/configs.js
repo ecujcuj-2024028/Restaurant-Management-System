@@ -1,4 +1,9 @@
 import dotenv from 'dotenv';
+import path from 'path';
+import { fileURLToPath } from 'url';
+    
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 dotenv.config();
 
@@ -25,9 +30,9 @@ export const config = {
 
     // File Upload Configuration (aligned with .NET FileValidator)
     upload: {
-        maxSize: 5 * 1024 * 1024, // 5MB (aligned with .NET)
-        allowedTypes: ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'], // aligned with .NET
-        uploadPath: process.env.UPLOAD_PATH,
+        uploadPath: process.env.UPLOAD_PATH || path.join(__dirname, '../src/uploads'),
+        maxSize: 10 * 1024 * 1024,
+        allowedTypes: ['image/jpeg', 'image/png', 'image/jpg', 'image/gif', 'image/webp']
     },
 
     // Cloudinary Configuration
@@ -103,5 +108,5 @@ export const config = {
             (process.env.PASSWORD_RESET_EXPIRY_HOURS
                 ? parseInt(process.env.PASSWORD_RESET_EXPIRY_HOURS, 10)
                 : 1) * 60 * 60 * 1000,
-    },
+    }
 };
