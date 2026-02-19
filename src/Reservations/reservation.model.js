@@ -1,28 +1,41 @@
+'use strict';
+
 import mongoose from 'mongoose';
 
-const reservationSchema = new mongoose.Schema({
-  tableNumber: {
-    type: Number,
-    required: true
+const reservationSchema = new mongoose.Schema(
+  {
+    table: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Table',
+      required: [true, 'La mesa es requerida']
+    },
+
+    customerName: {
+      type: String,
+      required: [true, 'El nombre del cliente es requerido']
+    },
+
+    date: {
+      type: Date,
+      required: [true, 'La fecha es requerida']
+    },
+
+    time: {
+      type: String,
+      required: [true, 'La hora es requerida']
+    },
+
+    status: {
+      type: String,
+      enum: ['activa', 'cancelada', 'finalizada'],
+      default: 'activa'
+    }
   },
-  customerName: {
-    type: String,
-    required: true
-  },
-  date: {
-    type: String,
-    required: true
-  },
-  time: {
-    type: String,
-    required: true
-  }
-}, {
-  timestamps: true
-});
+  { timestamps: true }
+);
 
 reservationSchema.index(
-  { tableNumber: 1, date: 1, time: 1 },
+  { table: 1, date: 1, time: 1 },
   { unique: true }
 );
 
