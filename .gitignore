@@ -29,4 +29,6 @@ logs/
 .DS_Store
 Thumbs.db
 
+package-lock.json
+
 .env
