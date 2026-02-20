@@ -6,7 +6,11 @@ import Category from './categories.model.js';
 export const getCategories = async (req, res) => {
     try {
         const categories = await Category.find({ isActive: true })
-            .populate('restaurantId', 'name');
+            .populate({
+                path: 'restaurantId',
+                select: 'name',
+                options: { strictPopulate: false }
+            });
 
         return res.status(200).json({
             success: true,
