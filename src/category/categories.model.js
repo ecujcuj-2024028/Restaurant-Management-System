@@ -41,4 +41,4 @@ const categorySchema = mongoose.Schema(
 /* Nombre único por restaurante */
 categorySchema.index({ name: 1, restaurantId: 1 }, { unique: true });
 
-export default mongoose.model('Category', categorySchema);
+export default mongoose.models.Category || mongoose.model('Category', categorySchema);

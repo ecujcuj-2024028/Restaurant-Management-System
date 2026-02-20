@@ -87,6 +87,16 @@ const eventSchema = mongoose.Schema(
             default: []
         },
 
+        featuredProducts: {
+            type: [
+                {
+                    type: mongoose.Schema.Types.ObjectId,
+                    ref: "Product"
+                }
+            ],
+            default: []
+        },
+
         image: {
             type: String,
             default: null
@@ -108,4 +118,4 @@ const eventSchema = mongoose.Schema(
     }
 );
 
-export default mongoose.model('Event', eventSchema);
+export default mongoose.models.Event || mongoose.model('Event', eventSchema);
