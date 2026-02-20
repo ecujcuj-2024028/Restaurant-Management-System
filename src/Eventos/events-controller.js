@@ -2,7 +2,7 @@
 
 import Event from '../Eventos/events-model.js';
 import Table from '../tables/table.model.js';
-import Product from '../gastronomy-oferts/products-model.js';
+import Product from '../product/products-model.js';
 import { checkAndUpdateEventStatus, checkAndUpdateMultipleEventStatuses } from '../../helpers/event-helpers.js';
 
 export const getEvents = async (req, res) => {

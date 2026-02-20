@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import Restaurant from './restaurant.model.js';
 import {
     createRestaurant,
     getRestaurants,
@@ -10,7 +11,8 @@ import {
 import { upload } from '../../helpers/file-upload.js';
 import { validateJWT } from '../../middlewares/validate-JWT.js';
 import { hasRole } from '../../middlewares/hasRole.js';
-import { ADMIN_SISTEMA } from '../../helpers/role-constants.js';
+import { ADMIN_RESTAURANTE, ADMIN_SISTEMA } from '../../helpers/role-constants.js';
+import { validateOwnership } from '../../middlewares/validate-ownership.js';
 
 const router = Router();
 
@@ -19,22 +21,29 @@ router.post(
     '/create',
     validateJWT,
     upload.single('image'),
-    hasRole(ADMIN_SISTEMA),
+    hasRole(ADMIN_SISTEMA, ADMIN_RESTAURANTE),
     createRestaurant
-);
+);  
 
+// EDITAR: Ahora el dueño también puede, pero validamos que sea SUYO
 router.put(
     '/:id',
-    validateJWT,
+    [
+        validateJWT,
+        hasRole(ADMIN_SISTEMA, ADMIN_RESTAURANTE),
+        validateOwnership(Restaurant)
+    ],
     upload.single('image'),
-    hasRole(ADMIN_SISTEMA),
     updateRestaurant
 );
 
 router.delete(
     '/:id',
-    validateJWT,
-    hasRole(ADMIN_SISTEMA),
+    [
+        validateJWT,
+        hasRole(ADMIN_SISTEMA, ADMIN_RESTAURANTE),
+        validateOwnership(Restaurant)
+    ],
     deleteRestaurant
 );
 
