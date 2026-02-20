@@ -30,7 +30,7 @@ import reservationRoutes from '../src/Reservations/reservation.routes.js';
 
 // Nuevos Módulos
 import categoryRoutes from '../src/gastronomy-oferts/category-routes.js';
-import productRoutes from '../src/gastronomy-oferts/product-routes.js';
+import productRoutes from '../src/product/product-routes.js';
 import eventRoutes from '../src/Eventos/events-routes.js';
 import menuRoutes from '../src/menu/menu-routes.js';
 import searchRoutes from '../src/search/search-routes.js';

@@ -2,7 +2,7 @@
 
 import Restaurant from '../restaurants/restaurant.model.js';
 import Category   from '../gastronomy-oferts/category-model.js';
-import Product    from '../gastronomy-oferts/products-model.js';
+import Product    from '../product/products-model.js';
 
 /* ─────────────────────────────────────────────────────────────────────────────
    Helpers

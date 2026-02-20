@@ -1,6 +1,6 @@
 'use strict';
 
-import Product  from '../gastronomy-oferts/products-model.js';
+import Product  from '../product/products-model.js';
 import Category from '../gastronomy-oferts/category-model.js';
 
 export const getProducts = async (req, res) => {
