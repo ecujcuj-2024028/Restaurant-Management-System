@@ -51,8 +51,5 @@ const tableSchema = mongoose.Schema(
     }
 );
 
-<<<<<<< HEAD
+
 export default mongoose.models.Table || mongoose.model('Table', tableSchema);
-=======
-export default mongoose.models.Table || mongoose.model('Table', tableSchema);
->>>>>>> origin/develop
