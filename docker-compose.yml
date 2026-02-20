@@ -6,9 +6,9 @@ services:
     container_name: restaurant_postgres
     restart: always
     environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: admin
-      POSTGRES_DB: postgres
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${DB_NAME}
     ports:
       - ${DB_PORT}:5432
     volumes:
@@ -19,7 +19,7 @@ services:
     container_name: restaurant_mongo
     restart: always
     ports:
-      - "27017:27017"
+      - ${PORT_MONGO}:27017
     volumes:
       - mongo_data:/data/db
 

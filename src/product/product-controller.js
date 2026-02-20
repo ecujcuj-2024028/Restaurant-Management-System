@@ -1,6 +1,6 @@
 'use strict';
 
-import Product  from '../product/products-model.js';
+import Product from '../product/products-model.js';
 import Category from '../gastronomy-oferts/category-model.js';
 
 export const getProducts = async (req, res) => {
@@ -8,14 +8,14 @@ export const getProducts = async (req, res) => {
         const { type, category, isAvailable, restaurant } = req.query;
         const filter = { isActive: true };
 
-        if (type)       filter.type       = type;
-        if (category)   filter.category   = category;
+        if (type) filter.type = type;
+        if (category) filter.category = category;
         if (restaurant) filter.restaurant = restaurant;
         if (isAvailable !== undefined)
             filter.isAvailable = isAvailable === 'true';
 
         const products = await Product.find(filter)
-            .populate('category',   'name')
+            .populate('category', 'name')
             .populate('restaurant', 'name')
             .sort({ createdAt: -1 });
 
@@ -36,7 +36,7 @@ export const getProducts = async (req, res) => {
 export const getProduct = async (req, res) => {
     try {
         const product = await Product.findById(req.params.id)
-            .populate('category',   'name description')
+            .populate('category', 'name description')
             .populate('restaurant', 'name');
 
         if (!product)
@@ -71,7 +71,7 @@ export const createProduct = async (req, res) => {
 
         const product = await Product.create({
             ...data,
-            restaurant: req.user.restaurant
+            restaurant: data.restaurant
         });
 
         return res.status(201).json({

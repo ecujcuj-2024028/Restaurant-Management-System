@@ -14,7 +14,7 @@ import {
 import { validateJWT } from '../../middlewares/validate-JWT.js';
 import { validateOwnership } from '../../middlewares/validate-ownership.js';
 import { hasRole } from '../../middlewares/hasRole.js';
-import { ADMIN_RESTAURANTE } from '../../helpers/role-constants.js';
+import { ADMIN_RESTAURANTE, ADMIN_SISTEMA } from '../../helpers/role-constants.js';
 
 const router = Router();
 
@@ -25,7 +25,7 @@ router.get('/:id', getProduct);
 // CREAR: Validamos que sea un Admin, pero la lógica de "a qué restaurante" va en el controlador
 router.post(
     '/', 
-    [validateJWT, hasRole(ADMIN_RESTAURANTE)], 
+    [validateJWT, hasRole(ADMIN_RESTAURANTE, ADMIN_SISTEMA)], 
     createProduct
 );
 
