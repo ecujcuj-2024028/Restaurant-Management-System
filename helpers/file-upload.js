@@ -1,55 +1,46 @@
 import multer from 'multer';
-import path from 'path';
-import { v4 as uuidv4 } from 'uuid';
+import { v2 as cloudinary } from 'cloudinary';
+import { CloudinaryStorage } from 'multer-storage-cloudinary';
 import { config } from '../configs/configs.js';
-import fs from 'fs';
 
-// Crear el directorio de uploads si no existe
-const createUploadDir = () => {
-    const pathDir = config?.upload?.uploadPath;
-    if (!pathDir) {
-        console.error('CRITICAL: config.upload.uploadPath is undefined. Check your configs.js');
-        return; 
-    }
+// Configurar Cloudinary con las credenciales del .env
+cloudinary.config({
+    cloud_name: config.cloudinary.cloudName,
+    api_key: config.cloudinary.apiKey,
+    api_secret: config.cloudinary.apiSecret,
+});
 
-    if (!fs.existsSync(pathDir)) {
-        fs.mkdirSync(pathDir, { recursive: true });
-    }
-};
-
-// Configuración de almacenamiento
-const storage = multer.diskStorage({
-    destination: (req, file, cb) => {
-        createUploadDir();
-        cb(null, config.upload.uploadPath);
-    },
-    filename: (req, file, cb) => {
-        const uniqueName = `${uuidv4()}${path.extname(file.originalname)}`;
-        cb(null, uniqueName);
+// Storage: sube directamente a Cloudinary
+const storage = new CloudinaryStorage({
+    cloudinary,
+    params: {
+        folder: config.cloudinary.folder || 'restaurant',
+        allowed_formats: ['jpg', 'jpeg', 'png', 'gif', 'webp'],
+        resource_type: 'image',
     },
 });
 
-// Filtro de archivos
+// Filtro de archivos (validación antes de subir)
 const fileFilter = (req, file, cb) => {
     if (config.upload.allowedTypes.includes(file.mimetype)) {
         cb(null, true);
     } else {
         cb(
             new Error(
-                'Tipo de archivo no permitido. Solo se permiten imágenes (JPEG, JPG, PNG, GIF)'
+                'Tipo de archivo no permitido. Solo se permiten imágenes (JPEG, JPG, PNG, GIF, WEBP)'
             ),
             false
         );
     }
 };
 
-// Configuración de multer
+// Configuración de multer con Cloudinary Storage
 export const upload = multer({
-    storage: storage,
+    storage,
     limits: {
         fileSize: config.upload.maxSize,
     },
-    fileFilter: fileFilter,
+    fileFilter,
 });
 
 /**
@@ -73,40 +64,42 @@ export const handleUploadError = (error, req, res, next) => {
         }
     }
 
-    if (error.message.includes('Tipo de archivo no permitido')) {
+    if (error.message && error.message.includes('Tipo de archivo no permitido')) {
         return res.status(400).json({
             success: false,
             message: 'Tipo de archivo no permitido',
-            error: 'Solo se permiten imágenes (JPEG, JPG, PNG, GIF)',
+            error: 'Solo se permiten imágenes (JPEG, JPG, PNG, GIF, WEBP)',
         });
     }
 
     next(error);
 };
 
-export const deleteFile = (filename) => {
+/**
+ */
+export const deleteFile = async (publicId) => {
     try {
-        const filePath = path.join(config.upload.uploadPath, filename);
-        if (fs.existsSync(filePath)) {
-            fs.unlinkSync(filePath);
-            return true;
-        }
-        return false;
+        const result = await cloudinary.uploader.destroy(publicId);
+        return result.result === 'ok';
     } catch (error) {
-        console.error('Error deleting file:', error);
+        console.error('Error eliminando imagen de Cloudinary:', error);
         return false;
     }
 };
 
-export const deleteFileByPath = (filePath) => {
+/**
+ * Elimina una imagen de Cloudinary usando su URL completa
+ */
+export const deleteFileByPath = async (imageUrl) => {
     try {
-        if (fs.existsSync(filePath)) {
-            fs.unlinkSync(filePath);
-            return true;
-        }
-        return false;
+        const matches = imageUrl.match(/\/upload\/(?:v\d+\/)?(.+)\.[a-zA-Z]+$/);
+        if (!matches) return false;
+
+        const publicId = matches[1];
+        const result = await cloudinary.uploader.destroy(publicId);
+        return result.result === 'ok';
     } catch (error) {
-        console.error('Error deleting file by path:', error);
+        console.error('Error eliminando archivo por URL de Cloudinary:', error);
         return false;
     }
 };

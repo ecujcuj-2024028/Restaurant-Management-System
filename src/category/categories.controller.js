@@ -105,9 +105,14 @@ export const updateCategory = async (req, res) => {
                 });
         }
 
+        const updateData = { ...req.body };
+        if (req.file) {
+            updateData.image = req.file.path; // URL de Cloudinary
+        }
+
         const category = await Category.findByIdAndUpdate(
             req.params.id,
-            req.body,
+            updateData,
             { new: true, runValidators: true }
         );
 
