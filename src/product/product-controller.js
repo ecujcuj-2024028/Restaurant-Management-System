@@ -1,15 +1,44 @@
 'use strict';
 
-import Product from '../product/products-model.js';
-import Category from '../gastronomy-oferts/category-model.js';
+import Product from './products-model.js';
+import { cloudinary, extractPublicId } from '../../middlewares/restaurant-uploader.js';
 
+/* Crear producto */
+export const createProduct = async (req, res) => {
+    try {
+        const { name, description, price, type, category, restaurant, preparationTime } = req.body;
+
+        let ingredients = req.body.ingredients;
+        if (typeof ingredients === 'string') {
+            try { ingredients = JSON.parse(ingredients); } catch { ingredients = []; }
+        }
+
+        const product = await Product.create({
+            name,
+            description,
+            price,
+            type,
+            category,
+            restaurant,
+            ingredients: ingredients || [],
+            preparationTime: preparationTime || null,
+            image: req.file ? req.file.path : null
+        });
+
+        return res.status(201).json({ success: true, product });
+    } catch (error) {
+        return res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+/* Listar productos */
 export const getProducts = async (req, res) => {
     try {
         const { type, category, isAvailable, restaurant } = req.query;
         const filter = { isActive: true };
 
-        if (type) filter.type = type;
-        if (category) filter.category = category;
+        if (type)       filter.type       = type;
+        if (category)   filter.category   = category;
         if (restaurant) filter.restaurant = restaurant;
         if (isAvailable !== undefined)
             filter.isAvailable = isAvailable === 'true';
@@ -26,10 +55,7 @@ export const getProducts = async (req, res) => {
         });
 
     } catch (error) {
-        return res.status(500).json({
-            success: false,
-            message: error.message
-        });
+        return res.status(500).json({ success: false, message: error.message });
     }
 };
 
@@ -42,115 +68,60 @@ export const getProduct = async (req, res) => {
         if (!product)
             return res.status(404).json({
                 success: false,
-                message: `Producto no encontrado con id ${req.params.id}`
+                message: 'Producto no encontrado'
             });
 
-        return res.status(200).json({
-            success: true,
-            product
-        });
+        return res.status(200).json({ success: true, product });
 
     } catch (error) {
-        return res.status(500).json({
-            success: false,
-            message: error.message
-        });
-    }
-};
-
-export const createProduct = async (req, res) => {
-    try {
-        const data = req.body;
-
-        const categoryExists = await Category.findById(data.category);
-        if (!categoryExists)
-            return res.status(404).json({
-                success: false,
-                message: `Categoría no encontrada con id ${data.category}`
-            });
-
-        const product = await Product.create({
-            ...data,
-            restaurant: data.restaurant
-        });
-
-        return res.status(201).json({
-            success: true,
-            product
-        });
-
-    } catch (error) {
-        return res.status(500).json({
-            success: false,
-            message: error.message
-        });
+        return res.status(500).json({ success: false, message: error.message });
     }
 };
 
 export const updateProduct = async (req, res) => {
     try {
-        const product = await Product.findById(req.params.id);
+        const { id } = req.params;
 
-        if (!product)
-            return res.status(404).json({
-                success: false,
-                message: `Producto no encontrado con id ${req.params.id}`
-            });
+        const updateData = { ...req.body };
 
-        if (req.user.role !== 'admin' &&
-            product.restaurant.toString() !== req.user.restaurant.toString())
-            return res.status(403).json({
-                success: false,
-                message: 'No autorizado para actualizar este producto'
-            });
+        if (req.file) {
+            const existing = await Product.findById(id, 'image');
 
-        const updated = await Product.findByIdAndUpdate(
-            req.params.id,
-            req.body,
-            { new: true, runValidators: true }
+            if (existing?.image) {
+                const publicId = extractPublicId(existing.image);
+                if (publicId) {
+                    await cloudinary.uploader.destroy(publicId);
+                }
+            }
+
+            updateData.image = req.file.path;
+        }
+
+        const product = await Product.findByIdAndUpdate(
+            id,
+            updateData,
+            { new: true }
         );
 
-        return res.status(200).json({
-            success: true,
-            product: updated
-        });
+        return res.status(200).json({ success: true, product });
 
     } catch (error) {
-        return res.status(500).json({
-            success: false,
-            message: error.message
-        });
+        return res.status(500).json({ success: false, message: error.message });
     }
 };
 
 export const deleteProduct = async (req, res) => {
     try {
-        const product = await Product.findById(req.params.id);
+        const { id } = req.params;
 
-        if (!product)
-            return res.status(404).json({
-                success: false,
-                message: `Producto no encontrado con id ${req.params.id}`
-            });
-
-        if (req.user.role !== 'admin' &&
-            product.restaurant.toString() !== req.user.restaurant.toString())
-            return res.status(403).json({
-                success: false,
-                message: 'No autorizado para eliminar este producto'
-            });
-
-        await Product.findByIdAndUpdate(req.params.id, { isActive: false });
+        await Product.findByIdAndUpdate(id, { isActive: false });
 
         return res.status(200).json({
             success: true,
-            message: 'Producto desactivado correctamente'
+            message: 'Producto desactivado'
         });
 
     } catch (error) {
-        return res.status(500).json({
-            success: false,
-            message: error.message
-        });
+        return res.status(500).json({ success: false, message: error.message });
     }
 };

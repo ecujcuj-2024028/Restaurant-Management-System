@@ -10,6 +10,7 @@ import {
 } from './categories.controller.js';
 import { upload } from '../../helpers/file-upload.js';
 
+
 const router = Router();
 
 router.get('/', getCategories);

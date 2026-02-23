@@ -67,4 +67,21 @@ export const uploadRestaurantImage = createCloudinaryUploader(
     process.env.CLOUDINARY_FOLDER || 'restaurant_management/restaurants'
 );
 
+// Uploader dedicado para productos con su propia carpeta en Cloudinary
+export const uploadProductImage = createCloudinaryUploader(
+    'restaurant_management/products'
+);
+
+export const extractPublicId = (cloudinaryUrl) => {
+    try {
+        const parts = cloudinaryUrl.split('/');
+        const uploadIndex = parts.indexOf('upload');
+        const withVersion = parts.slice(uploadIndex + 1).join('/');
+        const withoutVersion = withVersion.replace(/^v\d+\//, '');
+        return withoutVersion.replace(/\.[^/.]+$/, '');
+    } catch {
+        return null;
+    }
+};
+
 export { cloudinary };
