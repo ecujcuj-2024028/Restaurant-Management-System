@@ -13,18 +13,15 @@ const createTransporter = () => {
     return nodemailer.createTransport({
         host: config.smtp.host,
         port: config.smtp.port,
-        secure: config.smtp.enableSsl, // true para 465, false para 587
+        secure: config.smtp.enableSsl,
         auth: {
             user: config.smtp.username,
             pass: config.smtp.password,
         },
-        // Evitar que las peticiones HTTP queden colgadas si SMTP no responde
-        connectionTimeout: 10_000, // 10s
-        greetingTimeout: 10_000, // 10s
-        socketTimeout: 10_000, // 10s
-        tls: {
-            rejectUnauthorized: false,
-        },
+        connectionTimeout: 10_000,
+        greetingTimeout  : 10_000,
+        socketTimeout    : 10_000,
+        tls: { rejectUnauthorized: false },
     });
 };
 
@@ -37,202 +34,297 @@ const transporter = createTransporter();
 export const sendVerificationEmail = async (email, name, verificationToken) => {
     if (!transporter) throw new Error('SMTP transporter not configured');
 
-    try {
-        const frontendUrl = config.app.frontendUrl || 'http://localhost:3006/restaurantManagement/v1/';
-        const verificationUrl = `${frontendUrl}/verify-email?token=${verificationToken}`;
+    const frontendUrl       = config.app.frontendUrl || 'http://localhost:3006/restaurantManagement/v1/';
+    const verificationUrl   = `${frontendUrl}/verify-email?token=${verificationToken}`;
 
-        const mailOptions = {
-            from: `${config.smtp.fromName} <${config.smtp.fromEmail}>`,
-            to: email,
-            subject: 'Verify your email address',
-            html: `
-                <h2>Welcome ${name}!</h2>
-                <p>Please verify your email address by clicking the link below:</p>
-                <a href='${verificationUrl}' style='background-color: #007bff; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;'>
-                    Verify Email
-                </a>
-                <p>If you cannot click the link, copy and paste this URL into your browser:</p>
-                <p>${verificationUrl}</p>
-                <p>This link will expire in 24 hours.</p>
-                <p>If you didn't create an account, please ignore this email.</p>
-            `,
-        };
-
-        await transporter.sendMail(mailOptions);
-    } catch (error) {
-        console.error('Error sending verification email:', error);
-        throw error;
-    }
+    await transporter.sendMail({
+        from   : `${config.smtp.fromName} <${config.smtp.fromEmail}>`,
+        to     : email,
+        subject: 'Verifica tu dirección de correo',
+        html   : `
+            <h2>¡Bienvenido ${name}!</h2>
+            <p>Por favor verifica tu correo haciendo clic en el botón:</p>
+            <a href='${verificationUrl}' style='background:#007bff;color:#fff;padding:10px 20px;text-decoration:none;border-radius:5px;'>
+                Verificar Email
+            </a>
+            <p>Si no puedes hacer clic, copia esta URL en tu navegador:</p>
+            <p>${verificationUrl}</p>
+            <p>Este enlace expirará en 24 horas.</p>
+        `,
+    });
 };
 
 export const sendPasswordResetEmail = async (email, name, resetToken) => {
     if (!transporter) throw new Error('SMTP transporter not configured');
 
-    try {
-        const frontendUrl = config.app.frontendUrl || 'http://localhost:3006/restaurantManagement/v1/';
-        const resetUrl = `${frontendUrl}/reset-password?token=${resetToken}`;
+    const frontendUrl = config.app.frontendUrl || 'http://localhost:3006/restaurantManagement/v1/';
+    const resetUrl    = `${frontendUrl}/reset-password?token=${resetToken}`;
 
-        const mailOptions = {
-            from: `${config.smtp.fromName} <${config.smtp.fromEmail}>`,
-            to: email,
-            subject: 'Reset your password',
-            html: `
-                <h2>Password Reset Request</h2>
-                <p>Hello ${name},</p>
-                <p>You requested to reset your password. Click the link below to reset it:</p>
-                <a href='${resetUrl}' style='background-color: #dc3545; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;'>
-                    Reset Password
-                </a>
-                <p>If you cannot click the link, copy and paste this URL into your browser:</p>
-                <p>${resetUrl}</p>
-                <p>This link will expire in 1 hour.</p>
-                <p>If you didn't request this, please ignore this email.</p>
-            `,
-        };
-
-        await transporter.sendMail(mailOptions);
-    } catch (error) {
-        console.error('Error sending password reset email:', error);
-        throw error;
-    }
+    await transporter.sendMail({
+        from   : `${config.smtp.fromName} <${config.smtp.fromEmail}>`,
+        to     : email,
+        subject: 'Restablecer contraseña',
+        html   : `
+            <h2>Solicitud de restablecimiento de contraseña</h2>
+            <p>Hola ${name},</p>
+            <p>Solicitaste restablecer tu contraseña. Haz clic en el botón:</p>
+            <a href='${resetUrl}' style='background:#dc3545;color:#fff;padding:10px 20px;text-decoration:none;border-radius:5px;'>
+                Restablecer Contraseña
+            </a>
+            <p>Si no puedes hacer clic, copia esta URL:</p>
+            <p>${resetUrl}</p>
+            <p>Este enlace expirará en 1 hora.</p>
+            <p>Si no solicitaste esto, ignora este correo.</p>
+        `,
+    });
 };
 
 export const sendWelcomeEmail = async (email, name) => {
     if (!transporter) throw new Error('SMTP transporter not configured');
 
-    try {
-        const mailOptions = {
-            from: `${config.smtp.fromName} <${config.smtp.fromEmail}>`,
-            to: email,
-            subject: 'Welcome to Kinal Restaurant!',
-            html: `
-                <h2>Welcome to Kinal Restaurant, ${name}!</h2>
-                <p>Your account has been successfully verified and activated.</p>
-                <p>You can now enjoy all the features of our platform.</p>
-                <p>Thank you for joining us!</p>
-            `,
-        };
-
-        await transporter.sendMail(mailOptions);
-    } catch (error) {
-        console.error('Error sending welcome email:', error);
-        throw error;
-    }
+    await transporter.sendMail({
+        from   : `${config.smtp.fromName} <${config.smtp.fromEmail}>`,
+        to     : email,
+        subject: '¡Bienvenido a GastroManager!',
+        html   : `
+            <h2>¡Bienvenido a GastroManager, ${name}!</h2>
+            <p>Tu cuenta ha sido verificada y activada correctamente.</p>
+            <p>Ya puedes disfrutar de todas las funciones de nuestra plataforma.</p>
+        `,
+    });
 };
 
 export const sendPasswordChangedEmail = async (email, name) => {
     if (!transporter) throw new Error('SMTP transporter not configured');
 
-    try {
-        const mailOptions = {
-            from: `${config.smtp.fromName} <${config.smtp.fromEmail}>`,
-            to: email,
-            subject: 'Password Changed Successfully',
-            html: `
-                <h2>Password Changed</h2>
-                <p>Hello ${name},</p>
-                <p>Your password has been successfully updated.</p>
-                <p>If you didn't make this change, please contact our support team immediately.</p>
-            `,
-        };
-
-        await transporter.sendMail(mailOptions);
-    } catch (error) {
-        console.error('Error sending password changed email:', error);
-        throw error;
-    }
+    await transporter.sendMail({
+        from   : `${config.smtp.fromName} <${config.smtp.fromEmail}>`,
+        to     : email,
+        subject: 'Contraseña actualizada correctamente',
+        html   : `
+            <h2>Contraseña Actualizada</h2>
+            <p>Hola ${name},</p>
+            <p>Tu contraseña ha sido actualizada exitosamente.</p>
+            <p>Si no realizaste este cambio, contacta a soporte de inmediato.</p>
+        `,
+    });
 };
 
 export const sendRoleRequestEmail = async ({ adminEmail, userName, userEmail, currentRole, requestedRole, requestId }) => {
     if (!transporter) throw new Error('SMTP transporter not configured');
 
     const frontendUrl = config.app.frontendUrl || 'http://localhost:3006/restaurantManagement/v1';
-    const approveUrl = `${frontendUrl}/auth/role-requests/${requestId}/approve?token=${process.env.ROOT_ADMIN_TOKEN}`;
-    const rejectUrl = `${frontendUrl}/auth/role-requests/${requestId}/reject?token=${process.env.ROOT_ADMIN_TOKEN}`;
+    const approveUrl  = `${frontendUrl}/auth/role-requests/${requestId}/approve?token=${process.env.ROOT_ADMIN_TOKEN}`;
+    const rejectUrl   = `${frontendUrl}/auth/role-requests/${requestId}/reject?token=${process.env.ROOT_ADMIN_TOKEN}`;
 
-    const html = `
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e4e4e4; border-radius: 8px; overflow: hidden;">
-            <div style="background-color: #1a237e; color: white; padding: 20px; text-align: center;">
-                <h1 style="margin: 0; font-size: 24px;">GastroManager Admin</h1>
-            </div>
-            <div style="padding: 30px; color: #333; line-height: 1.6;">
-                <h2 style="color: #1a237e;">Solicitud de Cambio de Rol</h2>
-                <p>Se ha recibido una nueva solicitud de ascenso para el usuario <b>${userName}</b>:</p>
-                
-                <div style="background-color: #f5f5f5; padding: 15px; border-radius: 5px; margin: 20px 0; text-align: center;">
-                    <span style="color: #666; font-size: 14px; display: block; margin-bottom: 5px;">CAMBIO SOLICITADO</span>
-                    <span style="font-weight: bold; color: #333;">${currentRole}</span>
-                    <span style="margin: 0 15px; color: #1a237e; font-size: 20px;">➔</span>
-                    <span style="font-weight: bold; color: #1a237e;">${requestedRole}</span>
+    await transporter.sendMail({
+        from   : `"${config.smtp.fromName}" <${config.smtp.fromEmail}>`,
+        to     : adminEmail,
+        subject: `Solicitud de Rol: ${currentRole} a ${requestedRole}`,
+        html   : `
+            <div style="font-family:Arial;max-width:600px;margin:0 auto;border:1px solid #e4e4e4;border-radius:8px;overflow:hidden;">
+                <div style="background:#1a237e;color:#fff;padding:20px;text-align:center;">
+                    <h1 style="margin:0;font-size:24px;">GastroManager Admin</h1>
                 </div>
-
-                <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
-                    <tr>
-                        <td style="padding: 10px; border-bottom: 1px solid #eee; font-weight: bold;">Correo:</td>
-                        <td style="padding: 10px; border-bottom: 1px solid #eee;">${userEmail}</td>
-                    </tr>
-                </table>
-
-                <p>Acciones administrativas:</p>
-                <div style="text-align: center; margin-top: 30px;">
-                    <a href="${approveUrl}" style="background-color: #2e7d32; color: white; padding: 12px 25px; text-decoration: none; border-radius: 5px; font-weight: bold; margin-right: 10px;">Aprobar</a>
-                    <a href="${rejectUrl}" style="background-color: #c62828; color: white; padding: 12px 25px; text-decoration: none; border-radius: 5px; font-weight: bold;">Rechazar</a>
+                <div style="padding:30px;color:#333;line-height:1.6;">
+                    <h2 style="color:#1a237e;">Solicitud de Cambio de Rol</h2>
+                    <p>Se ha recibido una nueva solicitud de ascenso para el usuario <b>${userName}</b>:</p>
+                    <div style="background:#f5f5f5;padding:15px;border-radius:5px;margin:20px 0;text-align:center;">
+                        <span style="color:#666;font-size:14px;display:block;margin-bottom:5px;">CAMBIO SOLICITADO</span>
+                        <span style="font-weight:bold;">${currentRole}</span>
+                        <span style="margin:0 15px;color:#1a237e;font-size:20px;">➔</span>
+                        <span style="font-weight:bold;color:#1a237e;">${requestedRole}</span>
+                    </div>
+                    <table style="width:100%;border-collapse:collapse;margin-bottom:20px;">
+                        <tr>
+                            <td style="padding:10px;border-bottom:1px solid #eee;font-weight:bold;">Correo:</td>
+                            <td style="padding:10px;border-bottom:1px solid #eee;">${userEmail}</td>
+                        </tr>
+                    </table>
+                    <div style="text-align:center;margin-top:30px;">
+                        <a href="${approveUrl}" style="background:#2e7d32;color:#fff;padding:12px 25px;text-decoration:none;border-radius:5px;font-weight:bold;margin-right:10px;">Aprobar</a>
+                        <a href="${rejectUrl}" style="background:#c62828;color:#fff;padding:12px 25px;text-decoration:none;border-radius:5px;font-weight:bold;">Rechazar</a>
+                    </div>
                 </div>
             </div>
-        </div>
-    `;
-
-    try {
-        await transporter.sendMail({
-            from: `"${config.smtp.fromName}" <${config.smtp.fromEmail}>`,
-            to: adminEmail,
-            subject: `Solicitud de Rol: ${currentRole} a ${requestedRole}`,
-            html
-        });
-    } catch (error) {
-        console.error('Error sending role request email:', error);
-    }
+        `,
+    });
 };
 
-// Email que recibe el USUARIO con la respuesta final
 export const sendRoleUpgradeResponseEmail = async ({ userEmail, userName, requestedRole, status }) => {
     if (!transporter) throw new Error('SMTP transporter not configured');
 
-    const isApproved = status === 'APPROVED';
-    const statusText = isApproved ? 'Aprobada' : 'Declinada';
+    const isApproved  = status === 'APPROVED';
+    const statusText  = isApproved ? 'Aprobada'  : 'Declinada';
     const statusColor = isApproved ? '#2e7d32' : '#c62828';
 
-    const html = `
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e4e4e4; border-radius: 8px; overflow: hidden;">
-            <div style="background-color: #1a237e; color: white; padding: 20px; text-align: center;">
-                <h1 style="margin: 0; font-size: 24px;">Kinal Restaurant</h1>
-            </div>
-            <div style="padding: 30px; color: #333; line-height: 1.6;">
-                <h2 style="color: #1a237e;">Actualización de Solicitud</h2>
-                <p>Hola <b>${userName}</b>,</p>
-                <p>El administrador ha revisado tu solicitud para el rol de <b>${requestedRole}</b>.</p>
-                <div style="background-color: #f9f9f9; border-left: 5px solid ${statusColor}; padding: 15px; margin: 20px 0;">
-                    <p style="margin: 0; font-weight: bold; color: ${statusColor};">Estado de la solicitud: ${statusText}</p>
+    await transporter.sendMail({
+        from   : `"${config.smtp.fromName}" <${config.smtp.fromEmail}>`,
+        to     : userEmail,
+        subject: `Resultado de tu solicitud de rol: ${statusText}`,
+        html   : `
+            <div style="font-family:Arial;max-width:600px;margin:0 auto;border:1px solid #e4e4e4;border-radius:8px;overflow:hidden;">
+                <div style="background:#1a237e;color:#fff;padding:20px;text-align:center;">
+                    <h1 style="margin:0;font-size:24px;">GastroManager</h1>
                 </div>
-                ${isApproved
-            ? '<p>Tus nuevos privilegios han sido activados. Por favor, cierra sesión y vuelve a ingresar para aplicar los cambios.</p>'
-            : '<p>Lamentablemente, tu solicitud no ha sido aprobada en este momento. Si crees que esto es un error, contacta a soporte.</p>'}
-                <p>Saludos,<br>El equipo de Kinal Restaurant</p>
+                <div style="padding:30px;color:#333;line-height:1.6;">
+                    <h2 style="color:#1a237e;">Actualización de Solicitud</h2>
+                    <p>Hola <b>${userName}</b>,</p>
+                    <p>El administrador ha revisado tu solicitud para el rol de <b>${requestedRole}</b>.</p>
+                    <div style="background:#f9f9f9;border-left:5px solid ${statusColor};padding:15px;margin:20px 0;">
+                        <p style="margin:0;font-weight:bold;color:${statusColor};">Estado: ${statusText}</p>
+                    </div>
+                    ${isApproved
+                        ? '<p>Tus nuevos privilegios han sido activados. Cierra sesión y vuelve a ingresar para aplicar los cambios.</p>'
+                        : '<p>Lamentablemente tu solicitud no fue aprobada. Si crees que es un error, contacta a soporte.</p>'}
+                </div>
             </div>
-            <div style="background-color: #f5f5f5; color: #777; padding: 15px; text-align: center; font-size: 12px;">
-                © 2026 Kinal Restaurant Infrastructure. Todos los derechos reservados.
-            </div>
-        </div>
-    `;
+        `,
+    });
+};
 
-    try {
-        await transporter.sendMail({
-            from: `"${config.smtp.fromName}" <${config.smtp.fromEmail}>`,
-            to: userEmail,
-            subject: `Resultado de tu solicitud de rol: ${statusText}`,
-            html
-        });
-    } catch (error) {
-        console.error('Error sending role upgrade response email:', error);
+/* ============================================================
+   EMAILS DE INVENTARIO
+   ============================================================ */
+
+/**
+ * Notificación de stock bajo en inventario (Postgres)
+ * Se dispara cuando quantity <= minStock
+ */
+export const sendLowStockEmail = async ({
+    adminEmail,
+    adminName,
+    itemName,
+    currentStock,
+    minStock,
+    unit,
+    restaurantId,
+}) => {
+    if (!transporter) {
+        console.warn('SMTP no configurado. No se enviará alerta de stock bajo.');
+        return;
     }
+
+    await transporter.sendMail({
+        from   : `"${config.smtp.fromName}" <${config.smtp.fromEmail}>`,
+        to     : adminEmail,
+        subject: `Alerta de Stock Bajo — ${itemName}`,
+        html   : `
+            <div style="font-family:Arial;max-width:600px;margin:0 auto;border:1px solid #e4e4e4;border-radius:8px;overflow:hidden;">
+                <div style="background:#e65100;color:#fff;padding:20px;text-align:center;">
+                    <h1 style="margin:0;font-size:22px;">GastroManager — Alerta de Inventario</h1>
+                </div>
+                <div style="padding:30px;color:#333;line-height:1.8;">
+                    <p>Hola <b>${adminName}</b>,</p>
+                    <p>El inventario del restaurante <b>(ID: ${restaurantId})</b> tiene un insumo por debajo del umbral mínimo:</p>
+
+                    <table style="width:100%;border-collapse:collapse;margin:20px 0;">
+                        <tr style="background:#fff3e0;">
+                            <td style="padding:12px;border:1px solid #ffe0b2;font-weight:bold;">Insumo</td>
+                            <td style="padding:12px;border:1px solid #ffe0b2;">${itemName}</td>
+                        </tr>
+                        <tr>
+                            <td style="padding:12px;border:1px solid #ffe0b2;font-weight:bold;">Stock Actual</td>
+                            <td style="padding:12px;border:1px solid #ffe0b2;color:#c62828;font-weight:bold;">
+                                ${currentStock} ${unit}
+                            </td>
+                        </tr>
+                        <tr style="background:#fff3e0;">
+                            <td style="padding:12px;border:1px solid #ffe0b2;font-weight:bold;">Stock Mínimo</td>
+                            <td style="padding:12px;border:1px solid #ffe0b2;">${minStock} ${unit}</td>
+                        </tr>
+                    </table>
+
+                    <p>Por favor realiza una reposición a la brevedad para evitar interrupciones en el servicio.</p>
+                </div>
+                <div style="background:#f5f5f5;color:#777;padding:15px;text-align:center;font-size:12px;">
+                    © ${new Date().getFullYear()} GastroManager. Todos los derechos reservados.
+                </div>
+            </div>
+        `,
+    });
+};
+
+/* ============================================================
+   EMAILS DE RESERVACIONES
+   ============================================================ */
+
+/**
+ * Confirmación de reserva al cliente
+ * Se dispara cuando se crea una reserva exitosamente
+ */
+export const sendReservationConfirmationEmail = async ({
+    customerEmail,
+    customerName,
+    restaurantName,
+    tableNumber,
+    tableLocation,
+    date,
+    time,
+    guestCount,
+    reservationId,
+}) => {
+    if (!transporter) {
+        console.warn('SMTP no configurado. No se enviará confirmación de reserva.');
+        return;
+    }
+
+    await transporter.sendMail({
+        from   : `"${config.smtp.fromName}" <${config.smtp.fromEmail}>`,
+        to     : customerEmail,
+        subject: `Confirmación de Reserva — ${restaurantName}`,
+        html   : `
+            <div style="font-family:Arial;max-width:600px;margin:0 auto;border:1px solid #e4e4e4;border-radius:8px;overflow:hidden;">
+                <div style="background:#1a237e;color:#fff;padding:25px;text-align:center;">
+                    <h1 style="margin:0;font-size:24px;">GastroManager</h1>
+                    <p style="margin:8px 0 0;font-size:16px;">Confirmación de Reserva</p>
+                </div>
+
+                <div style="padding:30px;color:#333;line-height:1.8;">
+                    <p>Hola <b>${customerName}</b>, tu reserva ha sido confirmada:</p>
+
+                    <div style="background:#e8f5e9;border-left:5px solid #2e7d32;padding:15px;margin:20px 0;border-radius:0 5px 5px 0;">
+                        <p style="margin:0;font-size:16px;font-weight:bold;color:#2e7d32;">Reserva Confirmada</p>
+                    </div>
+
+                    <table style="width:100%;border-collapse:collapse;margin:20px 0;">
+                        <tr style="background:#f5f5f5;">
+                            <td style="padding:12px;border:1px solid #e0e0e0;font-weight:bold;">Restaurante</td>
+                            <td style="padding:12px;border:1px solid #e0e0e0;">${restaurantName}</td>
+                        </tr>
+                        <tr>
+                            <td style="padding:12px;border:1px solid #e0e0e0;font-weight:bold;">Fecha</td>
+                            <td style="padding:12px;border:1px solid #e0e0e0;">${date}</td>
+                        </tr>
+                        <tr style="background:#f5f5f5;">
+                            <td style="padding:12px;border:1px solid #e0e0e0;font-weight:bold;">Hora</td>
+                            <td style="padding:12px;border:1px solid #e0e0e0;">${time}</td>
+                        </tr>
+                        <tr>
+                            <td style="padding:12px;border:1px solid #e0e0e0;font-weight:bold;">Mesa</td>
+                            <td style="padding:12px;border:1px solid #e0e0e0;">
+                                #${tableNumber}${tableLocation ? ` — ${tableLocation}` : ''}
+                            </td>
+                        </tr>
+                        ${guestCount ? `
+                        <tr style="background:#f5f5f5;">
+                            <td style="padding:12px;border:1px solid #e0e0e0;font-weight:bold;">Comensales</td>
+                            <td style="padding:12px;border:1px solid #e0e0e0;">${guestCount}</td>
+                        </tr>` : ''}
+                        <tr>
+                            <td style="padding:12px;border:1px solid #e0e0e0;font-weight:bold;">ID Reserva</td>
+                            <td style="padding:12px;border:1px solid #e0e0e0;font-size:12px;color:#666;">${reservationId}</td>
+                        </tr>
+                    </table>
+
+                    <p>Si necesitas cancelar o modificar tu reserva, comunícate directamente con el restaurante.</p>
+                    <p>¡Te esperamos!</p>
+                </div>
+
+                <div style="background:#f5f5f5;color:#777;padding:15px;text-align:center;font-size:12px;">
+                    © ${new Date().getFullYear()} GastroManager. Todos los derechos reservados.
+                </div>
+            </div>
+        `,
+    });
 };
