@@ -21,7 +21,8 @@ router.get('/', globalSearch);
  * @route   GET /api/v1/search/restaurants
  * @desc    Buscar solo restaurantes
  * @access  Public
- * @query   name, category, city, minRating, page, limit
+ * @query   name, category, city, minRating, availability, page, limit
+ *          availability=true → solo restaurantes con mesas disponibles ahora
  */
 router.get('/restaurants', searchRestaurants);
 

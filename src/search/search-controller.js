@@ -3,6 +3,7 @@
 import Restaurant from '../restaurants/restaurant.model.js';
 import Category   from '../gastronomy-oferts/category-model.js';
 import Product    from '../product/products-model.js';
+import Table      from '../tables/table.model.js';
 
 /* ─────────────────────────────────────────────────────────────────────────────
    Helpers
@@ -114,11 +115,12 @@ export const globalSearch = async (req, res) => {
 };
 
 /* ─────────────────────────────────────────────────────────────────────────────
-   GET /search/restaurants?name=&category=&city=&minRating=&page=&limit=
+   GET /search/restaurants?name=&category=&city=&minRating=&availability=&page=&limit=
+   availability: true → solo restaurantes con al menos una mesa en estado "disponible"
 ───────────────────────────────────────────────────────────────────────────── */
 export const searchRestaurants = async (req, res) => {
     try {
-        const { name, category, city, minRating } = req.query;
+        const { name, category, city, minRating, availability } = req.query;
         const { page, limit, skip } = getPagination(req.query);
 
         const filter = { isActive: true };
@@ -135,11 +137,31 @@ export const searchRestaurants = async (req, res) => {
             if (cats.length === 0) {
                 return res.status(200).json({
                     success    : true,
+                    filters    : { availability: availability ?? null },
                     pagination : buildPaginationMeta(page, limit, 0),
                     restaurants: [],
                 });
             }
             filter.categories = { $in: cats.map((c) => c._id) };
+        }
+
+        // filtro para disponibilidad, solo si hay mesas disponibles
+        if (availability === 'true' || availability === '1') {
+            const tablesWithAvailability = await Table.find({
+                availability: 'disponible',
+                isActive    : true,
+            }).distinct('restaurant');
+
+            // Si no hay ninguna mesa disponible en ningún restaurante no devuleve nada
+            if (tablesWithAvailability.length === 0) {
+                return res.status(200).json({
+                    success    : true,
+                    filters    : { availability: true },
+                    pagination : buildPaginationMeta(page, limit, 0),
+                    restaurants: [],
+                });
+            }
+            filter._id = { $in: tablesWithAvailability };
         }
 
         const [total, restaurants] = await Promise.all([
@@ -154,6 +176,13 @@ export const searchRestaurants = async (req, res) => {
 
         return res.status(200).json({
             success    : true,
+            filters    : {
+                ...(name        && { name                                         }),
+                ...(city        && { city                                         }),
+                ...(minRating   && { minRating  : parseFloat(minRating)           }),
+                ...(category    && { category                                     }),
+                ...(availability !== undefined && { availability: availability === 'true' || availability === '1' }),
+            },
             pagination : buildPaginationMeta(page, limit, total),
             restaurants,
         });
