@@ -1,41 +1,105 @@
 'use strict';
 
-import mongoose from "mongoose";
+import { DataTypes } from 'sequelize';
+import { sequelize } from '../../configs/db-postgres.js';
+import { generateUserId } from '../../helpers/uuid-generator.js';
 
-const inventorySchema = mongoose.Schema(
+export const InventoryItem = sequelize.define(
+    'InventoryItem',
     {
-        restaurant: {
-            type: mongoose.Schema.Types.ObjectId,
-            ref: "Restaurant",
-            required: [true, "El restaurante es requerido"]
+        Id: {
+            type: DataTypes.STRING(16),
+            primaryKey: true,
+            field: 'id',
+            defaultValue: () => generateUserId(),
         },
 
-        name: {
-            type: String,
-            required: [true, "El nombre del insumo es requerido"],
-            trim: true
+        // ID del restaurante dueño del insumo
+        RestaurantId: {
+            type: DataTypes.STRING(24),
+            allowNull: false,
+            field: 'restaurant_id',
+            validate: {
+                notEmpty: { msg: 'El ID del restaurante es obligatorio.' },
+            },
         },
 
-        quantity: {
-            type: Number,
-            required: [true, "La cantidad es requerida"],
-            default: 0
+        // Referencia al producto en MongoDB
+        MongoProductId: {
+            type: DataTypes.STRING(24),
+            allowNull: true,
+            field: 'mongo_product_id',
         },
 
-        unit: {
-            type: String,
-            enum: ["kg", "g", "l", "ml", "unidades"],
-            default: "unidades"
+        Name: {
+            type: DataTypes.STRING(100),
+            allowNull: false,
+            field: 'name',
+            validate: {
+                notEmpty: { msg: 'El nombre del insumo es obligatorio.' },
+                len: { args: [1, 100], msg: 'El nombre no puede superar 100 caracteres.' },
+            },
         },
 
-        isActive: {
-            type: Boolean,
-            default: true
-        }
+        Quantity: {
+            type: DataTypes.DECIMAL(10, 3),
+            allowNull: false,
+            defaultValue: 0,
+            field: 'quantity',
+            validate: {
+                min: { args: [0], msg: 'La cantidad no puede ser negativa.' },
+            },
+        },
+
+        Unit: {
+            type: DataTypes.ENUM('kg', 'g', 'l', 'ml', 'unidades'),
+            allowNull: false,
+            defaultValue: 'unidades',
+            field: 'unit',
+        },
+
+        // ── DATOS FINANCIEROS ──────────────────────
+        CostPerUnit: {
+            type: DataTypes.DECIMAL(10, 2),
+            allowNull: false,
+            defaultValue: 0.00,
+            field: 'cost_per_unit',
+            validate: {
+                min: { args: [0], msg: 'El costo no puede ser negativo.' },
+            },
+        },
+
+        // Umbral mínimo: cuando quantity <= minStock se dispara la alerta
+        MinStock: {
+            type: DataTypes.DECIMAL(10, 3),
+            allowNull: false,
+            defaultValue: 5,
+            field: 'min_stock',
+            validate: {
+                min: { args: [0], msg: 'El stock mínimo no puede ser negativo.' },
+            },
+        },
+
+        IsActive: {
+            type: DataTypes.BOOLEAN,
+            allowNull: false,
+            defaultValue: true,
+            field: 'is_active',
+        },
     },
     {
-        timestamps: true
+        tableName: 'inventory_items',
+        timestamps: true,
+        createdAt: 'created_at',
+        updatedAt: 'updated_at',
+
+        // Índice: nombre único por restaurante
+        indexes: [
+            {
+                unique: true,
+                fields: ['restaurant_id', 'name'],
+                name: 'uq_inventory_restaurant_name',
+            },
+        ],
     }
 );
-
-export default mongoose.model('Inventory', inventorySchema);
