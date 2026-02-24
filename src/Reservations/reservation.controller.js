@@ -1,8 +1,9 @@
 'use strict';
 
-import mongoose from 'mongoose';
 import Reservation from './reservation.model.js';
 import Table       from '../tables/table.model.js';
+import { sendReservationConfirmationEmail } from '../../helpers/email-service.js';
+import { findUserById } from '../../helpers/user-db.js';
 
 /* ─────────────────────────────────────────────────────────────────────────────
   Helper: paginación
@@ -23,31 +24,15 @@ const buildPaginationMeta = (page, limit, total) => ({
 });
 
 /* ─────────────────────────────────────────────────────────────────────────────
-  POST /reservations
-  Crea una reserva verificando en tiempo real el estado de la mesa
+  POST /reservations  — Crear reserva (sin sesiones, compatible con standalone)
 ───────────────────────────────────────────────────────────────────────────── */
 export const createReservation = async (req, res) => {
-    // Usamos una sesión de Mongoose para garantizar atomicidad:
-    // si algo falla después de marcar la mesa como 'reservado', se revierte.
-    const session = await mongoose.startSession();
-    session.startTransaction();
-
     try {
-        const {
-            tableId,
-            restaurantId,
-            date,
-            time,
-            guestCount,
-            notes,
-        } = req.body;
-
-        // ── userId viene del token JWT (puesto por el middleware validateJWT) ──
+        const { tableId, restaurantId, date, time, guestCount, notes } = req.body;
         const userId = req.user?.Id?.toString() || req.user?.id?.toString();
 
         /* ── 1. Validaciones de presencia ── */
         if (!tableId || !restaurantId || !date || !time) {
-            await session.abortTransaction();
             return res.status(400).json({
                 success: false,
                 message: 'Los campos tableId, restaurantId, date y time son obligatorios.',
@@ -59,25 +44,21 @@ export const createReservation = async (req, res) => {
             _id       : tableId,
             restaurant: restaurantId,
             isActive  : true,
-        }).session(session);
+        });
 
         if (!table) {
-            await session.abortTransaction();
             return res.status(404).json({
                 success: false,
                 message: 'La mesa no existe, no pertenece al restaurante indicado o está inactiva.',
             });
         }
 
-        /* ── 3. Verificar disponibilidad en tiempo real ── */
+        /* ── 3. Verificar disponibilidad ── */
         if (table.availability !== 'disponible') {
-            await session.abortTransaction();
-
             const estadoMsg = {
                 ocupado  : 'La mesa ya se encuentra ocupada en este momento.',
                 reservado: 'La mesa ya tiene una reserva activa. Por favor elige otra mesa o un horario diferente.',
             };
-
             return res.status(400).json({
                 success: false,
                 message: estadoMsg[table.availability] ?? `La mesa no está disponible (estado: ${table.availability}).`,
@@ -91,92 +72,95 @@ export const createReservation = async (req, res) => {
             });
         }
 
-        /* ── 4. Verificar capacidad si se indicó guestCount ── */
+        /* ── 4. Verificar capacidad ── */
         if (guestCount && guestCount > table.capacity) {
-            await session.abortTransaction();
             return res.status(400).json({
                 success: false,
                 message: `La mesa #${table.number} tiene capacidad para ${table.capacity} comensales, pero se solicitaron ${guestCount}.`,
             });
         }
 
-        /* ── 5. Verificar que no haya otra reserva activa para ese turno ── */
+        /* ── 5. Verificar conflicto de horario ── */
         const conflicto = await Reservation.findOne({
             tableId,
             date,
             time,
             status: { $in: ['pendiente', 'confirmada'] },
-        }).session(session);
+        });
 
         if (conflicto) {
-            await session.abortTransaction();
             return res.status(400).json({
                 success: false,
                 message: `Ya existe una reserva ${conflicto.status} para la mesa #${table.number} el ${date} a las ${time}.`,
             });
         }
 
-        /* ── 6. Crear la reserva con status 'confirmada' ── */
-        const [reservation] = await Reservation.create(
-            [
-                {
-                    tableId,
-                    userId,
-                    restaurantId,
-                    date,
-                    time,
-                    status    : 'confirmada',
-                    guestCount: guestCount || undefined,
-                    notes     : notes      || undefined,
-                },
-            ],
-            { session }
-        );
+        /* ── 6. Crear la reserva ── */
+        const reservation = await Reservation.create({
+            tableId,
+            userId,
+            restaurantId,
+            date,
+            time,
+            status    : 'confirmada',
+            guestCount: guestCount || undefined,
+            notes     : notes      || undefined,
+        });
 
         /* ── 7. Actualizar estado de la mesa a 'reservado' ── */
-        await Table.findByIdAndUpdate(
-            tableId,
-            { availability: 'reservado' },
-            { session, new: true }
-        );
+        await Table.findByIdAndUpdate(tableId, { availability: 'reservado' });
 
-        /* ── 8. Confirmar transacción ── */
-        await session.commitTransaction();
+        /* ── 8. GT-03: Email de confirmación al cliente (background) ── */
+        try {
+            const pgUser = await findUserById(userId);
+            if (pgUser) {
+                const populated = await Reservation.findById(reservation._id)
+                    .populate('restaurantId', 'name');
+
+                sendReservationConfirmationEmail({
+                    customerEmail : pgUser.Email,
+                    customerName  : `${pgUser.Name} ${pgUser.Surname}`,
+                    restaurantName: populated.restaurantId?.name || `Restaurante (${restaurantId})`,
+                    tableNumber   : table.number,
+                    tableLocation : table.location,
+                    date,
+                    time,
+                    guestCount    : guestCount || null,
+                    reservationId : reservation._id.toString(),
+                }).catch(err => console.error('[Reservation] Error enviando email:', err.message));
+            }
+        } catch (emailErr) {
+            console.error('[Reservation] Error al obtener datos para email:', emailErr.message);
+        }
+
+        /* ── 9. Retornar respuesta ── */
+        const populated = await Reservation.findById(reservation._id)
+            .populate('tableId',      'number capacity location availability')
+            .populate('restaurantId', 'name address');
 
         return res.status(201).json({
             success    : true,
             message    : `Reserva confirmada para la mesa #${table.number} el ${date} a las ${time}.`,
-            reservation: await reservation.populate([
-                { path: 'tableId',      select: 'number capacity location availability' },
-                { path: 'restaurantId', select: 'name address'                          },
-            ]),
+            reservation: populated,
         });
 
     } catch (error) {
-        await session.abortTransaction();
-
-        // Duplicado por índice único
         if (error.code === 11000) {
             return res.status(400).json({
                 success: false,
-                message: 'Conflicto: ya existe una reserva para esa mesa en el mismo horario. Por favor intenta de nuevo.',
+                message: 'Conflicto: ya existe una reserva para esa mesa en el mismo horario.',
             });
         }
-
         return res.status(500).json({
             success: false,
             message: 'Error interno al crear la reserva.',
             error  : error.message,
         });
-
-    } finally {
-        session.endSession();
     }
 };
 
 /* ─────────────────────────────────────────────────────────────────────────────
-   GET /reservations
-   Lista reservas del usuario autenticado
+   GET /reservations  — Reservas del usuario autenticado
 ───────────────────────────────────────────────────────────────────────────── */
 export const getMyReservations = async (req, res) => {
     try {
@@ -199,8 +183,8 @@ export const getMyReservations = async (req, res) => {
         ]);
 
         return res.status(200).json({
-            success     : true,
-            pagination  : buildPaginationMeta(page, limit, total),
+            success    : true,
+            pagination : buildPaginationMeta(page, limit, total),
             reservations,
         });
 
@@ -210,8 +194,7 @@ export const getMyReservations = async (req, res) => {
 };
 
 /* ─────────────────────────────────────────────────────────────────────────────
-   GET /reservations/restaurant/:restaurantId
-   Lista reservas de un restaurante (para el dueño / admin)
+   GET /reservations/restaurant/:restaurantId  — Reservas de un restaurante
 ───────────────────────────────────────────────────────────────────────────── */
 export const getReservationsByRestaurant = async (req, res) => {
     try {
@@ -234,8 +217,8 @@ export const getReservationsByRestaurant = async (req, res) => {
         ]);
 
         return res.status(200).json({
-            success     : true,
-            pagination  : buildPaginationMeta(page, limit, total),
+            success    : true,
+            pagination : buildPaginationMeta(page, limit, total),
             reservations,
         });
 
@@ -245,27 +228,20 @@ export const getReservationsByRestaurant = async (req, res) => {
 };
 
 /* ─────────────────────────────────────────────────────────────────────────────
-   PATCH /reservations/:id/cancel
-   Cancela una reserva y libera la mesa 
+   PATCH /reservations/:id/cancel  — Cancelar reserva y liberar mesa
 ───────────────────────────────────────────────────────────────────────────── */
 export const cancelReservation = async (req, res) => {
-    const session = await mongoose.startSession();
-    session.startTransaction();
-
     try {
-        const userId        = req.user?.Id?.toString() || req.user?.id?.toString();
-        const { id }        = req.params;
+        const userId = req.user?.Id?.toString() || req.user?.id?.toString();
+        const { id } = req.params;
 
-        const reservation = await Reservation.findById(id).session(session);
+        const reservation = await Reservation.findById(id);
 
         if (!reservation) {
-            await session.abortTransaction();
             return res.status(404).json({ success: false, message: 'Reserva no encontrada.' });
         }
 
-        // Solo el dueño de la reserva puede cancelarla (o un admin, si tienes ese rol)
         if (reservation.userId !== userId) {
-            await session.abortTransaction();
             return res.status(403).json({
                 success: false,
                 message: 'No tienes permiso para cancelar esta reserva.',
@@ -273,36 +249,25 @@ export const cancelReservation = async (req, res) => {
         }
 
         if (reservation.status === 'cancelada') {
-            await session.abortTransaction();
             return res.status(400).json({ success: false, message: 'La reserva ya está cancelada.' });
         }
 
-        /* ── Cancelar reserva ── */
         reservation.status = 'cancelada';
-        await reservation.save({ session });
+        await reservation.save();
 
-        /* ── Liberar la mesa → 'disponible' ── */
-        await Table.findByIdAndUpdate(
-            reservation.tableId,
-            { availability: 'disponible' },
-            { session }
-        );
+        await Table.findByIdAndUpdate(reservation.tableId, { availability: 'disponible' });
 
-        await session.commitTransaction();
+        const populated = await Reservation.findById(reservation._id)
+            .populate('tableId',      'number capacity location availability')
+            .populate('restaurantId', 'name address');
 
         return res.status(200).json({
             success    : true,
             message    : 'Reserva cancelada y mesa liberada correctamente.',
-            reservation: await reservation.populate([
-                { path: 'tableId',      select: 'number capacity location availability' },
-                { path: 'restaurantId', select: 'name address'                          },
-            ]),
+            reservation: populated,
         });
 
     } catch (error) {
-        await session.abortTransaction();
         return res.status(500).json({ success: false, message: error.message });
-    } finally {
-        session.endSession();
     }
 };

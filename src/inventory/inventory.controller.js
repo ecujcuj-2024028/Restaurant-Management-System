@@ -12,7 +12,7 @@ const checkAndNotifyLowStock = async (item, restaurantId) => {
     if (parseFloat(item.Quantity) <= parseFloat(item.MinStock)) {
         try {
             // Buscar el admin dueño del restaurante (ownerId guardado en Mongo Restaurant,
-            // pero también podemos notificar al root admin como fallback)
+            // pero también podemos notificar al root admin)
             const adminEmail = process.env.ROOT_ADMIN_EMAIL;
             const adminName  = 'Administrador';
 
