@@ -47,8 +47,8 @@ router.delete(
     deleteRestaurant
 );
 
-/* Usuarios autenticados */
-router.get('/', validateJWT, getRestaurants);
-router.get('/:id', validateJWT, getRestaurantById);
+/* publico*/
+router.get('/', getRestaurants);
+router.get('/:id', getRestaurantById);
 
 export default router;

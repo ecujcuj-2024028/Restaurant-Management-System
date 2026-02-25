@@ -17,6 +17,7 @@ import { helmetConfiguration } from "./helmet-configuration.js";
 // Modelos y Helpers
 import { User, UserProfile } from '../src/user/user.model.js';
 import { Role, UserRole } from '../src/auth/role.model.js';
+import { InventoryItem } from '../src/inventory/inventory.model.js';
 import { hashPassword } from '../utils/password-utils.js';
 import { ADMIN_SISTEMA, ALLOWED_ROLES } from '../helpers/role-constants.js';
 
@@ -36,6 +37,9 @@ import menuRoutes from '../src/menu/menu-routes.js';
 import searchRoutes from '../src/search/search-routes.js';
 import categoriesRoutes from '../src/category/categories.routes.js';
 
+// GT-13: Gestión de Perfil de Usuario
+import userRoutes from '../src/user/user.routes.js';
+
 const BASE_PATH = '/restaurantManagement/v1';
 
 /* =========================
@@ -43,9 +47,7 @@ const BASE_PATH = '/restaurantManagement/v1';
    ========================= */
 const ensureRootAdmin = async () => {
     try {
-        const existingRoot = await User.findOne({
-            where: { Email: process.env.ROOT_ADMIN_EMAIL }
-        });
+        const existingRoot = await User.findOne({ where: { Email: process.env.ROOT_ADMIN_EMAIL } });
 
         if (existingRoot) {
             console.log('PostgreSQL | Root admin already exists');
@@ -65,20 +67,11 @@ const ensureRootAdmin = async () => {
             Status: true
         });
 
-        await UserProfile.create({
-            UserId: user.Id,
-            Phone: '00000000'
-        });
+        await UserProfile.create({ UserId: user.Id, Phone: '00000000' });
 
-        const role = await Role.findOne({
-            where: { Name: ADMIN_SISTEMA }
-        });
-
+        const role = await Role.findOne({ where: { Name: ADMIN_SISTEMA } });
         if (role) {
-            await UserRole.create({
-                UserId: user.Id,
-                RoleId: role.Id
-            });
+            await UserRole.create({ UserId: user.Id, RoleId: role.Id });
             console.log('PostgreSQL | ROOT ADMIN CREATED SUCCESSFULLY');
         }
     } catch (error) {
@@ -101,21 +94,20 @@ const middlewares = (app) => {
    Definición de Rutas
    ========================= */
 const routes = (app) => {
-    // 🔓 Rutas Públicas
-    app.use(`${BASE_PATH}/auth`, authRoutes);
-    app.use(`${BASE_PATH}/search`, searchRoutes); // Usualmente búsqueda es pública
+    // Rutas Públicas
+    app.use(`${BASE_PATH}/products`, productRoutes);
+    app.use(`${BASE_PATH}/menus`, menuRoutes);
+    app.use(`${BASE_PATH}/events`, eventRoutes);
+    app.use(`${BASE_PATH}/restaurants`, restaurantRoutes);
+    app.use(`${BASE_PATH}/categories`, categoryRoutes);
+    app.use(`${BASE_PATH}/category`, categoriesRoutes);
 
-    // 🔐 Rutas Protegidas (Requieren validateJWT)
-    app.use(`${BASE_PATH}/restaurants`, validateJWT, restaurantRoutes);
+    // Rutas Protegidas (Requieren validateJWT)
     app.use(`${BASE_PATH}/tables`, validateJWT, tableRoutes);
     app.use(`${BASE_PATH}/inventory`, validateJWT, inventoryRoutes);
     app.use(`${BASE_PATH}/reservations`, validateJWT, reservationRoutes);
     app.use(`${BASE_PATH}/analytics`, validateJWT, analyticsRoutes);
-    app.use(`${BASE_PATH}/categories`, validateJWT, categoryRoutes);
-    app.use(`${BASE_PATH}/products`, validateJWT, productRoutes);
-    app.use(`${BASE_PATH}/events`, validateJWT, eventRoutes);
-    app.use(`${BASE_PATH}/menus`, validateJWT, menuRoutes);
-    app.use(`${BASE_PATH}/category`, validateJWT, categoriesRoutes);
+    app.use(`${BASE_PATH}/users`, validateJWT, userRoutes);
 
     // Health Check
     app.get(`${BASE_PATH}/health`, (req, res) => {
@@ -149,7 +141,7 @@ export const initServer = async () => {
         // 2. Sincronización y Semillas (Solo en desarrollo)
         if (process.env.NODE_ENV === 'development') {
             await sequelize.sync({ alter: true });
-            console.log('PostgreSQL | Tables synchronized');
+            console.log('PostgreSQL | Tables synchronized (including inventory_items)');
 
             const count = await Role.count();
             if (count === 0) {
