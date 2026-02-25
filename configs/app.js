@@ -28,6 +28,7 @@ import restaurantRoutes from '../src/restaurants/restaurant.routes.js';
 import tableRoutes from '../src/tables/table.routes.js';
 import inventoryRoutes from '../src/inventory/inventory.routes.js';
 import reservationRoutes from '../src/Reservations/reservation.routes.js';
+import orderRoutes from '../src/orders/order.routes.js';
 
 // Nuevos Módulos
 import categoryRoutes from '../src/gastronomy-oferts/category-routes.js';
@@ -36,6 +37,7 @@ import eventRoutes from '../src/Eventos/events-routes.js';
 import menuRoutes from '../src/menu/menu-routes.js';
 import searchRoutes from '../src/search/search-routes.js';
 import categoriesRoutes from '../src/category/categories.routes.js';
+import customerRoutes from '../src/customer/customerHistory.routes.js'
 
 // GT-13: Gestión de Perfil de Usuario
 import userRoutes from '../src/user/user.routes.js';
@@ -103,13 +105,15 @@ const routes = (app) => {
     app.use(`${BASE_PATH}/restaurants`, restaurantRoutes);
     app.use(`${BASE_PATH}/categories`, categoryRoutes);
     app.use(`${BASE_PATH}/category`, categoriesRoutes);
+    app.use(`${BASE_PATH}/analytics`, analyticsRoutes);
 
     // Rutas Protegidas (Requieren validateJWT)
     app.use(`${BASE_PATH}/tables`, validateJWT, tableRoutes);
     app.use(`${BASE_PATH}/inventory`, validateJWT, inventoryRoutes);
     app.use(`${BASE_PATH}/reservations`, validateJWT, reservationRoutes);
-    app.use(`${BASE_PATH}/analytics`, validateJWT, analyticsRoutes);
     app.use(`${BASE_PATH}/users`, validateJWT, userRoutes);
+    app.use(`${BASE_PATH}/orders`, validateJWT, orderRoutes);
+    app.use(`${BASE_PATH}/customer`, validateJWT, customerRoutes);
 
     // Health Check
     app.get(`${BASE_PATH}/health`, (req, res) => {
