@@ -1,9 +1,9 @@
 import { sequelize } from '../../configs/db-postgres.js';
-import { InventoryItem } from '../inventory/inventory-item.model.js';
-import Order from '../orders/order.model.js';
+import { InventoryItem } from '../src/inventory/inventory.model.js';
+import Order from '../src/orders/order.model.js';
 
 const sendLowStockEmail = async (inventoryItem) => {
-  console.log(`⚠️ LOW STOCK ALERT: ${inventoryItem.Name}`);
+  console.log(`LOW STOCK ALERT: ${inventoryItem.Name}`);
 };
 
 export const deductInventoryStock = async (orderId) => {
