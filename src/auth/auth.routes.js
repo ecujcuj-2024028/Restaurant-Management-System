@@ -1,16 +1,18 @@
 import { Router } from 'express';
-import { 
-    register, 
-    login, 
-    verifyEmail, 
-    handleRoleRequest, 
-    requestRoleUpgrade 
+import {
+    register,
+    login,
+    verifyEmail,
+    handleRoleRequest,
+    requestRoleUpgrade,
+    forgotPassword,
+    resetPassword,
 } from './auth.controller.js';
-import { validateRegister, validateVerifyEmail } from '../../middlewares/validation.js';
-import { authRateLimit } from '../../middlewares/request-limit.js';
+import { validateRegister, validateVerifyEmail, validateForgotPassword, validateResetPassword } from '../../middlewares/validation.js';
+import { authRateLimit, emailRateLimit } from '../../middlewares/request-limit.js';
 import { validateJWT } from '../../middlewares/validate-JWT.js';
 import { hasRole } from '../../middlewares/hasRole.js';
-import { CLIENTE,ADMIN_RESTAURANTE,ADMIN_SISTEMA } from '../../helpers/role-constants.js';
+import { CLIENTE, ADMIN_RESTAURANTE, ADMIN_SISTEMA } from '../../helpers/role-constants.js';
 
 const router = Router();
 
@@ -22,6 +24,16 @@ router.post('/register', [authRateLimit, validateRegister], register);
 router.post('/login', login);
 
 router.post('/verify-email', validateVerifyEmail, verifyEmail);
+
+/* ============================================================
+   RESET DE CONTRASEÑA 
+   ============================================================ */
+
+// Solicitar reset 
+router.post('/forgot-password', [emailRateLimit, validateForgotPassword], forgotPassword);
+
+// Usar token para cambiar contraseña
+router.post('/reset-password', validateResetPassword, resetPassword);
 
 /* ============================================================
    GESTIÓN DE ROLES (ADMIN ROOT)
