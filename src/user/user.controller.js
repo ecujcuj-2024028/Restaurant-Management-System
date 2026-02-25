@@ -1,5 +1,4 @@
 'use strict';
-
 import { User, UserProfile } from './user.model.js';
 import { UserRole } from '../auth/role.model.js';
 import { Role } from '../auth/role.model.js';

@@ -1,5 +1,4 @@
 'use strict';
-
 import { Router } from 'express';
 import { getProfile, updateProfile, updateProfilePicture } from './user.controller.js';
 import { uploadRestaurantImage } from '../../middlewares/restaurant-uploader.js';
