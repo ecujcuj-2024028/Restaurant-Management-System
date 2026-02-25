@@ -222,15 +222,20 @@ export const markEmailAsVerified = async (userId) => {
 
 export const updatePasswordResetToken = async (userId, token, expiry) => {
     try {
-        await UserPasswordReset.update(
-            {
+        const [record] = await UserPasswordReset.findOrCreate({
+            where: { UserId: userId },
+            defaults: {
+                UserId: userId,
                 PasswordResetToken: token,
                 PasswordResetTokenExpiry: expiry,
-            },
-            {
-                where: { UserId: userId },
             }
-        );
+        });
+
+        if (record) {
+            record.PasswordResetToken = token;
+            record.PasswordResetTokenExpiry = expiry;
+            await record.save();
+        }
     } catch (error) {
         console.error('Error actualizando token de reset:', error);
         throw new Error('Error al actualizar token de reset');
