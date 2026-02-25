@@ -8,6 +8,10 @@ import {
     getStatsAdmin
 } from './analytics.controller.js';
 
+import { validateJWT } from '../../middlewares/validate-JWT.js';
+import { hasRole } from '../../middlewares/hasRole.js';
+import { ADMIN_RESTAURANTE, ADMIN_SISTEMA } from '../../helpers/role-constants.js'
+
 const router = Router();
 
 // ─── RUTAS DE REVIEWS ──────
@@ -16,7 +20,7 @@ const router = Router();
  * Clientes publican su reseña tras el consumo.
  * Body: { usuarioId, restauranteId, platoId, rating, comentario, consumo? }
  */
-router.post('/reviews', crearReview);
+router.post('/reviews', validateJWT, crearReview);
 
 /**
  * GET /restaurantManagement/v1/analytics/reviews/plato/:platoId
@@ -40,6 +44,6 @@ router.get('/platos/mas-vendidos', getPlatosMasVendidos);
  * Query params opcionales:
  *   ?meses=6  → rango de meses hacia atrás (default: 6)
  */
-router.get('/stats', getStatsAdmin);
+router.get('/stats', validateJWT, hasRole(ADMIN_SISTEMA), getStatsAdmin);
 
 export default router;
