@@ -95,6 +95,8 @@ const middlewares = (app) => {
    ========================= */
 const routes = (app) => {
     // Rutas Públicas
+    app.use(`${BASE_PATH}/auth`, authRoutes);
+    app.use(`${BASE_PATH}/search`, searchRoutes);
     app.use(`${BASE_PATH}/products`, productRoutes);
     app.use(`${BASE_PATH}/menus`, menuRoutes);
     app.use(`${BASE_PATH}/events`, eventRoutes);
