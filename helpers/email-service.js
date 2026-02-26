@@ -1,7 +1,6 @@
 import nodemailer from 'nodemailer';
 import { config } from '../configs/configs.js';
 
-// Configurar el transportador de email (aligned with .NET SmtpSettings)
 const createTransporter = () => {
     if (!config.smtp.username || !config.smtp.password) {
         console.warn(
@@ -34,8 +33,8 @@ const transporter = createTransporter();
 export const sendVerificationEmail = async (email, name, verificationToken) => {
     if (!transporter) throw new Error('SMTP transporter not configured');
 
-    const frontendUrl       = config.app.frontendUrl || 'http://localhost:3006/restaurantManagement/v1/';
-    const verificationUrl   = `${frontendUrl}/verify-email?token=${verificationToken}`;
+    const frontendUrl     = config.app.frontendUrl || 'http://localhost:3006/restaurantManagement/v1/';
+    const verificationUrl = `${frontendUrl}/verify-email?token=${verificationToken}`;
 
     await transporter.sendMail({
         from   : `${config.smtp.fromName} <${config.smtp.fromEmail}>`,
@@ -187,10 +186,6 @@ export const sendRoleUpgradeResponseEmail = async ({ userEmail, userName, reques
    EMAILS DE INVENTARIO
    ============================================================ */
 
-/**
- * Notificación de stock bajo en inventario (Postgres)
- * Se dispara cuando quantity <= minStock
- */
 export const sendLowStockEmail = async ({
     adminEmail,
     adminName,
@@ -249,10 +244,6 @@ export const sendLowStockEmail = async ({
    EMAILS DE RESERVACIONES
    ============================================================ */
 
-/**
- * Confirmación de reserva al cliente
- * Se dispara cuando se crea una reserva exitosamente
- */
 export const sendReservationConfirmationEmail = async ({
     customerEmail,
     customerName,
@@ -319,6 +310,99 @@ export const sendReservationConfirmationEmail = async ({
 
                     <p>Si necesitas cancelar o modificar tu reserva, comunícate directamente con el restaurante.</p>
                     <p>¡Te esperamos!</p>
+                </div>
+
+                <div style="background:#f5f5f5;color:#777;padding:15px;text-align:center;font-size:12px;">
+                    © ${new Date().getFullYear()} GastroManager. Todos los derechos reservados.
+                </div>
+            </div>
+        `,
+    });
+};
+
+/* ============================================================
+   EMAILS DE FACTURACIÓN
+   ============================================================ */
+
+export const sendInvoiceEmail = async ({
+    customerEmail,
+    customerName,
+    invoiceNumber,
+    date,
+    restaurantName,
+    tableNumber,
+    items,
+    total,
+}) => {
+    if (!transporter) {
+        console.warn('SMTP no configurado. No se enviará comprobante de consumo.');
+        return;
+    }
+
+    const itemRows = items.map(item => `
+        <tr>
+            <td style="padding:10px;border:1px solid #e0e0e0;">${item.name}</td>
+            <td style="padding:10px;border:1px solid #e0e0e0;text-align:center;">${item.quantity}</td>
+            <td style="padding:10px;border:1px solid #e0e0e0;text-align:right;">$${item.price.toFixed(2)}</td>
+            <td style="padding:10px;border:1px solid #e0e0e0;text-align:right;">$${item.subtotal.toFixed(2)}</td>
+        </tr>
+    `).join('');
+
+    await transporter.sendMail({
+        from   : `"${config.smtp.fromName}" <${config.smtp.fromEmail}>`,
+        to     : customerEmail,
+        subject: `Comprobante de consumo #${invoiceNumber} — ${restaurantName}`,
+        html   : `
+            <div style="font-family:Arial;max-width:600px;margin:0 auto;border:1px solid #e4e4e4;border-radius:8px;overflow:hidden;">
+                <div style="background:#1a237e;color:#fff;padding:25px;text-align:center;">
+                    <h1 style="margin:0;font-size:24px;">GastroManager</h1>
+                    <p style="margin:8px 0 0;font-size:16px;">Comprobante de Consumo</p>
+                </div>
+
+                <div style="padding:30px;color:#333;line-height:1.8;">
+                    <p>Hola <b>${customerName}</b>, gracias por tu visita. Aquí está tu comprobante:</p>
+
+                    <table style="width:100%;border-collapse:collapse;margin:10px 0 20px;">
+                        <tr style="background:#f5f5f5;">
+                            <td style="padding:10px;border:1px solid #e0e0e0;font-weight:bold;">N° Comprobante</td>
+                            <td style="padding:10px;border:1px solid #e0e0e0;">#${invoiceNumber}</td>
+                        </tr>
+                        <tr>
+                            <td style="padding:10px;border:1px solid #e0e0e0;font-weight:bold;">Fecha</td>
+                            <td style="padding:10px;border:1px solid #e0e0e0;">${date}</td>
+                        </tr>
+                        <tr style="background:#f5f5f5;">
+                            <td style="padding:10px;border:1px solid #e0e0e0;font-weight:bold;">Restaurante</td>
+                            <td style="padding:10px;border:1px solid #e0e0e0;">${restaurantName}</td>
+                        </tr>
+                        <tr>
+                            <td style="padding:10px;border:1px solid #e0e0e0;font-weight:bold;">Mesa</td>
+                            <td style="padding:10px;border:1px solid #e0e0e0;">#${tableNumber}</td>
+                        </tr>
+                    </table>
+
+                    <h3 style="color:#1a237e;margin-bottom:8px;">Detalle del consumo</h3>
+                    <table style="width:100%;border-collapse:collapse;margin-bottom:20px;">
+                        <thead>
+                            <tr style="background:#1a237e;color:#fff;">
+                                <th style="padding:10px;text-align:left;">Producto</th>
+                                <th style="padding:10px;text-align:center;">Cant.</th>
+                                <th style="padding:10px;text-align:right;">Precio</th>
+                                <th style="padding:10px;text-align:right;">Subtotal</th>
+                            </tr>
+                        </thead>
+                        <tbody>${itemRows}</tbody>
+                        <tfoot>
+                            <tr style="background:#e8f5e9;">
+                                <td colspan="3" style="padding:12px;border:1px solid #e0e0e0;font-weight:bold;text-align:right;">TOTAL</td>
+                                <td style="padding:12px;border:1px solid #e0e0e0;font-weight:bold;text-align:right;color:#2e7d32;">$${total.toFixed(2)}</td>
+                            </tr>
+                        </tfoot>
+                    </table>
+
+                    <div style="background:#e8f5e9;border-left:5px solid #2e7d32;padding:12px;border-radius:0 5px 5px 0;">
+                        <p style="margin:0;font-weight:bold;color:#2e7d32;">Estado: PAGADO ✓</p>
+                    </div>
                 </div>
 
                 <div style="background:#f5f5f5;color:#777;padding:15px;text-align:center;font-size:12px;">

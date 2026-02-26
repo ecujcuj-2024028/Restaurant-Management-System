@@ -1,8 +1,10 @@
-
 import Order from './order.model.js';
 import Product from '../product/products-model.js';
 import { InventoryItem } from '../inventory/inventory.model.js';
 import Reservation from '../Reservations/reservation.model.js';
+import Restaurant from '../restaurants/restaurant.model.js';
+import { findUserById } from '../../helpers/user-db.js';
+import { sendInvoiceEmail } from '../../helpers/email-service.js';
 
 export const createOrder = async (req, res) => {
   try {
@@ -156,7 +158,7 @@ export const getOrderHistory = async (req, res) => {
   }
 };
 
-// ─── NUEVOS ────────────────────────────────────────────────────────────────────
+// ─── GESTIÓN DE ESTADOS ────────────────────────────────────────────────────────
 
 const STATUS_TRANSITIONS = {
   recibido: 'en_preparacion',
@@ -217,5 +219,70 @@ export const getRestaurantOrders = async (req, res) => {
     return res.json({ orders });
   } catch (error) {
     return res.status(500).json({ message: 'Error al obtener pedidos', error: error.message });
+  }
+};
+
+// ─── FACTURACIÓN ───────────────────────────────────────────────────────────────
+
+export const getInvoice = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const order = await Order.findById(id);
+    if (!order) {
+      return res.status(404).json({ message: 'Pedido no encontrado' });
+    }
+
+    if (order.status !== 'entregado') {
+      return res.status(400).json({
+        message: 'Solo se puede generar factura de pedidos entregados',
+      });
+    }
+
+    if (order.invoiceGenerated) {
+      return res.status(400).json({
+        message: 'La factura de este pedido ya fue generada',
+      });
+    }
+
+    const restaurant  = await Restaurant.findById(order.restaurantId);
+    const customer    = await findUserById(order.userId);
+
+    const invoiceNumber  = `INV-${order._id.toString().slice(-8).toUpperCase()}`;
+    const date           = new Date(order.updatedAt).toLocaleString('es-GT', {
+      dateStyle: 'long',
+      timeStyle: 'short',
+    });
+    const customerName   = customer ? `${customer.Name} ${customer.Surname}` : 'Cliente';
+    const customerEmail  = customer?.Email;
+    const restaurantName = restaurant?.name || 'Restaurante';
+
+    const invoice = {
+      invoiceNumber,
+      date,
+      restaurantName,
+      customerName,
+      tableNumber: order.tableNumber,
+      items: order.items.map(i => ({
+        name    : i.name,
+        quantity: i.quantity,
+        price   : i.price,
+        subtotal: i.subtotal,
+      })),
+      total : order.total,
+      status: 'pagado',
+    };
+
+    order.invoiceGenerated = true;
+    await order.save();
+
+    if (customerEmail) {
+      sendInvoiceEmail({ customerEmail, customerName, restaurantName, ...invoice })
+        .catch(err => console.error('Error enviando factura por email:', err));
+    }
+
+    return res.json({ message: 'Factura generada correctamente', invoice });
+  } catch (error) {
+    return res.status(500).json({ message: 'Error al generar factura', error: error.message });
   }
 };
