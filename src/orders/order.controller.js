@@ -1,8 +1,8 @@
-import Order from './order.model.js';
-import Product from '../gastronomy-oferts/product.model.js';
-import Inventory from '../inventory/inventory.model.js';
-import Reservation from '../Reservations/reservation.model.js';
 
+import Order from './order.model.js';
+import Product from '../product/products-model.js';
+import { InventoryItem } from '../inventory/inventory.model.js';
+import Reservation from '../Reservations/reservation.model.js';
 
 export const createOrder = async (req, res) => {
   try {
@@ -12,7 +12,7 @@ export const createOrder = async (req, res) => {
     if (!items || items.length === 0) {
       return res.status(400).json({ message: "Debe enviar al menos un producto" });
     }
-    
+
     let total = 0;
     const processedItems = [];
 
@@ -20,9 +20,7 @@ export const createOrder = async (req, res) => {
       const product = await Product.findById(item.productId);
 
       if (!product || !product.isActive || !product.isAvailable) {
-        return res.status(400).json({
-          message: `Producto inválido o no disponible`
-        });
+        return res.status(400).json({ message: `Producto inválido o no disponible` });
       }
 
       const subtotal = product.price * item.quantity;
@@ -37,29 +35,30 @@ export const createOrder = async (req, res) => {
       });
 
       for (const ingredient of product.ingredients) {
-        const inventoryItem = await Inventory.findOne({
-          restaurant: restaurantId,
-          name: ingredient.name
+        const inventoryItem = await InventoryItem.findOne({
+          where: {
+            RestaurantId: restaurantId,
+            Name: ingredient.name
+          }
         });
 
         if (!inventoryItem) {
           return res.status(400).json({
-            message: `No existe inventario para ${ingredient.name}`
+            message: `No existe inventario para el insumo: ${ingredient.name}`
           });
         }
 
-        if (inventoryItem.quantity < item.quantity) {
+        if (parseFloat(inventoryItem.Quantity) < item.quantity) {
           return res.status(400).json({
-            message: `Stock insuficiente para ${ingredient.name}`
+            message: `Stock insuficiente para ${ingredient.name}. Disponible: ${inventoryItem.Quantity}`
           });
         }
 
-        inventoryItem.quantity -= item.quantity;
+        inventoryItem.Quantity = parseFloat(inventoryItem.Quantity) - item.quantity;
         await inventoryItem.save();
 
-        // 🔔 ALERTA LOW STOCK
-        if (inventoryItem.quantity < 5) {
-          console.log(`⚠️ Stock bajo de ${inventoryItem.name}`);
+        if (parseFloat(inventoryItem.Quantity) <= parseFloat(inventoryItem.MinStock)) {
+          console.log(`ALERTA: Stock crítico de ${inventoryItem.Name}. Nivel actual: ${inventoryItem.Quantity}`);
         }
       }
     }
@@ -90,7 +89,6 @@ export const createOrder = async (req, res) => {
 export const cancelOrder = async (req, res) => {
   try {
     const { id } = req.params;
-
     const order = await Order.findById(id);
 
     if (!order) {
@@ -98,23 +96,22 @@ export const cancelOrder = async (req, res) => {
     }
 
     if (!['recibido', 'en_preparacion'].includes(order.status)) {
-      return res.status(400).json({
-        message: "No se puede cancelar este pedido"
-      });
+      return res.status(400).json({ message: "No se puede cancelar este pedido" });
     }
 
-    // 🔥 REVERTIR STOCK
     for (const item of order.items) {
       const product = await Product.findById(item.productId);
 
       for (const ingredient of product.ingredients) {
-        const inventoryItem = await Inventory.findOne({
-          restaurant: order.restaurantId,
-          name: ingredient.name
+        const inventoryItem = await InventoryItem.findOne({
+          where: {
+            RestaurantId: order.restaurantId.toString(),
+            Name: ingredient.name
+          }
         });
 
         if (inventoryItem) {
-          inventoryItem.quantity += item.quantity;
+          inventoryItem.Quantity = parseFloat(inventoryItem.Quantity) + item.quantity;
           await inventoryItem.save();
         }
       }
@@ -123,10 +120,7 @@ export const cancelOrder = async (req, res) => {
     order.status = 'cancelado';
     await order.save();
 
-    return res.json({
-      message: "Pedido cancelado correctamente",
-      order
-    });
+    return res.json({ message: "Pedido cancelado correctamente", order });
 
   } catch (error) {
     return res.status(500).json({
@@ -153,17 +147,75 @@ export const getOrderHistory = async (req, res) => {
       status: { $ne: 'cancelada' }
     }).sort({ createdAt: -1 });
 
-    return res.json({
-      page,
-      limit,
-      orders,
-      reservations
-    });
-
+    return res.json({ page, limit, orders, reservations });
   } catch (error) {
     return res.status(500).json({
       message: "Error al obtener historial",
       error: error.message
     });
+  }
+};
+
+// ─── NUEVOS ────────────────────────────────────────────────────────────────────
+
+const STATUS_TRANSITIONS = {
+  recibido: 'en_preparacion',
+  en_preparacion: 'listo',
+  listo: 'entregado',
+};
+
+export const updateOrderStatus = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status } = req.body;
+
+    if (!status) {
+      return res.status(400).json({ message: 'El campo status es requerido' });
+    }
+
+    const order = await Order.findById(id);
+    if (!order) {
+      return res.status(404).json({ message: 'Pedido no encontrado' });
+    }
+
+    const validNext = STATUS_TRANSITIONS[order.status];
+
+    if (!validNext) {
+      return res.status(400).json({
+        message: `El pedido está en estado '${order.status}' y no puede avanzar`,
+      });
+    }
+
+    if (status !== validNext) {
+      return res.status(400).json({
+        message: `Transición inválida. De '${order.status}' solo se puede pasar a '${validNext}'`,
+      });
+    }
+
+    order.status = status;
+    await order.save();
+
+    return res.json({ message: 'Estado actualizado correctamente', order });
+  } catch (error) {
+    return res.status(500).json({ message: 'Error al actualizar estado', error: error.message });
+  }
+};
+
+export const getRestaurantOrders = async (req, res) => {
+  try {
+    const { restaurantId, status } = req.query;
+
+    if (!restaurantId) {
+      return res.status(400).json({ message: 'restaurantId es requerido' });
+    }
+
+    const filter = { restaurantId };
+    if (status) filter.status = status;
+
+    const orders = await Order.find(filter).sort({ createdAt: -1 });
+
+    return res.json({ orders });
+  } catch (error) {
+    return res.status(500).json({ message: 'Error al obtener pedidos', error: error.message });
   }
 };
