@@ -24,7 +24,7 @@ const orderSchema = new mongoose.Schema(
     },
 
     userId: {
-      type: String, // viene del JWT (Postgres)
+      type: String,
       required: true
     },
 
@@ -44,6 +44,11 @@ const orderSchema = new mongoose.Schema(
       type: String,
       enum: ['recibido', 'en_preparacion', 'listo', 'entregado', 'cancelado'],
       default: 'recibido'
+    },
+
+    invoiceGenerated: {
+      type: Boolean,
+      default: false
     }
   },
   { timestamps: true }
