@@ -56,7 +56,8 @@ export const createOrder = async (req, res) => {
           });
         }
 
-        inventoryItem.Quantity = parseFloat(inventoryItem.Quantity) - item.quantity;
+        const ingredientQty = parseFloat(ingredient.quantity) || 1;
+        inventoryItem.Quantity = parseFloat(inventoryItem.Quantity) - (ingredientQty * item.quantity);
         await inventoryItem.save();
 
         if (parseFloat(inventoryItem.Quantity) <= parseFloat(inventoryItem.MinStock)) {
@@ -113,7 +114,8 @@ export const cancelOrder = async (req, res) => {
         });
 
         if (inventoryItem) {
-          inventoryItem.Quantity = parseFloat(inventoryItem.Quantity) + item.quantity;
+          const ingredientQty = parseFloat(ingredient.quantity) || 1;
+          inventoryItem.Quantity = parseFloat(inventoryItem.Quantity) + (ingredientQty * item.quantity);
           await inventoryItem.save();
         }
       }
