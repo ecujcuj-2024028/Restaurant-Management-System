@@ -103,7 +103,7 @@ export const cancelOrder = async (req, res) => {
 
     for (const item of order.items) {
       const product = await Product.findById(item.productId);
-
+      if (!product) continue;
       for (const ingredient of product.ingredients) {
         const inventoryItem = await InventoryItem.findOne({
           where: {
@@ -245,16 +245,16 @@ export const getInvoice = async (req, res) => {
       });
     }
 
-    const restaurant  = await Restaurant.findById(order.restaurantId);
-    const customer    = await findUserById(order.userId);
+    const restaurant = await Restaurant.findById(order.restaurantId);
+    const customer = await findUserById(order.userId);
 
-    const invoiceNumber  = `INV-${order._id.toString().slice(-8).toUpperCase()}`;
-    const date           = new Date(order.updatedAt).toLocaleString('es-GT', {
+    const invoiceNumber = `INV-${order._id.toString().slice(-8).toUpperCase()}`;
+    const date = new Date(order.updatedAt).toLocaleString('es-GT', {
       dateStyle: 'long',
       timeStyle: 'short',
     });
-    const customerName   = customer ? `${customer.Name} ${customer.Surname}` : 'Cliente';
-    const customerEmail  = customer?.Email;
+    const customerName = customer ? `${customer.Name} ${customer.Surname}` : 'Cliente';
+    const customerEmail = customer?.Email;
     const restaurantName = restaurant?.name || 'Restaurante';
 
     const invoice = {
@@ -264,12 +264,12 @@ export const getInvoice = async (req, res) => {
       customerName,
       tableNumber: order.tableNumber,
       items: order.items.map(i => ({
-        name    : i.name,
+        name: i.name,
         quantity: i.quantity,
-        price   : i.price,
+        price: i.price,
         subtotal: i.subtotal,
       })),
-      total : order.total,
+      total: order.total,
       status: 'pagado',
     };
 
