@@ -128,19 +128,6 @@ export const searchRestaurants = async (req, res) => {
         if (minRating) filter.rating = { $gte: parseFloat(minRating) };
 
         if (category) {
-            const cats = await Category.find({
-                name: { $regex: category, $options: 'i' },
-                isActive: true,
-            }).select('_id');
-
-            if (cats.length === 0) {
-                return res.status(200).json({
-                    success: true,
-                    filters: { availability: availability ?? null },
-                    pagination: buildPaginationMeta(page, limit, 0),
-                    restaurants: [],
-                });
-            }
             filter.category = { $regex: category, $options: 'i' };
         }
 
