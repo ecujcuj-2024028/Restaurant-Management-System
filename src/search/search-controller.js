@@ -55,7 +55,7 @@ export const globalSearch = async (req, res) => {
             if (maxPrice) productFilter.price.$lte = parseFloat(maxPrice);
         }
 
-        /* ── Filtro por categoría (aplica a ambas colecciones) ── */
+        /* ── Filtro por categoría ── */
         if (category) {
             const cats = await Category.find({
                 name: { $regex: category, $options: 'i' },
@@ -65,6 +65,7 @@ export const globalSearch = async (req, res) => {
             const catIds = cats.map((c) => c._id);
 
             restaurantFilter.category = { $regex: category, $options: 'i' };
+
             productFilter.category = { $in: catIds };
         }
 
@@ -73,7 +74,7 @@ export const globalSearch = async (req, res) => {
             Product.countDocuments(productFilter),
 
             Restaurant.find(restaurantFilter)
-                .select('name description address rating category image isActive') // ✅ category no categories
+                .select('name description address rating category image isActive')
                 .sort({ rating: -1 })
                 .skip(skip)
                 .limit(limit),
@@ -112,7 +113,6 @@ export const globalSearch = async (req, res) => {
         return res.status(500).json({ success: false, message: error.message });
     }
 };
-
 /* ─────────────────────────────────────────────────────────────────────────────
    GET /search/restaurants?name=&category=&city=&minRating=&availability=&page=&limit=
    availability: true → solo restaurantes con al menos una mesa en estado "disponible"
