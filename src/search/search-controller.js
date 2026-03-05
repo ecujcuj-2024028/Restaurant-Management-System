@@ -64,9 +64,11 @@ export const globalSearch = async (req, res) => {
 
             const catIds = cats.map((c) => c._id);
 
-            restaurantFilter.category = { $regex: category, $options: 'i' };
+            if (catIds.length > 0) {
+                productFilter.category = { $in: catIds };
+            }
 
-            productFilter.category = { $in: catIds };
+            restaurantFilter.category = { $regex: category, $options: 'i' };
         }
 
         const [restaurantsTotal, productsTotal, restaurants, products] = await Promise.all([
