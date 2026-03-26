@@ -159,10 +159,79 @@ export const getStatsAdmin = async (req, res) => {
 ─────────────────────────────────────────────── */
 export const getStatsByRestaurant = async (req, res) => {
     try {
-        return res.status(501).json({
-            success: false,
-            message: "Función pendiente"
+        const { restaurantId } = req.params;
+
+        if (!mongoose.Types.ObjectId.isValid(restaurantId)) {
+            return res.status(400).json({
+                success: false,
+                message: 'ID de restaurante inválido'
+            });
+        }
+
+        const matchStage = {
+            restaurantId: new mongoose.Types.ObjectId(restaurantId),
+            status: { $ne: 'cancelado' }
+        };
+
+        const [statsVentas, topProductos, estadosPedidos, reviewStats] = await Promise.all([
+            Order.aggregate([
+                { $match: matchStage },
+                {
+                    $group: {
+                        _id           : null,
+                        totalIngresos : { $sum: '$total' },
+                        totalPedidos  : { $sum: 1 },
+                        ticketPromedio: { $avg: '$total' }
+                    }
+                }
+            ]),
+            Order.aggregate([
+                { $match: matchStage },
+                { $unwind: '$items' },
+                {
+                    $group: {
+                        _id            : '$items.productId',
+                        nombre         : { $first: '$items.name' },
+                        cantidadVendida: { $sum: '$items.quantity' },
+                        ingresos       : { $sum: '$items.subtotal' }
+                    }
+                },
+                { $sort: { cantidadVendida: -1 } },
+                { $limit: 5 }
+            ]),
+            Order.aggregate([
+                { $match: { restaurantId: new mongoose.Types.ObjectId(restaurantId) } },
+                { $group: { _id: '$status', total: { $sum: 1 } } }
+            ]),
+            Review.aggregate([
+                { $match: { restauranteId: new mongoose.Types.ObjectId(restaurantId), estado: 'activa' } },
+                {
+                    $group: {
+                        _id           : null,
+                        promedioRating: { $avg: '$rating' },
+                        totalReviews  : { $sum: 1 }
+                    }
+                }
+            ])
+        ]);
+
+        const resumen = statsVentas[0] || { totalIngresos: 0, totalPedidos: 0, ticketPromedio: 0 };
+        const reviews = reviewStats[0] || { promedioRating: 0, totalReviews: 0 };
+
+        return res.status(200).json({
+            success: true,
+            restaurantId,
+            data: {
+                ingresosTotales: resumen.totalIngresos,
+                pedidosTotales : resumen.totalPedidos,
+                ticketPromedio : parseFloat(resumen.ticketPromedio.toFixed(2)),
+                promedioRating : parseFloat(reviews.promedioRating.toFixed(2)),
+                totalReviews   : reviews.totalReviews,
+                topProductos,
+                estadosPedidos
+            }
         });
+
     } catch (error) {
         return res.status(500).json({ success: false, message: error.message });
     }

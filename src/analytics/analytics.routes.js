@@ -5,7 +5,8 @@ import {
     crearReview,
     getReviewsPorPlato,
     getPlatosMasVendidos,
-    getStatsAdmin
+    getStatsAdmin,
+    getStatsByRestaurant
 } from './analytics.controller.js';
 
 import { validateJWT } from '../../middlewares/validate-JWT.js';
@@ -45,5 +46,12 @@ router.get('/platos/mas-vendidos', getPlatosMasVendidos);
  *   ?meses=6  → rango de meses hacia atrás (default: 6)
  */
 router.get('/stats', validateJWT, hasRole(ADMIN_SISTEMA), getStatsAdmin);
+
+
+router.get('/stats/restaurant/:restaurantId',
+    validateJWT,
+    hasRole(ADMIN_RESTAURANTE, ADMIN_SISTEMA),
+    getStatsByRestaurant
+);
 
 export default router;
