@@ -11,7 +11,7 @@ import { validateOwnership } from '../../middlewares/validate-ownership.js';
 
 const router = Router();
 
-router.post('/create', validateJWT, createTable);
+router.post('/create', validateJWT, hasRole(ADMIN_RESTAURANTE, ADMIN_SISTEMA), createTable);
 
 router.get('/', validateJWT, getTables);
 router.get('/restaurant/:restaurantId', validateJWT, getTablesByRestaurant);
