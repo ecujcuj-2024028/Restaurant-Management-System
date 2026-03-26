@@ -242,12 +242,6 @@ export const getInvoice = async (req, res) => {
       });
     }
 
-    if (order.invoiceGenerated) {
-      return res.status(400).json({
-        message: 'La factura de este pedido ya fue generada',
-      });
-    }
-
     const restaurant = await Restaurant.findById(order.restaurantId);
     const customer = await findUserById(order.userId);
 

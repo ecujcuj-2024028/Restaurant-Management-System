@@ -8,6 +8,8 @@ import {
 } from './table.controller.js';
 import { validateJWT } from '../../middlewares/validate-JWT.js';
 import { validateOwnership } from '../../middlewares/validate-ownership.js';
+import { ADMIN_RESTAURANTE, ADMIN_SISTEMA } from '../../helpers/role-constants.js';
+import { hasRole } from '../../middlewares/hasRole.js';
 
 const router = Router();
 
