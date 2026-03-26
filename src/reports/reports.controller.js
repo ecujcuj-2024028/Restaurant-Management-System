@@ -122,12 +122,15 @@ export const exportPDF = async (req, res) => {
     try {
         const { restaurantId, startDate, endDate } = req.query;
         const data = await getReportData(restaurantId, startDate, endDate);
-
-        const doc = new PDFDocument({ margin: 50, size: 'A4' });
-
-        res.setHeader('Content-Type', 'application/pdf');
-        res.setHeader('Content-Disposition', `attachment; filename="reporte-gastroManager-${Date.now()}.pdf"`);
-        doc.pipe(res);
+        const doc = new PDFDocument({ margin: 50, size: 'A4', bufferPages: true });
+        const buffers = [];
+        doc.on('data', buffers.push.bind(buffers));
+        doc.on('end', () => {
+            const pdfBuffer = Buffer.concat(buffers);
+            res.setHeader('Content-Type', 'application/pdf');
+            res.setHeader('Content-Disposition', `attachment; filename="reporte-gastroManager-${Date.now()}.pdf"`);
+            res.send(pdfBuffer);
+        });
 
         // ── PORTADA ──────────────────────────────────────────
         doc.rect(0, 0, doc.page.width, 120).fill('#1F3864');
@@ -249,17 +252,20 @@ export const exportPDF = async (req, res) => {
 
         // ── FOOTER ───────────────────────────────────────────
         const pages = doc.bufferedPageRange();
-        for (let i = 0; i < pages.count; i++) {
+        for (let i = pages.start; i < pages.start + pages.count; i++) {
             doc.switchToPage(i);
             doc.fillColor('#999999').fontSize(8)
-                .text(`GastroManager © ${new Date().getFullYear()} — Página ${i + 1} de ${pages.count}`,
+                .text(`GastroManager © ${new Date().getFullYear()} — Página ${i - pages.start + 1} de ${pages.count}`,
                     50, doc.page.height - 30, { align: 'center', width: 495 });
         }
 
         doc.end();
 
     } catch (error) {
-        return res.status(500).json({ success: false, message: error.message });
+        if (!res.headersSent) {
+            return res.status(500).json({ success: false, message: error.message });
+        }
+        console.error('Error en generación de PDF:', error);
     }
 };
 
@@ -423,14 +429,15 @@ export const exportExcel = async (req, res) => {
         }
 
         // ── ENVIAR ───────────────────────────────────────────
+        const buffer = await workbook.xlsx.writeBuffer();
         res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
         res.setHeader('Content-Disposition', `attachment; filename="reporte-gastroManager-${Date.now()}.xlsx"`);
-
-        await workbook.xlsx.write(res);
-        res.end();
-
+        res.send(buffer);
     } catch (error) {
-        return res.status(500).json({ success: false, message: error.message });
+        if (!res.headersSent) {
+            return res.status(500).json({ success: false, message: error.message });
+        }
+        console.error('Error en generación de Excel:', error);
     }
 };
 
