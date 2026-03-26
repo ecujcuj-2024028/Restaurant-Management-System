@@ -5,6 +5,7 @@ import Reservation from '../Reservations/reservation.model.js';
 import Restaurant from '../restaurants/restaurant.model.js';
 import { findUserById } from '../../helpers/user-db.js';
 import { sendInvoiceEmail } from '../../helpers/email-service.js';
+import { ADMIN_RESTAURANTE, ADMIN_SISTEMA } from '../../helpers/role-constants.js';
 
 export const createOrder = async (req, res) => {
   try {
@@ -226,66 +227,82 @@ export const getRestaurantOrders = async (req, res) => {
 };
 
 // ─── FACTURACIÓN ───────────────────────────────────────────────────────────────
-
 export const getInvoice = async (req, res) => {
-  try {
-    const { id } = req.params;
+    try {
+        const { id } = req.params;
 
-    const order = await Order.findById(id);
-    if (!order) {
-      return res.status(404).json({ message: 'Pedido no encontrado' });
+        // 1. Extraer datos del usuario (Estructura Sequelize)
+        const authenticatedUserId = req.user?.Id || req.user?.dataValues?.Id;
+        const userRoles = req.user?.UserRoles || [];
+
+        const isAdmin = userRoles.some(userRole => {
+            const roleName = userRole.Role?.Name || userRole.dataValues?.Role?.Name;
+            return [ADMIN_RESTAURANTE, ADMIN_SISTEMA].includes(roleName);
+        });
+
+        // 2. Buscar el pedido
+        const order = await Order.findById(id);
+        if (!order) return res.status(404).json({ success: false, message: 'Pedido no encontrado' });
+
+        // 3. Seguridad
+        const isOwner = order.userId?.toString() === authenticatedUserId?.toString();
+        if (!isAdmin && !isOwner) {
+            return res.status(403).json({ success: false, message: 'No tienes permiso.' });
+        }
+
+        // 4. Estado
+        if (order.status !== 'entregado') {
+            return res.status(400).json({ success: false, message: 'Pedido no entregado.' });
+        }
+
+        // 5. Búsquedas paralelas
+        const [restaurant, customer] = await Promise.all([
+            Restaurant.findById(order.restaurantId),
+            findUserById(order.userId)
+        ]);
+
+        // 6. Preparar datos para la función de correo
+        const invoiceParams = {
+            customerEmail: customer?.Email,
+            customerName: customer ? `${customer.Name} ${customer.Surname}` : 'Cliente',
+            invoiceNumber: order._id.toString().slice(-8).toUpperCase(),
+            date: new Date(order.updatedAt).toLocaleString('es-GT', { dateStyle: 'long' }),
+            restaurantName: restaurant?.name || 'GastroManager',
+            tableNumber: order.tableNumber || 'N/A',
+            items: order.items.map(i => ({
+                name: i.name,
+                quantity: i.quantity,
+                price: Number(i.price),
+                subtotal: Number(i.subtotal)
+            })),
+            total: Number(order.total)
+        };
+
+        // 7. Actualizar estado en DB
+        if (!order.invoiceGenerated) {
+            order.invoiceGenerated = true;
+            await order.save();
+        }
+
+        // 8. Enviar Correo
+        if (invoiceParams.customerEmail) {
+            sendInvoiceEmail(invoiceParams).catch(err => 
+                console.error('Error enviando correo:', err)
+            );
+        }
+
+        // 9. Respuesta al cliente 
+        return res.status(200).json({
+            success: true,
+            message: 'Factura generada y enviada',
+            invoice: {
+                ...invoiceParams,
+                total: `Q ${invoiceParams.total.toFixed(2)}`
+            }
+        });
+
+    } catch (error) {
+        console.error(error);
+        return res.status(500).json({ success: false, message: error.message });
     }
-
-    if (order.status !== 'entregado') {
-      return res.status(400).json({
-        message: 'Solo se puede generar factura de pedidos entregados',
-      });
-    }
-
-    if (order.invoiceGenerated) {
-      return res.status(400).json({
-        message: 'La factura de este pedido ya fue generada',
-      });
-    }
-
-    const restaurant = await Restaurant.findById(order.restaurantId);
-    const customer = await findUserById(order.userId);
-
-    const invoiceNumber = `INV-${order._id.toString().slice(-8).toUpperCase()}`;
-    const date = new Date(order.updatedAt).toLocaleString('es-GT', {
-      dateStyle: 'long',
-      timeStyle: 'short',
-    });
-    const customerName = customer ? `${customer.Name} ${customer.Surname}` : 'Cliente';
-    const customerEmail = customer?.Email;
-    const restaurantName = restaurant?.name || 'Restaurante';
-
-    const invoice = {
-      invoiceNumber,
-      date,
-      restaurantName,
-      customerName,
-      tableNumber: order.tableNumber,
-      items: order.items.map(i => ({
-        name: i.name,
-        quantity: i.quantity,
-        price: i.price,
-        subtotal: i.subtotal,
-      })),
-      total: order.total,
-      status: 'pagado',
-    };
-
-    order.invoiceGenerated = true;
-    await order.save();
-
-    if (customerEmail) {
-      sendInvoiceEmail({ customerEmail, customerName, restaurantName, ...invoice })
-        .catch(err => console.error('Error enviando factura por email:', err));
-    }
-
-    return res.json({ message: 'Factura generada correctamente', invoice });
-  } catch (error) {
-    return res.status(500).json({ message: 'Error al generar factura', error: error.message });
-  }
 };
