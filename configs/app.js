@@ -29,6 +29,7 @@ import tableRoutes from '../src/tables/table.routes.js';
 import inventoryRoutes from '../src/inventory/inventory.routes.js';
 import reservationRoutes from '../src/Reservations/reservation.routes.js';
 import orderRoutes from '../src/orders/order.routes.js';
+import reportsRoutes from '../src/reports/reports.reoutes.js';
 
 // Nuevos Módulos
 import categoryRoutes from '../src/gastronomy-oferts/category-routes.js';
@@ -112,6 +113,7 @@ const routes = (app) => {
     app.use(`${BASE_PATH}/users`, validateJWT, userRoutes);
     app.use(`${BASE_PATH}/orders`, validateJWT, orderRoutes);
     app.use(`${BASE_PATH}/customer`, validateJWT, customerRoutes);
+    app.use(`${BASE_PATH}/reports`, validateJWT, reportsRoutes);
 
     // Health Check
     app.get(`${BASE_PATH}/health`, (req, res) => {
