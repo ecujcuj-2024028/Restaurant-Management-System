@@ -40,6 +40,7 @@ import searchRoutes from '../src/search/search-routes.js';
 import categoriesRoutes from '../src/category/categories.routes.js';
 import customerRoutes from '../src/customer/customerHistory.routes.js'
 import userRoutes from '../src/user/user.routes.js';
+import external from '../src/external-orders/external-order.routes.js';
 
 const BASE_PATH = '/restaurantManagement/v1';
 
@@ -114,6 +115,7 @@ const routes = (app) => {
     app.use(`${BASE_PATH}/orders`, validateJWT, orderRoutes);
     app.use(`${BASE_PATH}/customer`, validateJWT, customerRoutes);
     app.use(`${BASE_PATH}/reports`, validateJWT, reportsRoutes);
+    app.use(`${BASE_PATH}/external-orders`, validateJWT, external);
 
     // Health Check
     app.get(`${BASE_PATH}/health`, (req, res) => {
