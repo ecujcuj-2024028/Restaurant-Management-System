@@ -46,7 +46,7 @@ export const validateJWT = async (req, res, next) => {
         // Agregar el usuario al request
         req.user = user;
         req.userId = user.Id.toString();
-
+        req.userRoles = decoded.roles;
         next();
     } catch (error) {
         console.error('Error validating JWT:', error);
