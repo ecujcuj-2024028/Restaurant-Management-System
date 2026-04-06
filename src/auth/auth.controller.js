@@ -314,6 +314,14 @@ export const handleRoleRequest = async (req, res) => {
 
         if (isApproval) {
             const role = await Role.findOne({ where: { Name: request.RequestedRole } });
+
+            if (!role) {
+                return res.status(400).send(`
+            <h1>Error</h1>
+            <p>El rol solicitado no existe: ${request.RequestedRole}</p>
+        `);
+            }
+
             await UserRole.destroy({ where: { UserId: request.UserId } });
             await UserRole.create({ UserId: request.UserId, RoleId: role.Id });
         }
