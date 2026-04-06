@@ -1,4 +1,5 @@
 import mongoose from 'mongoose';
+import { ADMIN_SISTEMA } from '../helpers/role-constants.js';
 
 export const validateOwnership = (Model) => {
     return async (req, res, next) => {
@@ -38,12 +39,14 @@ export const validateOwnership = (Model) => {
             let isOwner = false;
 
             if (Model.modelName === 'Restaurant') {
-                isOwner = resource.ownerId === userId;
+                isOwner = resource.ownerId.toString() === userId;
             } else if (resource.restaurant) {
                 isOwner = resource.restaurant.ownerId === userId;
             }
 
-            if (!isOwner) {
+            const isAdminSistema = req.userRoles?.includes(ADMIN_SISTEMA);
+
+            if (!isOwner && !isAdminSistema) {
                 return res.status(403).json({
                     success: false,
                     message: 'Acceso denegado, no eres el propietario de este recurso'
