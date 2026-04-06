@@ -1,6 +1,8 @@
 'use strict';
 
 import Restaurant from './restaurant.model.js';
+import { ADMIN_SISTEMA, ADMIN_RESTAURANTE } from '../../helpers/role-constants.js';
+import { findUserById } from '../../helpers/user-db.js';
 
 /* Crear restaurante */
 export const createRestaurant = async (req, res) => {
@@ -82,8 +84,40 @@ export const updateRestaurant = async (req, res) => {
         const { id } = req.params;
 
         const updateData = { ...req.body };
+        console.log('ROLES:', req.userRoles);
+        console.log('BODY:', updateData);
 
-        // Si se subió una nueva imagen, reemplazar el arreglo de fotos
+        if (updateData.ownerId) {
+
+            const currentRestaurant = await Restaurant.findById(id);
+
+            if (!currentRestaurant) {
+                return res.status(404).json({
+                    success: false,
+                    message: 'Restaurant not found'
+                });
+            }
+
+            const isAdminSistema = req.userRoles?.includes(ADMIN_SISTEMA);
+            const isOwner = currentRestaurant.ownerId.toString() === req.userId;
+
+            if (!isAdminSistema && !isOwner) {
+                return res.status(403).json({
+                    success: false,
+                    message: 'Only ADMIN_SISTEMA or the owner can change ownerId'
+                });
+            }
+        }
+
+        const newOwner = await findUserById(updateData.ownerId);
+
+        if (!newOwner) {
+            return res.status(400).json({
+                success: false,
+                message: 'Usuario nuevo no encontrado'
+            });
+        }
+        
         if (req.file) {
             updateData.photos = [req.file.path];
         }
