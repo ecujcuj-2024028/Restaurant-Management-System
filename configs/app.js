@@ -13,6 +13,7 @@ import { sequelize, dbConnection as postgresConnection } from "./db-postgres.js"
 import { mongoConnection } from "./db-mongo.js";
 import { corsOptions } from "./cors-configuration.js";
 import { helmetConfiguration } from "./helmet-configuration.js";
+import { setupSwagger } from "./swagger.js";
 
 // Modelos y Helpers
 import { User, UserProfile } from '../src/user/user.model.js';
@@ -32,12 +33,11 @@ import orderRoutes from '../src/orders/order.routes.js';
 import reportsRoutes from '../src/reports/reports.reoutes.js';
 
 // Nuevos Módulos
-import categoryRoutes from '../src/gastronomy-oferts/category-routes.js';
+import categoryRoutes from '../src/category/categories.routes.js';
 import productRoutes from '../src/product/product-routes.js';
 import eventRoutes from '../src/Eventos/events-routes.js';
 import menuRoutes from '../src/menu/menu-routes.js';
 import searchRoutes from '../src/search/search-routes.js';
-import categoriesRoutes from '../src/category/categories.routes.js';
 import customerRoutes from '../src/customer/customerHistory.routes.js'
 import userRoutes from '../src/user/user.routes.js';
 import external from '../src/external-orders/external-order.routes.js';
@@ -104,7 +104,6 @@ const routes = (app) => {
     app.use(`${BASE_PATH}/events`, eventRoutes);
     app.use(`${BASE_PATH}/restaurants`, restaurantRoutes);
     app.use(`${BASE_PATH}/categories`, categoryRoutes);
-    app.use(`${BASE_PATH}/category`, categoriesRoutes);
     app.use(`${BASE_PATH}/analytics`, analyticsRoutes);
 
     // Rutas Protegidas (Requieren validateJWT)
@@ -161,6 +160,7 @@ export const initServer = async () => {
         // 3. Asegurar Administrador y Configurar App
         await ensureRootAdmin();
         middlewares(app);
+        setupSwagger(app);
         routes(app);
 
         // 4. Encendido

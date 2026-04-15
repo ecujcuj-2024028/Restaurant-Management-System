@@ -16,30 +16,125 @@ import { CLIENTE, ADMIN_RESTAURANTE, ADMIN_SISTEMA } from '../../helpers/role-co
 
 const router = Router();
 
-/* ============================================================
-   RUTAS PÚBLICAS
-   ============================================================ */
+/**
+ * @swagger
+ * tags:
+ *   name: Auth
+ *   description: Autenticación y gestión de roles
+ */
 
+/**
+ * @swagger
+ * /auth/register:
+ *   post:
+ *     summary: Registrar un nuevo usuario
+ *     tags: [Auth]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [name, surname, username, email, password, phone]
+ *             properties:
+ *               name: { type: string }
+ *               surname: { type: string }
+ *               username: { type: string }
+ *               email: { type: string }
+ *               password: { type: string }
+ *               phone: { type: string }
+ *     responses:
+ *       201: { description: Usuario registrado }
+ */
 router.post('/register', [authRateLimit, validateRegister], register);
+
+/**
+ * @swagger
+ * /auth/login:
+ *   post:
+ *     summary: Iniciar sesión
+ *     tags: [Auth]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [emailOrUsername, password]
+ *             properties:
+ *               emailOrUsername: { type: string }
+ *               password: { type: string }
+ *     responses:
+ *       200: { description: Login exitoso, retorna JWT }
+ */
 router.post('/login', login);
 
+/**
+ * @swagger
+ * /auth/verify-email:
+ *   post:
+ *     summary: Verificar el correo electrónico mediante un token
+ *     tags: [Auth]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               token: { type: string }
+ *     responses:
+ *       200: { description: Email verificado }
+ */
 router.post('/verify-email', validateVerifyEmail, verifyEmail);
 
 /* ============================================================
    RESET DE CONTRASEÑA 
    ============================================================ */
 
-// Solicitar reset 
+/**
+ * @swagger
+ * /auth/forgot-password:
+ *   post:
+ *     summary: Solicitar recuperación de contraseña
+ *     tags: [Auth]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               email: { type: string }
+ *     responses:
+ *       200: { description: Correo enviado }
+ */
 router.post('/forgot-password', [emailRateLimit, validateForgotPassword], forgotPassword);
 
-// Usar token para cambiar contraseña
+/**
+ * @swagger
+ * /auth/reset-password:
+ *   post:
+ *     summary: Restablecer contraseña con token
+ *     tags: [Auth]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               token: { type: string }
+ *               newPassword: { type: string }
+ *     responses:
+ *       200: { description: Contraseña actualizada }
+ */
 router.post('/reset-password', validateResetPassword, resetPassword);
 
 /* ============================================================
    GESTIÓN DE ROLES (ADMIN ROOT)
    ============================================================ */
 
-// Estas rutas son las que se disparan cuando el Admin Root hace clic en el correo
 router.get('/role-requests/:id/approve', handleRoleRequest);
 router.get('/role-requests/:id/reject', handleRoleRequest);
 
@@ -47,7 +142,25 @@ router.get('/role-requests/:id/reject', handleRoleRequest);
    RUTAS PROTEGIDAS (REQUIEREN JWT)
    ============================================================ */
 
-// Solo usuarios con rol valido pueden solicitar cambiar rol
+/**
+ * @swagger
+ * /auth/request-role-upgrade:
+ *   post:
+ *     summary: Solicitar un ascenso de rol (ej. a Admin de Restaurante)
+ *     tags: [Auth]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               requestedRole: { type: string }
+ *     responses:
+ *       200: { description: Solicitud enviada }
+ */
 router.post(
     '/request-role-upgrade',
     validateJWT,

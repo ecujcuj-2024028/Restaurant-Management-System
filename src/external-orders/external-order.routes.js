@@ -14,29 +14,166 @@ import { ADMIN_RESTAURANTE, ADMIN_SISTEMA } from '../../helpers/role-constants.j
 
 const router = Router();
 
+/**
+ * @swagger
+ * tags:
+ *   name: ExternalOrders
+ *   description: Gestión de pedidos a domicilio y para llevar
+ */
+
 // ─── RUTAS DEL CLIENTE ──────────────────────────────────────────────────────────
 
-// POST   /external-orders ---Crear pedido (domicilio o para llevar)
+/**
+ * @swagger
+ * /external-orders:
+ *   post:
+ *     summary: Crear un nuevo pedido externo (Domicilio/Para llevar)
+ *     tags: [ExternalOrders]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [restaurantId, items, orderType, address]
+ *             properties:
+ *               restaurantId: { type: string }
+ *               items: 
+ *                 type: array
+ *                 items:
+ *                   type: object
+ *                   properties:
+ *                     productId: { type: string }
+ *                     quantity: { type: number }
+ *               orderType: { type: string, enum: [domicilio, para_llevar] }
+ *               address: { type: string }
+ *     responses:
+ *       201: { description: Pedido creado }
+ */
 router.post('/', validateJWT, createExternalOrder);
 
-// GET    /external-orders/history      --- Historial del cliente (filtro ?orderType=domicilio|para_llevar)
+/**
+ * @swagger
+ * /external-orders/history:
+ *   get:
+ *     summary: Obtener historial de pedidos externos del cliente
+ *     tags: [ExternalOrders]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: orderType
+ *         schema: { type: string, enum: [domicilio, para_llevar] }
+ *     responses:
+ *       200: { description: Historial recuperado }
+ */
 router.get('/history', validateJWT, getExternalOrderHistory);
 
-// GET    /external-orders/:id          --- Ver detalle de un pedido
+/**
+ * @swagger
+ * /external-orders/{id}:
+ *   get:
+ *     summary: Ver detalles de un pedido externo específico
+ *     tags: [ExternalOrders]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string }
+ *     responses:
+ *       200: { description: Detalles del pedido }
+ */
 router.get('/:id', validateJWT, getExternalOrderById);
 
-// PATCH  /external-orders/:id/cancel   --- Cancelar pedido (solo en estado recibido/confirmado)
+/**
+ * @swagger
+ * /external-orders/{id}/cancel:
+ *   patch:
+ *     summary: Cancelar un pedido externo
+ *     tags: [ExternalOrders]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string }
+ *     responses:
+ *       200: { description: Pedido cancelado }
+ */
 router.patch('/:id/cancel', validateJWT, cancelExternalOrder);
 
-// GET    /external-orders/:id/invoice  --- Generar factura (pedido entregado)
+/**
+ * @swagger
+ * /external-orders/{id}/invoice:
+ *   get:
+ *     summary: Generar factura de un pedido entregado
+ *     tags: [ExternalOrders]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string }
+ *     responses:
+ *       200: { description: Factura generada }
+ */
 router.get('/:id/invoice', validateJWT, getExternalOrderInvoice);
 
 // ─── RUTAS DE ADMINISTRADOR ─────────────────────────────────────────────────────
 
-// GET    /external-orders              --- Listar pedidos del restaurante (?restaurantId=&status=&orderType=)
+/**
+ * @swagger
+ * /external-orders:
+ *   get:
+ *     summary: Listar todos los pedidos externos del restaurante (Admin)
+ *     tags: [ExternalOrders]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: restaurantId
+ *         schema: { type: string }
+ *       - in: query
+ *         name: status
+ *         schema: { type: string }
+ *       - in: query
+ *         name: orderType
+ *         schema: { type: string }
+ *     responses:
+ *       200: { description: Lista de pedidos }
+ */
 router.get('/', validateJWT, hasRole(ADMIN_RESTAURANTE, ADMIN_SISTEMA), getRestaurantExternalOrders);
 
-// PATCH  /external-orders/:id/status   --- Avanzar estado del pedido
+/**
+ * @swagger
+ * /external-orders/{id}/status:
+ *   patch:
+ *     summary: Actualizar el estado de un pedido (Admin)
+ *     tags: [ExternalOrders]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string }
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               status: { type: string }
+ *     responses:
+ *       200: { description: Estado actualizado }
+ */
 router.patch('/:id/status', validateJWT, hasRole(ADMIN_RESTAURANTE, ADMIN_SISTEMA), updateExternalOrderStatus);
 
 export default router;

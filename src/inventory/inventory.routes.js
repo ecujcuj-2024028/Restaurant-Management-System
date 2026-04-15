@@ -14,9 +14,35 @@ import { ADMIN_RESTAURANTE, ADMIN_SISTEMA } from '../../helpers/role-constants.j
 const router = Router();
 
 /**
- * @route   POST /inventory-pg
- * @desc    Crea un ítem de inventario con datos financieros en PostgreSQL
- * @access  ADMIN_RESTAURANTE | ADMIN_SISTEMA
+ * @swagger
+ * tags:
+ *   name: Inventory
+ *   description: Gestión de inventario y stock de productos en PostgreSQL
+ */
+
+/**
+ * @swagger
+ * /inventory:
+ *   post:
+ *     summary: Crear un nuevo ítem en el inventario
+ *     tags: [Inventory]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [name, restaurant, stock, minStock, cost]
+ *             properties:
+ *               name: { type: string }
+ *               restaurant: { type: string }
+ *               stock: { type: number }
+ *               minStock: { type: number }
+ *               cost: { type: number }
+ *     responses:
+ *       201: { description: Ítem creado }
  */
 router.post(
     '/',
@@ -25,10 +51,24 @@ router.post(
 );
 
 /**
- * @route   GET /inventory-pg/:restaurantId
- * @desc    Lista el inventario de un restaurante
- * @query   ?lowStock=true → solo ítems bajo el umbral mínimo
- * @access  ADMIN_RESTAURANTE | ADMIN_SISTEMA
+ * @swagger
+ * /inventory/{restaurantId}:
+ *   get:
+ *     summary: Obtener el inventario de un restaurante específico
+ *     tags: [Inventory]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: restaurantId
+ *         required: true
+ *         schema: { type: string }
+ *       - in: query
+ *         name: lowStock
+ *         schema: { type: boolean }
+ *         description: Filtrar solo productos con bajo stock
+ *     responses:
+ *       200: { description: Inventario obtenido }
  */
 router.get(
     '/:restaurantId',
@@ -37,10 +77,30 @@ router.get(
 );
 
 /**
- * @route   PATCH /inventory-pg/:id/quantity
- * @desc    Actualiza la cantidad (set | add | subtract)
- * @body    { quantity: Number, operation?: 'set'|'add'|'subtract' }
- * @access  ADMIN_RESTAURANTE | ADMIN_SISTEMA
+ * @swagger
+ * /inventory/{id}/quantity:
+ *   patch:
+ *     summary: Actualizar la cantidad de un ítem de inventario
+ *     tags: [Inventory]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string }
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [quantity]
+ *             properties:
+ *               quantity: { type: number }
+ *               operation: { type: string, enum: [set, add, subtract], default: set }
+ *     responses:
+ *       200: { description: Stock actualizado }
  */
 router.patch(
     '/:id/quantity',
@@ -49,9 +109,30 @@ router.patch(
 );
 
 /**
- * @route   PUT /inventory-pg/:id
- * @desc    Actualiza todos los campos del ítem (nombre, costo, stock mínimo, etc.)
- * @access  ADMIN_RESTAURANTE | ADMIN_SISTEMA
+ * @swagger
+ * /inventory/{id}:
+ *   put:
+ *     summary: Actualizar detalles de un ítem de inventario
+ *     tags: [Inventory]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string }
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               name: { type: string }
+ *               cost: { type: number }
+ *               minStock: { type: number }
+ *     responses:
+ *       200: { description: Ítem actualizado }
  */
 router.put(
     '/:id',
@@ -60,9 +141,20 @@ router.put(
 );
 
 /**
- * @route   DELETE /inventory-pg/:id
- * @desc    Eliminación lógica de un ítem de inventario
- * @access  ADMIN_RESTAURANTE | ADMIN_SISTEMA
+ * @swagger
+ * /inventory/{id}:
+ *   delete:
+ *     summary: Eliminar (lógicamente) un ítem del inventario
+ *     tags: [Inventory]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string }
+ *     responses:
+ *       200: { description: Ítem eliminado }
  */
 router.delete(
     '/:id',

@@ -10,20 +10,81 @@ import { validateReportOwnership } from '../../middlewares/validate-report-owner
 const router = Router();
 
 /**
- * GET /reports/pdf?restaurantId=&startDate=&endDate=
- * Descarga un PDF con resumen, top productos, ventas por día e inventario bajo
+ * @swagger
+ * tags:
+ *   name: Reports
+ *   description: Generación de informes administrativos en diversos formatos (PDF, Excel, JSON)
+ */
+
+/**
+ * @swagger
+ * /reports/pdf:
+ *   get:
+ *     summary: Generar reporte en formato PDF
+ *     tags: [Reports]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: restaurantId
+ *         required: true
+ *         schema: { type: string }
+ *       - in: query
+ *         name: startDate
+ *         schema: { type: string, format: date }
+ *       - in: query
+ *         name: endDate
+ *         schema: { type: string, format: date }
+ *     responses:
+ *       200: { description: Archivo PDF generado exitosamente }
  */
 router.get('/pdf',   validateJWT, hasRole(ADMIN_RESTAURANTE, ADMIN_SISTEMA),validateReportOwnership, exportPDF);
 
 /**
- * GET /reports/excel?restaurantId=&startDate=&endDate=
- * Descarga un Excel con 4 hojas: resumen, top productos, ventas por día, inventario
+ * @swagger
+ * /reports/excel:
+ *   get:
+ *     summary: Generar reporte en formato Excel
+ *     tags: [Reports]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: restaurantId
+ *         required: true
+ *         schema: { type: string }
+ *       - in: query
+ *         name: startDate
+ *         schema: { type: string, format: date }
+ *       - in: query
+ *         name: endDate
+ *         schema: { type: string, format: date }
+ *     responses:
+ *       200: { description: Archivo Excel generado exitosamente }
  */
 router.get('/excel', validateJWT, hasRole(ADMIN_RESTAURANTE, ADMIN_SISTEMA),validateReportOwnership, exportExcel);
 
 /**
- * GET /reports/data?restaurantId=&startDate=&endDate=
- * Devuelve JSON listo para renderizar gráficos en el frontend
+ * @swagger
+ * /reports/data:
+ *   get:
+ *     summary: Obtener datos estructurados para gráficos del frontend
+ *     tags: [Reports]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: restaurantId
+ *         required: true
+ *         schema: { type: string }
+ *       - in: query
+ *         name: startDate
+ *         schema: { type: string, format: date }
+ *       - in: query
+ *         name: endDate
+ *         schema: { type: string, format: date }
+ *     responses:
+ *       200: { description: Datos en formato JSON para visualización }
  */
 router.get('/data',  validateJWT, hasRole(ADMIN_RESTAURANTE, ADMIN_SISTEMA),validateReportOwnership, getChartData);
 

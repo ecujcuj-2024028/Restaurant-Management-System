@@ -11,33 +11,94 @@ import {
 const router = Router();
 
 /**
- * @route   POST /reservations
- * @desc    Crea una reserva verificando disponibilidad real de la mesa
- * @access  Privado (requiere JWT)
- * @body    { tableId, restaurantId, date, time, guestCount?, notes? }
+ * @swagger
+ * tags:
+ *   name: Reservations
+ *   description: Gestión de reservaciones de mesas en los restaurantes
+ */
+
+/**
+ * @swagger
+ * /reservations:
+ *   post:
+ *     summary: Crear una nueva reserva
+ *     description: Verifica la disponibilidad real de la mesa antes de confirmar.
+ *     tags: [Reservations]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [tableId, restaurantId, date, time]
+ *             properties:
+ *               tableId: { type: string }
+ *               restaurantId: { type: string }
+ *               date: { type: string, format: date }
+ *               time: { type: string, pattern: "^[0-9]{2}:[0-9]{2}$" }
+ *               guestCount: { type: number, default: 1 }
+ *               notes: { type: string }
+ *     responses:
+ *       201: { description: Reserva creada }
+ *       400: { description: Mesa no disponible o datos inválidos }
  */
 router.post('/', createReservation);
 
 /**
- * @route   GET /reservations
- * @desc    Lista las reservas del usuario autenticado
- * @access  Privado
- * @query   status?, date?, page?, limit?
+ * @swagger
+ * /reservations:
+ *   get:
+ *     summary: Listar mis reservaciones (Cliente)
+ *     tags: [Reservations]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: status
+ *         schema: { type: string }
+ *       - in: query
+ *         name: date
+ *         schema: { type: string, format: date }
+ *     responses:
+ *       200: { description: Lista de reservaciones }
  */
 router.get('/', getMyReservations);
 
 /**
- * @route   GET /reservations/restaurant/:restaurantId
- * @desc    Lista todas las reservas de un restaurante
- * @access  Privado
- * @query   status?, date?, page?, limit?
+ * @swagger
+ * /reservations/restaurant/{restaurantId}:
+ *   get:
+ *     summary: Listar todas las reservaciones de un restaurante (Admin)
+ *     tags: [Reservations]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: restaurantId
+ *         required: true
+ *         schema: { type: string }
+ *     responses:
+ *       200: { description: Lista de reservaciones del restaurante }
  */
 router.get('/restaurant/:restaurantId', getReservationsByRestaurant);
 
 /**
- * @route   PATCH /reservations/:id/cancel
- * @desc    Cancela una reserva y libera la mesa
- * @access  Privado (solo el dueño de la reserva)
+ * @swagger
+ * /reservations/{id}/cancel:
+ *   patch:
+ *     summary: Cancelar una reserva y liberar la mesa
+ *     tags: [Reservations]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string }
+ *     responses:
+ *       200: { description: Reserva cancelada }
  */
 router.patch('/:id/cancel', cancelReservation);
 
