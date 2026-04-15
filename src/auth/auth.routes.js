@@ -135,7 +135,48 @@ router.post('/reset-password', validateResetPassword, resetPassword);
    GESTIÓN DE ROLES (ADMIN ROOT)
    ============================================================ */
 
+/**
+ * @swagger
+ * /auth/role-requests/{id}/approve:
+ *   get:
+ *     summary: Aprobar una solicitud de cambio de rol
+ *     tags: [Auth]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string }
+ *       - in: query
+ *         name: token
+ *         required: true
+ *         schema: { type: string }
+ *         description: Token de aprobación enviado por correo
+ *     responses:
+ *       200: { description: Solicitud aprobada }
+ *       403: { description: Token inválido }
+ */
 router.get('/role-requests/:id/approve', handleRoleRequest);
+
+/**
+ * @swagger
+ * /auth/role-requests/{id}/reject:
+ *   get:
+ *     summary: Rechazar una solicitud de cambio de rol
+ *     tags: [Auth]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string }
+ *       - in: query
+ *         name: token
+ *         required: true
+ *         schema: { type: string }
+ *         description: Token de rechazo enviado por correo
+ *     responses:
+ *       200: { description: Solicitud rechazada }
+ *       403: { description: Token inválido }
+ */
 router.get('/role-requests/:id/reject', handleRoleRequest);
 
 /* ============================================================
