@@ -83,7 +83,21 @@ export const updateRestaurant = async (req, res) => {
     try {
         const { id } = req.params;
 
-        const updateData = { ...req.body };
+        const allowedFields = ['name', 'category', 'ownerId'];
+        const updateData = {};
+        for (const field of allowedFields) {
+            if (req.body[field] !== undefined) {
+                updateData[field] = req.body[field];
+            }
+        }
+
+        if (req.body.street || req.body.city || req.body.country || req.body.address) {
+            updateData.address = {
+                street: req.body.street || (req.body.address && req.body.address.street),
+                city: req.body.city || (req.body.address && req.body.address.city),
+                country: req.body.country || (req.body.address && req.body.address.country)
+            };
+        }
         console.log('ROLES:', req.userRoles);
         console.log('BODY:', updateData);
 
@@ -109,13 +123,15 @@ export const updateRestaurant = async (req, res) => {
             }
         }
 
-        const newOwner = await findUserById(updateData.ownerId);
+        if (updateData.ownerId !== undefined) {
+            const newOwner = await findUserById(updateData.ownerId);
 
-        if (!newOwner) {
-            return res.status(400).json({
-                success: false,
-                message: 'Usuario nuevo no encontrado'
-            });
+            if (!newOwner) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Usuario nuevo no encontrado'
+                });
+            }
         }
         
         if (req.file) {
