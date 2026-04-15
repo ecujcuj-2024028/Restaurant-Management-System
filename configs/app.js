@@ -1,7 +1,5 @@
 'use strict';
 
-process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
-
 import express from "express";
 import cors from "cors";
 import helmet from "helmet";
@@ -9,6 +7,7 @@ import morgan from "morgan";
 
 // Configuraciones y Middlewares
 import { validateJWT } from '../middlewares/validate-JWT.js';
+import { errorHandler } from '../middlewares/server-genericError-handler.js';
 import { sequelize, dbConnection as postgresConnection } from "./db-postgres.js";
 import { mongoConnection } from "./db-mongo.js";
 import { corsOptions } from "./cors-configuration.js";
@@ -130,6 +129,9 @@ const routes = (app) => {
     app.use((req, res) => {
         res.status(404).json({ success: false, message: 'Endpoint not found' });
     });
+
+    // Global Error Handler
+    app.use(errorHandler);
 };
 
 /* =========================
