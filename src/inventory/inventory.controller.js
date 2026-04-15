@@ -4,6 +4,18 @@ import { Op } from 'sequelize';
 import { InventoryItem } from './inventory.model.js';
 import { sendLowStockEmail } from '../../helpers/email-service.js';
 import { User }              from '../user/user.model.js';
+import Restaurant from '../restaurants/restaurant.model.js';
+import { ADMIN_SISTEMA } from '../../helpers/role-constants.js';
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   Helper: verificar propiedad del restaurante
+───────────────────────────────────────────────────────────────────────────── */
+const checkOwnership = async (req, restaurantId) => {
+    const isAdmin = req.userRoles?.includes(ADMIN_SISTEMA);
+    if (isAdmin) return true;
+    const restaurant = await Restaurant.findById(restaurantId);
+    return restaurant && restaurant.ownerId.toString() === req.userId?.toString();
+};
 
 /* ─────────────────────────────────────────────────────────────────────────────
    Helper: verificar y notificar stock bajo
@@ -11,8 +23,6 @@ import { User }              from '../user/user.model.js';
 const checkAndNotifyLowStock = async (item, restaurantId) => {
     if (parseFloat(item.Quantity) <= parseFloat(item.MinStock)) {
         try {
-            // Buscar el admin dueño del restaurante (ownerId guardado en Mongo Restaurant,
-            // pero también podemos notificar al root admin)
             const adminEmail = process.env.ROOT_ADMIN_EMAIL;
             const adminName  = 'Administrador';
 
@@ -54,6 +64,10 @@ export const createInventoryItemPg = async (req, res) => {
                 success: false,
                 message: 'Los campos restaurantId y name son obligatorios.',
             });
+        }
+
+        if (!(await checkOwnership(req, restaurantId))) {
+            return res.status(403).json({ success: false, message: 'Acceso denegado al restaurante' });
         }
 
         // Verificar duplicado (nombre único por restaurante)
@@ -106,6 +120,10 @@ export const getInventoryByRestaurant = async (req, res) => {
         const { restaurantId } = req.params;
         const { lowStock }     = req.query;   // ?lowStock=true  → solo los que están bajos
 
+        if (!(await checkOwnership(req, restaurantId))) {
+            return res.status(403).json({ success: false, message: 'Acceso denegado al restaurante' });
+        }
+
         const where = { RestaurantId: restaurantId, IsActive: true };
 
         const items = await InventoryItem.findAll({ where, order: [['Name', 'ASC']] });
@@ -157,6 +175,10 @@ export const updateQuantity = async (req, res) => {
                 success: false,
                 message: 'Ítem de inventario no encontrado.',
             });
+        }
+
+        if (!(await checkOwnership(req, item.RestaurantId))) {
+            return res.status(403).json({ success: false, message: 'Acceso denegado al restaurante' });
         }
 
         let newQty;
@@ -215,6 +237,10 @@ export const updateInventoryItem = async (req, res) => {
             });
         }
 
+        if (!(await checkOwnership(req, item.RestaurantId))) {
+            return res.status(403).json({ success: false, message: 'Acceso denegado al restaurante' });
+        }
+
         // Solo actualizar campos permitidos
         allowed.forEach(field => {
             if (req.body[field.charAt(0).toLowerCase() + field.slice(1)] !== undefined) {
@@ -247,6 +273,10 @@ export const deleteInventoryItem = async (req, res) => {
                 success: false,
                 message: 'Ítem de inventario no encontrado.',
             });
+        }
+
+        if (!(await checkOwnership(req, item.RestaurantId))) {
+            return res.status(403).json({ success: false, message: 'Acceso denegado al restaurante' });
         }
 
         item.IsActive = false;

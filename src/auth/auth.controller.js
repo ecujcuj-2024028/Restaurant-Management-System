@@ -200,7 +200,7 @@ export const forgotPassword = async (req, res) => {
 /* =========================
    RESET PASSWORD
    ========================= */
-export const resetPassword = async (req, res) => {
+export const resetPassword = async (req, res, next) => {
     try {
         const { token, newPassword } = req.body;
 
@@ -238,7 +238,7 @@ export const resetPassword = async (req, res) => {
 
     } catch (error) {
         console.error('Error en resetPassword:', error);
-        return res.status(500).json({ success: false, message: 'Error interno del servidor.' });
+        next(error);
     }
 };
 
@@ -274,13 +274,15 @@ export const requestRoleUpgrade = async (req, res) => {
         const adminRoot = await User.findOne({ where: { Email: process.env.ROOT_ADMIN_EMAIL } });
 
         if (adminRoot) {
+            const approvalToken = await generateVerificationToken(request.Id, 'ROLE_UPGRADE_APPROVAL', '24h');
             sendRoleRequestEmail({
                 adminEmail: adminRoot.Email,
                 userName: `${req.user.Name} ${req.user.Surname}`,
                 userEmail: req.user.Email,
                 currentRole: currentRoleName,
                 requestedRole: requestedRole,
-                requestId: request.Id
+                requestId: request.Id,
+                approvalToken: approvalToken
             }).catch(err => console.error('Error enviando email al admin:', err));
         }
 
@@ -293,10 +295,21 @@ export const requestRoleUpgrade = async (req, res) => {
 export const handleRoleRequest = async (req, res) => {
     try {
         const { id } = req.params;
-        const { token } = req.query;
+        const token = req.header('x-admin-token') || req.query.token;
 
-        if (token !== process.env.ROOT_ADMIN_TOKEN) {
-            return res.status(403).send('<h1>Acceso Denegado</h1>');
+        if (!token) {
+            return res.status(403).send('<h1>Acceso Denegado: Token requerido</h1>');
+        }
+
+        let decoded;
+        try {
+            decoded = await verifyVerificationToken(token);
+        } catch {
+            return res.status(403).send('<h1>Acceso Denegado: Token inválido o expirado</h1>');
+        }
+
+        if (decoded.type !== 'ROLE_UPGRADE_APPROVAL' || decoded.sub !== id.toString()) {
+            return res.status(403).send('<h1>Acceso Denegado: Token no válido para esta solicitud</h1>');
         }
 
         const request = await RoleUpgradeRequest.findByPk(id);

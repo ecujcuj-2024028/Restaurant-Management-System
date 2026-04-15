@@ -6,13 +6,16 @@ import Restaurant from '../restaurants/restaurant.model.js';
 import { findUserById } from '../../helpers/user-db.js';
 import { sendInvoiceEmail } from '../../helpers/email-service.js';
 import { ADMIN_RESTAURANTE, ADMIN_SISTEMA } from '../../helpers/role-constants.js';
+import { sequelize } from '../../configs/db-postgres.js';
 
 export const createOrder = async (req, res) => {
+  const t = await sequelize.transaction();
   try {
     const { tableNumber, items, restaurantId } = req.body;
     const userId = req.userId;
 
     if (!items || items.length === 0) {
+      await t.rollback();
       return res.status(400).json({ message: "Debe enviar al menos un producto" });
     }
 
@@ -23,6 +26,7 @@ export const createOrder = async (req, res) => {
       const product = await Product.findById(item.productId);
 
       if (!product || !product.isActive || !product.isAvailable) {
+        await t.rollback();
         return res.status(400).json({ message: `Producto inválido o no disponible` });
       }
 
@@ -42,10 +46,12 @@ export const createOrder = async (req, res) => {
           where: {
             RestaurantId: restaurantId,
             Name: ingredient.name
-          }
+          },
+          transaction: t
         });
 
         if (!inventoryItem) {
+          await t.rollback();
           return res.status(400).json({
             message: `No existe inventario para el insumo: ${ingredient.name}`
           });
@@ -54,13 +60,14 @@ export const createOrder = async (req, res) => {
         const ingredientQty = parseFloat(ingredient.quantity) || 1;
 
         if (parseFloat(inventoryItem.Quantity) < ingredientQty * item.quantity) {
+          await t.rollback();
           return res.status(400).json({
             message: `Stock insuficiente para ${ingredient.name}. Disponible: ${inventoryItem.Quantity}`
           });
         }
 
         inventoryItem.Quantity = parseFloat(inventoryItem.Quantity) - (ingredientQty * item.quantity);
-        await inventoryItem.save();
+        await inventoryItem.save({ transaction: t });
 
         if (parseFloat(inventoryItem.Quantity) <= parseFloat(inventoryItem.MinStock)) {
           console.log(`ALERTA: Stock crítico de ${inventoryItem.Name}. Nivel actual: ${inventoryItem.Quantity}`);
@@ -77,6 +84,7 @@ export const createOrder = async (req, res) => {
     });
 
     await newOrder.save();
+    await t.commit();
 
     return res.status(201).json({
       message: "Pedido creado correctamente",
@@ -84,6 +92,7 @@ export const createOrder = async (req, res) => {
     });
 
   } catch (error) {
+    await t.rollback();
     return res.status(500).json({
       message: "Error al crear el pedido",
       error: error.message
@@ -92,15 +101,18 @@ export const createOrder = async (req, res) => {
 };
 
 export const cancelOrder = async (req, res) => {
+  const t = await sequelize.transaction();
   try {
     const { id } = req.params;
     const order = await Order.findById(id);
 
     if (!order) {
+      await t.rollback();
       return res.status(404).json({ message: "Pedido no encontrado" });
     }
 
     if (!['recibido', 'en_preparacion'].includes(order.status)) {
+      await t.rollback();
       return res.status(400).json({ message: "No se puede cancelar este pedido" });
     }
 
@@ -112,23 +124,26 @@ export const cancelOrder = async (req, res) => {
           where: {
             RestaurantId: order.restaurantId.toString(),
             Name: ingredient.name
-          }
+          },
+          transaction: t
         });
 
         if (inventoryItem) {
           const ingredientQty = parseFloat(ingredient.quantity) || 1;
           inventoryItem.Quantity = parseFloat(inventoryItem.Quantity) + (ingredientQty * item.quantity);
-          await inventoryItem.save();
+          await inventoryItem.save({ transaction: t });
         }
       }
     }
 
     order.status = 'cancelado';
     await order.save();
+    await t.commit();
 
     return res.json({ message: "Pedido cancelado correctamente", order });
 
   } catch (error) {
+    await t.rollback();
     return res.status(500).json({
       message: "Error al cancelar pedido",
       error: error.message

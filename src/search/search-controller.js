@@ -1,7 +1,7 @@
 'use strict';
 
 import Restaurant from '../restaurants/restaurant.model.js';
-import Category from '../gastronomy-oferts/category-model.js';
+import Category from '../category/categories.model.js';
 import Product from '../product/products-model.js';
 import Table from '../tables/table.model.js';
 

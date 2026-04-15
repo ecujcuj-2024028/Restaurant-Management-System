@@ -20,7 +20,7 @@ const createTransporter = () => {
         connectionTimeout: 10_000,
         greetingTimeout  : 10_000,
         socketTimeout    : 10_000,
-        tls: { rejectUnauthorized: false },
+        tls: { rejectUnauthorized: true },
     });
 };
 
@@ -109,12 +109,12 @@ export const sendPasswordChangedEmail = async (email, name) => {
     });
 };
 
-export const sendRoleRequestEmail = async ({ adminEmail, userName, userEmail, currentRole, requestedRole, requestId }) => {
+export const sendRoleRequestEmail = async ({ adminEmail, userName, userEmail, currentRole, requestedRole, requestId, approvalToken }) => {
     if (!transporter) throw new Error('SMTP transporter not configured');
 
     const frontendUrl = config.app.frontendUrl || 'http://localhost:3006/restaurantManagement/v1';
-    const approveUrl  = `${frontendUrl}/auth/role-requests/${requestId}/approve?token=${process.env.ROOT_ADMIN_TOKEN}`;
-    const rejectUrl   = `${frontendUrl}/auth/role-requests/${requestId}/reject?token=${process.env.ROOT_ADMIN_TOKEN}`;
+    const approveUrl  = `${frontendUrl}/auth/role-requests/${requestId}/approve?token=${approvalToken}`;
+    const rejectUrl   = `${frontendUrl}/auth/role-requests/${requestId}/reject?token=${approvalToken}`;
 
     await transporter.sendMail({
         from   : `"${config.smtp.fromName}" <${config.smtp.fromEmail}>`,
