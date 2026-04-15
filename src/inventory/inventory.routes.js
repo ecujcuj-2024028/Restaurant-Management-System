@@ -8,6 +8,7 @@ import {
     updateInventoryItem,
     deleteInventoryItem,
 } from './inventory.controller.js';
+import { validateJWT } from '../../middlewares/validate-JWT.js';
 import { hasRole } from '../../middlewares/hasRole.js';
 import { ADMIN_RESTAURANTE, ADMIN_SISTEMA } from '../../helpers/role-constants.js';
 
@@ -46,6 +47,7 @@ const router = Router();
  */
 router.post(
     '/',
+    validateJWT,
     hasRole(ADMIN_RESTAURANTE, ADMIN_SISTEMA),
     createInventoryItemPg
 );
@@ -72,6 +74,7 @@ router.post(
  */
 router.get(
     '/:restaurantId',
+    validateJWT,
     hasRole(ADMIN_RESTAURANTE, ADMIN_SISTEMA),
     getInventoryByRestaurant
 );
@@ -104,6 +107,7 @@ router.get(
  */
 router.patch(
     '/:id/quantity',
+    validateJWT,
     hasRole(ADMIN_RESTAURANTE, ADMIN_SISTEMA),
     updateQuantity
 );
@@ -136,6 +140,7 @@ router.patch(
  */
 router.put(
     '/:id',
+    validateJWT,
     hasRole(ADMIN_RESTAURANTE, ADMIN_SISTEMA),
     updateInventoryItem
 );
@@ -158,6 +163,7 @@ router.put(
  */
 router.delete(
     '/:id',
+    validateJWT,
     hasRole(ADMIN_RESTAURANTE, ADMIN_SISTEMA),
     deleteInventoryItem
 );
