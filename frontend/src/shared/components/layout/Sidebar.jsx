@@ -4,6 +4,7 @@ import useAuthStore from '../../../features/auth/store/authStore'
 const navItems = [
   { label: '🏠 Dashboard', path: '/dashboard' },
   { label: '🍽️ Restaurantes', path: '/restaurants' },
+  { label: '🏷️ Categorías', path: '/categories' },
   { label: '🪑 Mesas', path: '/tables' },
   { label: '📋 Menús', path: '/menus' },
   { label: '📦 Inventario', path: '/inventory' },
@@ -24,7 +25,9 @@ const Sidebar = () => {
           <div className="w-8 h-8 rounded-lg bg-yellow-500 bg-opacity-10 border border-yellow-500 border-opacity-30 flex items-center justify-center text-sm">
             🍽️
           </div>
-          <span className="text-white font-bold text-lg tracking-wide">GastroManager</span>
+          <span className="text-white font-bold text-lg tracking-wide">
+            GastroManager
+          </span>
         </div>
       </div>
 
