@@ -85,7 +85,7 @@ export const config = {
     // App Settings
     app: {
         // Se agregó el fallback de seguridad para desarrollo
-        frontendUrl: process.env.FRONTEND_URL || 'http://localhost:3006/restaurantManagement/v1'
+        frontendUrl: process.env.FRONTEND_URL || 'http://localhost:5173'
     },
 
     // Security Settings (CORS)

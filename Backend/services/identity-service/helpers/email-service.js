@@ -41,7 +41,7 @@ const emailStyles = {
 
 const getFrontendUrl = () => {
     // La AuthPage ahora detecta el token y cambia a la vista de reset automáticamente
-    return 'http://localhost:5173/login'; 
+    return `${config.app.frontendUrl}/login`; 
 };
 
 /* --- AUTENTICACIÓN --- */
