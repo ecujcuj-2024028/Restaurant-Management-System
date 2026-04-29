@@ -129,7 +129,7 @@ const ProductForm = ({ productToEdit = null, onClose, onSuccess }) => {
             title={isEditing ? 'Editar producto' : 'Nuevo producto'}
             onClose={onClose}
         >
-            <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 max-h-[70vh] overflow-y-auto pr-1">
+            <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 pr-1">
 
                 {/* Restaurante */}
                 <div>
