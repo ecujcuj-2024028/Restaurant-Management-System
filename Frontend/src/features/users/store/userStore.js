@@ -1,5 +1,6 @@
 import { create } from 'zustand'
-import { getProfile, updateProfile } from '../../../shared/api/users'
+import { getProfile, updateProfile, updateProfilePicture } from '../../../shared/api/users'
+import useAuthStore from '../../auth/store/authStore'
 
 const useUserStore = create((set) => ({
   profile: null,
@@ -10,8 +11,10 @@ const useUserStore = create((set) => ({
     set({ loading: true, error: null })
     try {
       const response = await getProfile()
-      // Extraemos .user de la respuesta según tu Postman
-      set({ profile: response.data.user, loading: false })
+      const userData = response.data.user
+      set({ profile: userData, loading: false })
+      // Sincronizar con authStore
+      useAuthStore.getState().user = userData
     } catch (error) {
       set({ error: error.message, loading: false })
     }
@@ -21,9 +24,11 @@ const useUserStore = create((set) => ({
     set({ loading: true })
     try {
       const response = await updateProfile(data)
-      // Extraemos .user para mantener consistencia en el estado
-      set({ profile: response.data.user, loading: false })
-      return response.data.user
+      const userData = response.data.user
+      set({ profile: userData, loading: false })
+      // Sincronizar con authStore
+      useAuthStore.getState().user = userData
+      return userData
     } catch (error) {
       set({ error: error.message, loading: false })
       throw error
@@ -34,9 +39,11 @@ const useUserStore = create((set) => ({
     set({ loading: true })
     try {
       const response = await updateProfilePicture(formData)
-      // Extraemos .user para mantener consistencia en el estado
-      set({ profile: response.data.user, loading: false })
-      return response.data.user
+      const userData = response.data.user
+      set({ profile: userData, loading: false })
+      // Sincronizar con authStore
+      useAuthStore.getState().user = userData
+      return userData
     } catch (error) {
       set({ error: error.message, loading: false })
       throw error

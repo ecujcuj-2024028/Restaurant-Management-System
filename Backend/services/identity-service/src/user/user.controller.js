@@ -82,10 +82,21 @@ export const updateProfile = async (req, res) => {
             await UserProfile.update({ Phone: phone }, { where: { UserId: userId } });
         }
 
-        // Retornar perfil actualizado
+        // Retornar perfil actualizado completo
         const updated = await User.findByPk(userId, {
-            attributes: ['Id', 'Name', 'Surname', 'Username', 'Email'],
-            include: [{ model: UserProfile, as: 'UserProfile', attributes: ['Phone', 'ProfilePicture'] }],
+            attributes: ['Id', 'Name', 'Surname', 'Username', 'Email', 'Status'],
+            include: [
+                {
+                    model: UserProfile,
+                    as: 'UserProfile',
+                    attributes: ['Phone', 'ProfilePicture'],
+                },
+                {
+                    model: UserRole,
+                    as: 'UserRoles',
+                    include: [{ model: Role, as: 'Role', attributes: ['Name'] }],
+                },
+            ],
         });
 
         return res.status(200).json({
@@ -97,8 +108,10 @@ export const updateProfile = async (req, res) => {
                 surname       : updated.Surname,
                 username      : updated.Username,
                 email         : updated.Email,
-                phone         : updated.UserProfile?.Phone          || null,
-                profilePicture: updated.UserProfile?.ProfilePicture  || null,
+                status        : updated.Status,
+                phone         : updated.UserProfile?.Phone         || null,
+                profilePicture: updated.UserProfile?.ProfilePicture || null,
+                roles         : updated.UserRoles.map(ur => ur.Role.Name),
             },
         });
 
@@ -139,10 +152,37 @@ export const updateProfilePicture = async (req, res) => {
         const newPictureUrl = req.file.path;
         await UserProfile.update({ ProfilePicture: newPictureUrl }, { where: { UserId: userId } });
 
+        // Retornar perfil actualizado completo
+        const updated = await User.findByPk(userId, {
+            attributes: ['Id', 'Name', 'Surname', 'Username', 'Email', 'Status'],
+            include: [
+                {
+                    model: UserProfile,
+                    as: 'UserProfile',
+                    attributes: ['Phone', 'ProfilePicture'],
+                },
+                {
+                    model: UserRole,
+                    as: 'UserRoles',
+                    include: [{ model: Role, as: 'Role', attributes: ['Name'] }],
+                },
+            ],
+        });
+
         return res.status(200).json({
-            success       : true,
-            message       : 'Foto de perfil actualizada correctamente.',
-            profilePicture: newPictureUrl,
+            success: true,
+            message: 'Foto de perfil actualizada correctamente.',
+            user: {
+                id            : updated.Id,
+                name          : updated.Name,
+                surname       : updated.Surname,
+                username      : updated.Username,
+                email         : updated.Email,
+                status        : updated.Status,
+                phone         : updated.UserProfile?.Phone         || null,
+                profilePicture: updated.UserProfile?.ProfilePicture || null,
+                roles         : updated.UserRoles.map(ur => ur.Role.Name),
+            },
         });
 
     } catch (error) {
