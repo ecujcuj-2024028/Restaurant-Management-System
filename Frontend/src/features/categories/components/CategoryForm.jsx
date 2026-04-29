@@ -1,5 +1,6 @@
 import { useEffect } from 'react'
 import { useForm } from 'react-hook-form'
+import { toast } from 'react-hot-toast'
 import useCategoryStore from '../store/categoryStore'
 import useRestaurantStore from '../../restaurants/store/restaurantStore'
 import Modal from '../../../shared/components/ui/Modal'
@@ -55,6 +56,7 @@ const CategoryForm = ({ categoryToEdit = null, onClose, onSuccess }) => {
   }, [categoryToEdit, reset])
 
   const onSubmit = async (data) => {
+    const toastId = toast.loading(isEditing ? 'Actualizando categoría...' : 'Creando categoría...')
     try {
       const payload = {
         restaurantId: data.restaurantId,
@@ -65,14 +67,17 @@ const CategoryForm = ({ categoryToEdit = null, onClose, onSuccess }) => {
       if (isEditing) {
         const categoryId = getCategoryId(categoryToEdit)
         await updateCategory(categoryId, payload)
+        toast.success('Categoría actualizada correctamente', { id: toastId })
       } else {
         await createCategory(payload)
+        toast.success('Categoría creada correctamente', { id: toastId })
       }
 
       if (onSuccess) onSuccess()
       onClose()
     } catch (error) {
-      alert(error?.message || 'Error al guardar la categoría')
+      const message = error?.message || 'Error al guardar la categoría'
+      toast.error(message, { id: toastId })
     }
   }
 
@@ -83,7 +88,7 @@ const CategoryForm = ({ categoryToEdit = null, onClose, onSuccess }) => {
     >
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
         <div>
-          <label className="text-gray-300 text-sm mb-1 block">
+          <label className="text-zinc-400 text-[10px] font-bold uppercase tracking-wider mb-2 block opacity-70">
             Restaurante *
           </label>
 
@@ -92,9 +97,9 @@ const CategoryForm = ({ categoryToEdit = null, onClose, onSuccess }) => {
               required: 'El restaurante es requerido',
             })}
             disabled={restaurantsLoading}
-            className="w-full bg-gray-700 text-white rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-orange-500 disabled:opacity-60"
+            className="w-full bg-zinc-800/50 border border-zinc-700/50 text-white rounded-2xl px-4 py-3.5 focus:outline-none focus:ring-2 focus:ring-orange-500/50 transition-all appearance-none cursor-pointer disabled:opacity-60"
           >
-            <option value="">
+            <option value="" className="bg-zinc-900">
               {restaurantsLoading
                 ? 'Cargando restaurantes...'
                 : 'Selecciona un restaurante'}
@@ -104,6 +109,7 @@ const CategoryForm = ({ categoryToEdit = null, onClose, onSuccess }) => {
               <option
                 key={restaurant._id || restaurant.id}
                 value={restaurant._id || restaurant.id}
+                className="bg-zinc-900"
               >
                 {restaurant.name}
               </option>
@@ -111,20 +117,20 @@ const CategoryForm = ({ categoryToEdit = null, onClose, onSuccess }) => {
           </select>
 
           {errors.restaurantId && (
-            <p className="text-red-400 text-xs mt-1">
+            <p className="text-red-400 text-xs mt-1.5 ml-1">
               {errors.restaurantId.message}
             </p>
           )}
 
           {restaurantsError && (
-            <p className="text-red-400 text-xs mt-1">
+            <p className="text-red-400 text-xs mt-1.5 ml-1">
               Error al cargar restaurantes: {restaurantsError}
             </p>
           )}
         </div>
 
         <div>
-          <label className="text-gray-300 text-sm mb-1 block">
+          <label className="text-zinc-400 text-[10px] font-bold uppercase tracking-wider mb-2 block opacity-70">
             Nombre *
           </label>
 
@@ -140,19 +146,19 @@ const CategoryForm = ({ categoryToEdit = null, onClose, onSuccess }) => {
                 message: 'El nombre no puede exceder 60 caracteres',
               },
             })}
-            className="w-full bg-gray-700 text-white rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-orange-500"
-            placeholder="Ej. Bebidas, Entradas, Platos fuertes"
+            className="w-full bg-zinc-800/50 border border-zinc-700/50 text-white rounded-2xl px-5 py-3.5 focus:outline-none focus:ring-2 focus:ring-orange-500/50 transition-all placeholder:text-zinc-600"
+            placeholder="Ej. Bebidas, Entradas..."
           />
 
           {errors.name && (
-            <p className="text-red-400 text-xs mt-1">
+            <p className="text-red-400 text-xs mt-1.5 ml-1">
               {errors.name.message}
             </p>
           )}
         </div>
 
         <div>
-          <label className="text-gray-300 text-sm mb-1 block">
+          <label className="text-zinc-400 text-[10px] font-bold uppercase tracking-wider mb-2 block opacity-70">
             Descripción *
           </label>
 
@@ -168,23 +174,23 @@ const CategoryForm = ({ categoryToEdit = null, onClose, onSuccess }) => {
                 message: 'La descripción no puede exceder 255 caracteres',
               },
             })}
-            className="w-full bg-gray-700 text-white rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-orange-500 resize-none"
+            className="w-full bg-zinc-800/50 border border-zinc-700/50 text-white rounded-2xl px-5 py-3.5 focus:outline-none focus:ring-2 focus:ring-orange-500/50 transition-all resize-none placeholder:text-zinc-600"
             placeholder="Describe brevemente esta categoría"
             rows={4}
           />
 
           {errors.description && (
-            <p className="text-red-400 text-xs mt-1">
+            <p className="text-red-400 text-xs mt-1.5 ml-1">
               {errors.description.message}
             </p>
           )}
         </div>
 
-        <div className="flex gap-3 pt-2">
+        <div className="flex gap-4 pt-4">
           <button
             type="button"
             onClick={onClose}
-            className="flex-1 bg-gray-700 hover:bg-gray-600 text-white py-3 rounded-lg transition-colors"
+            className="flex-1 bg-zinc-800 hover:bg-zinc-700 text-white py-4 rounded-2xl text-sm font-semibold transition-all"
           >
             Cancelar
           </button>
@@ -192,13 +198,13 @@ const CategoryForm = ({ categoryToEdit = null, onClose, onSuccess }) => {
           <button
             type="submit"
             disabled={isSubmitting || restaurantsLoading}
-            className="flex-1 bg-orange-500 hover:bg-orange-600 text-white font-bold py-3 rounded-lg transition-colors disabled:opacity-50"
+            className="flex-1 bg-orange-500 hover:bg-orange-600 text-white font-bold py-4 rounded-2xl text-sm transition-all shadow-lg shadow-orange-500/20 disabled:opacity-50"
           >
             {isSubmitting
               ? 'Guardando...'
               : isEditing
                 ? 'Actualizar'
-                : 'Crear'}
+                : 'Crear Categoría'}
           </button>
         </div>
       </form>

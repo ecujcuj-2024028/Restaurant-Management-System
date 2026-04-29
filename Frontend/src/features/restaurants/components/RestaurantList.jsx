@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
-import { Edit3, Trash2, Plus, MapPin, Phone } from 'lucide-react'
+import { Edit3, Trash2, Plus, MapPin, Phone, Utensils } from 'lucide-react'
+import { toast } from 'react-hot-toast'
 import useRestaurantStore from '../store/restaurantStore'
 import RestaurantForm from './RestaurantForm'
 import Spinner from '../../../shared/components/layout/Spinner'
@@ -16,12 +17,14 @@ const RestaurantList = () => {
   }, [])
 
   const handleDelete = async () => {
+    const toastId = toast.loading('Eliminando restaurante...')
     try {
       await deleteRestaurant(confirmId)
       setConfirmId(null)
       fetchRestaurants()
+      toast.success('Restaurante eliminado correctamente', { id: toastId })
     } catch (error) {
-      alert('Error al eliminar el restaurante')
+      toast.error('Error al eliminar el restaurante', { id: toastId })
     }
   }
 
@@ -94,8 +97,12 @@ const RestaurantList = () => {
                 <tr key={restaurant.id} className="hover:bg-zinc-800/30 transition-colors group">
                   <td className="px-8 py-5">
                     <div className="flex items-center gap-4">
-                      {restaurant.logo ? (
-                        <img src={restaurant.logo} alt={restaurant.name} className="w-12 h-12 rounded-2xl object-cover ring-2 ring-zinc-800" />
+                      {restaurant.photos && restaurant.photos.length > 0 ? (
+                        <img 
+                          src={restaurant.photos[0]} 
+                          alt={restaurant.name} 
+                          className="w-12 h-12 rounded-2xl object-cover ring-2 ring-zinc-800 shadow-lg" 
+                        />
                       ) : (
                         <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-orange-400 to-orange-600 flex items-center justify-center text-white font-bold text-xl shadow-lg">
                           {restaurant.name?.charAt(0).toUpperCase()}

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Edit3, Trash2, Plus, Tag } from 'lucide-react'
+import { toast } from 'react-hot-toast'
 import useCategoryStore from '../store/categoryStore'
 import CategoryForm from './CategoryForm'
 import Spinner from '../../../shared/components/layout/Spinner'
@@ -40,12 +41,14 @@ const CategoryList = () => {
   }
 
   const handleDelete = async () => {
+    const toastId = toast.loading('Eliminando categoría...')
     try {
       const categoryId = getCategoryId(categoryToDelete)
       await deleteCategory(categoryId)
       setCategoryToDelete(null)
+      toast.success('Categoría eliminada correctamente', { id: toastId })
     } catch (error) {
-      alert(error?.message || 'Error al eliminar la categoría')
+      toast.error(error?.message || 'Error al eliminar la categoría', { id: toastId })
     }
   }
 

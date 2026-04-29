@@ -10,7 +10,8 @@ const useUserStore = create((set) => ({
     set({ loading: true, error: null })
     try {
       const response = await getProfile()
-      set({ profile: response.data, loading: false })
+      // Extraemos .user de la respuesta según tu Postman
+      set({ profile: response.data.user, loading: false })
     } catch (error) {
       set({ error: error.message, loading: false })
     }
@@ -20,9 +21,25 @@ const useUserStore = create((set) => ({
     set({ loading: true })
     try {
       const response = await updateProfile(data)
-      set({ profile: response.data, loading: false })
+      // Extraemos .user para mantener consistencia en el estado
+      set({ profile: response.data.user, loading: false })
+      return response.data.user
     } catch (error) {
       set({ error: error.message, loading: false })
+      throw error
+    }
+  },
+
+  updateProfilePicture: async (formData) => {
+    set({ loading: true })
+    try {
+      const response = await updateProfilePicture(formData)
+      // Extraemos .user para mantener consistencia en el estado
+      set({ profile: response.data.user, loading: false })
+      return response.data.user
+    } catch (error) {
+      set({ error: error.message, loading: false })
+      throw error
     }
   },
 }))
