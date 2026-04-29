@@ -1,0 +1,42 @@
+# Dependencias
+node_modules/
+.pnpm-debug.log*
+
+# Entorno y Secretos
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+.env.example
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+logs/
+*.log
+
+# IDEs y Editores
+.vscode/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+.idea/
+.DS_Store
+Thumbs.db
+
+# Compilación y temporales
+dist/
+build/
+coverage/
+.gemini_security/
+.pnpm-lock.yaml
+
+# Archivos específicos del proyecto
+package-lock.json
+*.zip
+*.bak
+GEMINI.md
