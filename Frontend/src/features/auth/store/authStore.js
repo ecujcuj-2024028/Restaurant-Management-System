@@ -1,7 +1,7 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import api from '../../../shared/api/api'
-import { forgotPassword, verifyEmail } from '../../../shared/api/auth'
+import { forgotPassword, verifyEmail, resetPassword } from '../../../shared/api/auth'
 
 const useAuthStore = create(
   persist(
@@ -29,6 +29,10 @@ const useAuthStore = create(
 
       verifyEmail: async (token) => {
         await verifyEmail(token)
+      },
+
+      resetPassword: async (token, newPassword) => {
+        await resetPassword(token, newPassword)
       },
     }),
     {

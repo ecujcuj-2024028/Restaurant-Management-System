@@ -1,10 +1,13 @@
 import { useForm } from 'react-hook-form'
 import { useNavigate } from 'react-router-dom'
+import { useState } from 'react'
 import { toast } from 'react-hot-toast'
+import { Eye, EyeOff, Mail, Lock } from 'lucide-react'
 import useAuthStore from '../store/authStore'
 
-const LoginForm = ({ onForgotPassword }) => {
+const LoginForm = ({ onForgotPassword, onVerifyEmail }) => {
   const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm()
+  const [showPassword, setShowPassword] = useState(false)
   const login = useAuthStore((state) => state.login)
   const navigate = useNavigate()
 
@@ -34,12 +37,15 @@ const LoginForm = ({ onForgotPassword }) => {
         <label className="text-zinc-400 text-[10px] font-bold uppercase tracking-[0.2em] mb-3 block opacity-70">
           Usuario o correo
         </label>
-        <input
-          {...register('email', { required: 'Este campo es requerido' })}
-          type="text"
-          placeholder="usuario o correo@ejemplo.com"
-          className="w-full bg-zinc-800/50 border border-zinc-700/50 rounded-2xl px-5 py-4 text-white placeholder-zinc-600 focus:outline-none focus:ring-2 focus:ring-orange-500/50 focus:border-orange-500/50 transition-all"
-        />
+        <div className="relative group">
+          <Mail size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500 group-focus-within:text-orange-500 transition-colors" />
+          <input
+            {...register('email', { required: 'Este campo es requerido' })}
+            type="text"
+            placeholder="usuario o correo@ejemplo.com"
+            className="w-full bg-zinc-800/50 border border-zinc-700/50 rounded-2xl pl-12 pr-5 py-4 text-white placeholder-zinc-600 focus:outline-none focus:ring-2 focus:ring-orange-500/50 transition-all"
+          />
+        </div>
         {errors.email && <p className="text-red-400 text-xs mt-2 ml-1">{errors.email.message}</p>}
       </div>
 
@@ -47,12 +53,22 @@ const LoginForm = ({ onForgotPassword }) => {
         <label className="text-zinc-400 text-[10px] font-bold uppercase tracking-[0.2em] mb-3 block opacity-70">
           Contraseña
         </label>
-        <input
-          {...register('password', { required: 'La contraseña es requerida' })}
-          type="password"
-          placeholder="••••••••"
-          className="w-full bg-zinc-800/50 border border-zinc-700/50 rounded-2xl px-5 py-4 text-white placeholder-zinc-600 focus:outline-none focus:ring-2 focus:ring-orange-500/50 focus:border-orange-500/50 transition-all"
-        />
+        <div className="relative group">
+          <Lock size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500 group-focus-within:text-orange-500 transition-colors" />
+          <input
+            {...register('password', { required: 'La contraseña es requerida' })}
+            type={showPassword ? 'text' : 'password'}
+            placeholder="••••••••"
+            className="w-full bg-zinc-800/50 border border-zinc-700/50 rounded-2xl pl-12 pr-12 py-4 text-white placeholder-zinc-600 focus:outline-none focus:ring-2 focus:ring-orange-500/50 transition-all"
+          />
+          <button
+            type="button"
+            onClick={() => setShowPassword(!showPassword)}
+            className="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-white transition-colors p-1"
+          >
+            {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+          </button>
+        </div>
         {errors.password && <p className="text-red-400 text-xs mt-2 ml-1">{errors.password.message}</p>}
       </div>
 
@@ -87,6 +103,16 @@ const LoginForm = ({ onForgotPassword }) => {
           </div>
         ) : 'Iniciar sesión'}
       </button>
+
+      <div className="text-center pt-2">
+        <button 
+          type="button"
+          onClick={onVerifyEmail}
+          className="text-xs text-zinc-500 hover:text-orange-500 transition-colors uppercase tracking-widest font-bold"
+        >
+          Tengo un código de verificación
+        </button>
+      </div>
     </form>
   )
 }

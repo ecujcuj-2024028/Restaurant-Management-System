@@ -1,11 +1,21 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { Utensils } from 'lucide-react'
 import LoginForm from '../components/LoginForm'
 import ForgotPasswordForm from '../components/ForgotPasswordForm'
 import VerifyEmailForm from '../components/VerifyEmailForm'
+import ResetPasswordForm from '../components/ResetPasswordForm'
 
 const AuthPage = () => {
   const [view, setView] = useState('login')
+  const [searchParams] = useSearchParams()
+
+  useEffect(() => {
+    // Si detectamos un token en la URL, mostramos la vista de reset
+    if (searchParams.get('token')) {
+      setView('reset')
+    }
+  }, [searchParams])
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-zinc-950 p-4"
@@ -59,7 +69,17 @@ const AuthPage = () => {
           </>
         )}
 
-        <p className="text-center text-zinc-600 text-xs mt-6">
+        {view === 'reset' && (
+          <>
+            <div className="mb-6 text-center">
+              <h1 className="text-2xl font-bold text-white mb-1">Nueva Contraseña</h1>
+              <p className="text-zinc-500 text-sm">Estás a un paso de recuperar tu acceso</p>
+            </div>
+            <ResetPasswordForm onBack={() => setView('login')} />
+          </>
+        )}
+
+        <p className="text-center text-zinc-600 text-xs mt-8">
           © 2025 GastroManager. Todos los derechos reservados.
         </p>
       </div>
