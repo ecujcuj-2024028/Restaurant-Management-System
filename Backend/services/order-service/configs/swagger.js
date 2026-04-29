@@ -17,8 +17,8 @@ const options = {
         },
         servers: [
             {
-                url: 'http://localhost:3006/restaurantManagement/v1',
-                description: 'Servidor Local (Desarrollo)'
+                url: 'http://localhost:3000/restaurantManagement/v1',
+                description: 'API Gateway (Punto de entrada único)'
             }
         ],
         components: {
@@ -38,7 +38,7 @@ const options = {
     },
     apis: [
         './src/**/*.js',
-        './configs/app.js'
+        './index.js'
     ],
 };
 
@@ -46,5 +46,5 @@ const swaggerSpec = swaggerJSDoc(options);
 
 export const setupSwagger = (app) => {
     app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
-    console.log('Swagger | Docs available at http://localhost:3006/api-docs');
+    console.log('Swagger | Order Service Docs available at http://localhost:3003/api-docs');
 };

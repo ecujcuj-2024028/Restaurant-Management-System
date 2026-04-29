@@ -17,8 +17,8 @@ const options = {
         },
         servers: [
             {
-                url: 'http://localhost:3001/restaurantManagement/v1',
-                description: 'Identity Service (Desarrollo)'
+                url: 'http://localhost:3000/restaurantManagement/v1',
+                description: 'API Gateway (Punto de entrada único)'
             }
         ],
         components: {
@@ -38,7 +38,7 @@ const options = {
     },
     apis: [
         './src/**/*.js',
-        './configs/app.js'
+        './index.js'
     ],
 };
 
