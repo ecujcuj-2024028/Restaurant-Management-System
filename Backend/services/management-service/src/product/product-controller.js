@@ -6,32 +6,27 @@ import { cloudinary, extractPublicId } from '../../middlewares/restaurant-upload
 import { InventoryItem } from '../inventory/inventory.model.js';
 
 /* ─────────────────────────────────────────────────────────────────────────────
-Sincronizar producto de MongoDB → InventoryItem en Postgres
+   Helper: Parsear Ingredientes de forma segura
 ───────────────────────────────────────────────────────────────────────────── */
-const syncProductToInventoryPg = async (product, restaurantId) => {
-    try {
-        // Verificar que no exista ya una entrada con este MongoProductId
-        const existing = await InventoryItem.findOne({
-            where: { MongoProductId: product._id.toString() },
-        });
-
-        if (existing) return;
-
-        await InventoryItem.create({
-            RestaurantId: restaurantId.toString(),
-            MongoProductId: product._id.toString(),
-            Name: product.name,
-            Quantity: 0,
-            Unit: 'unidades',
-            CostPerUnit: 0.00,
-            MinStock: 5,
-            IsActive: true,
-        });
-
-        console.log(`Producto "${product.name}" sincronizado a inventory_items`);
-    } catch (err) {
-        console.error('sincronizando producto a Postgres:', err.message);
+const parseIngredients = (ingredients) => {
+    if (!ingredients) return [];
+    
+    let parsed = [];
+    if (typeof ingredients === 'string') {
+        try {
+            parsed = JSON.parse(ingredients);
+        } catch (e) {
+            console.error("Error parseando ingredientes string:", e);
+            return [];
+        }
+    } else {
+        parsed = ingredients;
     }
+
+    // Asegurar que sea un array y limpiar campos vacíos o nulos
+    if (!Array.isArray(parsed)) return [];
+    
+    return parsed.filter(i => i && typeof i === 'object' && i.name);
 };
 
 /* ─────────────────────────────────────────────────────────────────────────────
@@ -41,30 +36,23 @@ export const createProduct = async (req, res) => {
     try {
         const { name, description, price, type, category, restaurant, preparationTime } = req.body;
 
-        let ingredients = req.body.ingredients;
-        if (typeof ingredients === 'string') {
-            try { ingredients = JSON.parse(ingredients); } catch { ingredients = []; }
-        }
+        const ingredients = parseIngredients(req.body.ingredients);
 
         const product = await Product.create({
             name,
             description,
-            price,
+            price: Number(price),
             type,
             category,
             restaurant,
-            ingredients: ingredients || [],
-            preparationTime: preparationTime || null,
+            ingredients,
+            preparationTime: preparationTime ? Number(preparationTime) : null,
             image: req.file ? req.file.path : null,
         });
 
-        // Sincronizar en background (no bloquea la respuesta)
-        if (restaurant) {
-            syncProductToInventoryPg(product, restaurant);
-        }
-
         return res.status(201).json({ success: true, product });
     } catch (error) {
+        console.error("Error en createProduct:", error);
         return res.status(500).json({ success: false, message: error.message });
     }
 };
@@ -120,6 +108,11 @@ export const updateProduct = async (req, res) => {
         const { id } = req.params;
         const updateData = { ...req.body };
 
+        // Parseo forzado de ingredientes
+        if (updateData.ingredients !== undefined) {
+            updateData.ingredients = parseIngredients(updateData.ingredients);
+        }
+
         if (req.file) {
             const existing = await Product.findById(id, 'image');
             if (existing?.image) {
@@ -129,18 +122,16 @@ export const updateProduct = async (req, res) => {
             updateData.image = req.file.path;
         }
 
-        const product = await Product.findByIdAndUpdate(id, updateData, { new: true });
+        // Usamos findById y save() en lugar de findByIdAndUpdate para disparar middleware y validaciones limpiamente
+        const product = await Product.findById(id);
+        if (!product) return res.status(404).json({ success: false, message: 'Producto no encontrado' });
 
-        //Si cambió el nombre, sincronizar en Postgres
-        if (updateData.name && product) {
-            InventoryItem.update(
-                { Name: updateData.name },
-                { where: { MongoProductId: id } }
-            ).catch(err => console.error('Error actualizando nombre en Postgres:', err.message));
-        }
+        Object.assign(product, updateData);
+        await product.save();
 
         return res.status(200).json({ success: true, product });
     } catch (error) {
+        console.error("Error en updateProduct:", error);
         return res.status(500).json({ success: false, message: error.message });
     }
 };
@@ -151,15 +142,7 @@ export const updateProduct = async (req, res) => {
 export const deleteProduct = async (req, res) => {
     try {
         const { id } = req.params;
-
         await Product.findByIdAndUpdate(id, { isActive: false });
-
-        //Desactivar también en Postgres
-        InventoryItem.update(
-            { IsActive: false },
-            { where: { MongoProductId: id } }
-        ).catch(err => console.error('Error desactivando en Postgres:', err.message));
-
         return res.status(200).json({ success: true, message: 'Producto desactivado' });
     } catch (error) {
         return res.status(500).json({ success: false, message: error.message });
@@ -168,80 +151,24 @@ export const deleteProduct = async (req, res) => {
 
 /* ─────────────────────────────────────────────────────────────────────────────
    GET /products/stats/:restaurantId
-   Estadísticas de productos para el ADMIN_RESTAURANTE dueño del restaurante
 ───────────────────────────────────────────────────────────────────────────── */
 export const getProductStats = async (req, res) => {
     try {
         const { restaurantId } = req.params;
-
-        // Verificar que el restaurante existe y pertenece al usuario autenticado
         const restaurant = await Restaurant.findById(restaurantId);
+        if (!restaurant) return res.status(404).json({ success: false, message: 'Restaurante no encontrado.' });
 
-        if (!restaurant || !restaurant.isActive) {
-            return res.status(404).json({
-                success: false,
-                message: 'Restaurante no encontrado.',
-            });
-        }
-
-        // Solo el dueño del restaurante puede ver sus estadísticas
-        const userRoles = req.user.UserRoles.map(ur => ur.Role.Name);
-        const isAdminSistema = userRoles.includes('ADMIN_SISTEMA');
-
-        if (!isAdminSistema && restaurant.ownerId !== req.userId) {
-            return res.status(403).json({
-                success: false,
-                message: 'No tienes permiso para ver las estadísticas de este restaurante.',
-            });
-        }
-
-        // Traer todos los productos del restaurante (activos e inactivos)
-        const products = await Product.find({ restaurant: restaurantId })
-            .populate('category', 'name');
-
-        const total = products.length;
-        const active = products.filter(p => p.isActive).length;
-        const inactive = products.filter(p => !p.isActive).length;
-        const available = products.filter(p => p.isActive && p.isAvailable).length;
-        const unavailable = products.filter(p => p.isActive && !p.isAvailable).length;
-
-        // Distribución por tipo (solo productos activos)
-        const byType = products
-            .filter(p => p.isActive)
-            .reduce((acc, p) => {
-                acc[p.type] = (acc[p.type] || 0) + 1;
-                return acc;
-            }, {});
-
-        // Distribución por categoría (solo productos activos)
-        const byCategory = products
-            .filter(p => p.isActive && p.category)
-            .reduce((acc, p) => {
-                const categoryName = p.category?.name || 'Sin categoría';
-                acc[categoryName] = (acc[categoryName] || 0) + 1;
-                return acc;
-            }, {});
+        const products = await Product.find({ restaurant: restaurantId }).populate('category', 'name');
 
         return res.status(200).json({
             success: true,
-            restaurantId,
-            restaurantName: restaurant.name,
             stats: {
-                total,
-                active,
-                inactive,
-                available,
-                unavailable,
-                byType,
-                byCategory,
-            },
+                total: products.length,
+                active: products.filter(p => p.isActive).length,
+                available: products.filter(p => p.isActive && p.isAvailable).length
+            }
         });
-
     } catch (error) {
-        console.error('[ProductController] getProductStats:', error);
-        return res.status(500).json({
-            success: false,
-            message: error.message,
-        });
+        return res.status(500).json({ success: false, message: error.message });
     }
 };
