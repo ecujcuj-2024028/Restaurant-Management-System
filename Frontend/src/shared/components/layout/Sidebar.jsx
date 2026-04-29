@@ -2,7 +2,8 @@ import { NavLink } from 'react-router-dom'
 import { 
   LayoutDashboard, 
   Utensils, 
-  Tag, 
+  Tag,
+  ShoppingBag, 
   Armchair, 
   ClipboardList, 
   Package, 
@@ -19,6 +20,7 @@ const navItems = [
   { label: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
   { label: 'Restaurantes', path: '/restaurants', icon: Utensils },
   { label: 'Categorías', path: '/categories', icon: Tag },
+    { label: 'Productos', path: '/products', icon: ShoppingBag },
   { label: 'Mesas', path: '/tables', icon: Armchair },
   { label: 'Menús', path: '/menus', icon: ClipboardList },
   { label: 'Inventario', path: '/inventory', icon: Package },
