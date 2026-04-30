@@ -126,4 +126,28 @@ router.get('/stats/restaurant/:restaurantId',
     getStatsByRestaurant
 );
 
+/**
+ * @swagger
+ * /analytics/chart-data:
+ *   get:
+ *     summary: Obtener datos de ventas diarias para gráficas
+ *     tags: [Analytics]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: restauranteId
+ *         schema: { type: string }
+ *       - in: query
+ *         name: days
+ *         schema: { type: integer, default: 7 }
+ *     responses:
+ *       200: { description: Datos para la gráfica obtenidos }
+ */
+router.get('/chart-data',
+    validateJWT,
+    hasRole(ADMIN_RESTAURANTE, ADMIN_SISTEMA),
+    getSalesChartData
+);
+
 export default router;
