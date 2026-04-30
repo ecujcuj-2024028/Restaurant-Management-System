@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Outlet } from 'react-router-dom'
 import Sidebar from '../../shared/components/layout/Sidebar'
 import Navbar from '../../shared/components/layout/Navbar'
+import MobileTabBar from '../../shared/components/layout/MobileTabBar'
 
 const DashboardPage = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false)
@@ -17,15 +18,17 @@ const DashboardPage = () => {
       )}
 
       <Sidebar isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} />
-      
+
       <div className="flex-1 flex flex-col min-w-0">
         <Navbar onMenuClick={() => setIsSidebarOpen(true)} />
-        <main className="flex-1 p-4 lg:p-8 overflow-y-auto">
+        <main className="flex-1 p-4 lg:p-8 overflow-y-auto pb-24 lg:pb-8">
           <div className="max-w-7xl mx-auto">
             <Outlet />
           </div>
         </main>
       </div>
+
+      <MobileTabBar />
     </div>
   )
 }

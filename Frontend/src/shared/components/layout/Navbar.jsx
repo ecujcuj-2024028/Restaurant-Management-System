@@ -47,7 +47,6 @@ const Navbar = ({ onMenuClick }) => {
           <Menu size={24} />
         </button>
         <div className="hidden sm:block">
-          <h2 className="text-zinc-400 text-xs font-bold uppercase tracking-widest">Sistema RMS</h2>
           <p className="text-white font-bold">Panel de Control</p>
         </div>
       </div>
