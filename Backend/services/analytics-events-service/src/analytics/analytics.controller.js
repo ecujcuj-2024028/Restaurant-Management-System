@@ -232,7 +232,60 @@ export const getStatsByRestaurant = async (req, res) => {
             }
         });
 
-    } catch (error) {
+        } catch (error) {
         return res.status(500).json({ success: false, message: error.message });
-    }
-};
+        }
+        };
+
+        /* ─────────────────────────────────────────────
+        GET /analytics/chart-data — Datos para Gráfica
+        ─────────────────────────────────────────────── */
+        export const getSalesChartData = async (req, res) => {
+        try {
+        const { restauranteId } = req.query;
+        const days = parseInt(req.query.days) || 7;
+
+        const startDate = new Date();
+        startDate.setHours(0, 0, 0, 0);
+        startDate.setDate(startDate.getDate() - days);
+
+        const matchStage = { 
+            createdAt: { $gte: startDate }, 
+            status: { $ne: 'cancelado' } 
+        };
+
+        // Si se pasa un restauranteId, filtramos por él
+        if (restauranteId && mongoose.Types.ObjectId.isValid(restauranteId)) {
+            matchStage.restaurantId = new mongoose.Types.ObjectId(restauranteId);
+        }
+
+        const data = await Order.aggregate([
+            { $match: matchStage },
+            { 
+                $group: {
+                    _id: { $dateToString: { format: "%Y-%m-%d", date: "$createdAt" } },
+                    sales: { $sum: "$total" },
+                    orders: { $sum: 1 }
+                }
+            },
+            { $sort: { "_id": 1 } },
+            {
+                $project: {
+                    _id: 0,
+                    name: "$_id",
+                    sales: { $round: ["$sales", 2] },
+                    orders: 1
+                }
+            }
+        ]);
+
+        return res.status(200).json({
+            success: true,
+            message: `Datos de ventas de los últimos ${days} días`,
+            data
+        });
+
+        } catch (error) {
+        return res.status(500).json({ success: false, message: error.message });
+        }
+        };

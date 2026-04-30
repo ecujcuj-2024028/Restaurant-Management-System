@@ -2,9 +2,9 @@ import { useEffect, useState, useRef } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import useAuthStore from '../../../features/auth/store/authStore'
 import useUserStore from '../../../features/users/store/userStore'
-import { User as UserIcon, Bell, LogOut, Settings, ChevronDown } from 'lucide-react'
+import { User as UserIcon, Bell, LogOut, Settings, ChevronDown, Menu } from 'lucide-react'
 
-const Navbar = () => {
+const Navbar = ({ onMenuClick }) => {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false)
   const dropdownRef = useRef(null)
   const navigate = useNavigate()
@@ -38,20 +38,27 @@ const Navbar = () => {
   const userData = profile || user
 
   return (
-    <header className="bg-zinc-950/50 backdrop-blur-md border-b border-zinc-800 px-8 py-4 flex items-center justify-between sticky top-0 z-40">
-      <div>
-        <h2 className="text-zinc-400 text-xs font-bold uppercase tracking-widest">Sistema RMS</h2>
-        <p className="text-white font-bold">Panel de Control</p>
+    <header className="bg-zinc-950/50 backdrop-blur-md border-b border-zinc-800 px-4 lg:px-8 py-4 flex items-center justify-between sticky top-0 z-40">
+      <div className="flex items-center gap-4">
+        <button 
+          onClick={onMenuClick}
+          className="p-2 text-zinc-400 hover:text-white lg:hidden transition-colors"
+        >
+          <Menu size={24} />
+        </button>
+        <div className="hidden sm:block">
+          <p className="text-white font-bold">Panel de Control</p>
+        </div>
       </div>
 
       {/* Funcion para mostrar notificaciones (ejemplo) (futuro desarrollo de sistema de notificaciones en tiempo real) */}
-      <div className="flex items-center gap-6">
+      <div className="flex items-center gap-3 lg:gap-6">
         <button className="p-2 text-zinc-500 hover:text-orange-500 transition-colors relative">
           <Bell size={20} />
           <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-orange-500 rounded-full border-2 border-zinc-950"></span>
         </button>
 
-        <div className="h-8 w-px bg-zinc-800"></div>
+        <div className="h-8 w-px bg-zinc-800 hidden xs:block"></div>
 
         {/* Profile Dropdown */}
         <div className="relative" ref={dropdownRef}>
@@ -59,7 +66,7 @@ const Navbar = () => {
             onClick={() => setIsDropdownOpen(!isDropdownOpen)}
             className="flex items-center gap-4 group cursor-pointer"
           >
-            <div className="flex flex-col items-end hidden sm:flex">
+            <div className="flex flex-col items-end hidden md:flex">
               <span className="text-white text-sm font-bold group-hover:text-orange-500 transition-colors">
                 {userData?.username || 'Admin'}
               </span>
