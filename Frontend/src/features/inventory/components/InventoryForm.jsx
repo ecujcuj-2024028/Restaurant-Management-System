@@ -41,8 +41,8 @@ const InventoryForm = ({ itemToEdit = null, onClose }) => {
     const toastId = toast.loading(isEditing ? 'Actualizando item...' : 'Agregando al inventario...')
     try {
       if (isEditing) {
-        // Aseguramos que usamos el ID correcto (id o _id)
-        const id = itemToEdit.id || itemToEdit._id
+        // Aseguramos que usamos el ID correcto (id, _id o Id)
+        const id = itemToEdit.id || itemToEdit._id || itemToEdit.Id
         await updateItem(id, data)
         toast.success('Inventario actualizado', { id: toastId })
       } else {

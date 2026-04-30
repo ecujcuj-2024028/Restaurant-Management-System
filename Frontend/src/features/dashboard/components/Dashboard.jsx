@@ -1,4 +1,8 @@
+import { useEffect, useState } from 'react'
 import useAuthStore from '../../auth/store/authStore'
+import useRestaurantStore from '../../restaurants/store/restaurantStore'
+import useInventoryStore from '../../inventory/store/inventoryStore'
+import { getInventoryByRestaurant } from '../../../shared/api/inventory'
 import { useNavigate } from 'react-router-dom'
 import { 
   Utensils, 
@@ -6,18 +10,79 @@ import {
   Calendar, 
   Package, 
   BarChart3,
-  ArrowRight
+  ArrowRight,
+  Loader2
 } from 'lucide-react'
 
 const Dashboard = () => {
   const user = useAuthStore((state) => state.user)
   const navigate = useNavigate()
+  
+  const { restaurants, fetchRestaurants, loading: restaurantsLoading } = useRestaurantStore()
+  const [lowStockCount, setLowStockCount] = useState(0)
+  const [loadingStock, setLoadingStock] = useState(false)
+
+  useEffect(() => {
+    fetchRestaurants()
+  }, [fetchRestaurants])
+
+  useEffect(() => {
+    const calculateLowStock = async () => {
+      if (restaurants.length === 0) return
+      
+      setLoadingStock(true)
+      try {
+        let totalLowStock = 0
+        // Para el dashboard, consultamos el stock bajo de cada restaurante
+        const inventoryPromises = restaurants.map(r => getInventoryByRestaurant(r._id || r.id))
+        const inventories = await Promise.all(inventoryPromises)
+        
+        inventories.forEach(items => {
+          const lowStockItems = items.filter(item => 
+            !item.MongoProductId && // Solo ingredientes base
+            parseFloat(item.Quantity || item.quantity) <= parseFloat(item.MinStock || item.minStock)
+          )
+          totalLowStock += lowStockItems.length
+        })
+        
+        setLowStockCount(totalLowStock)
+      } catch (error) {
+        console.error('Error fetching low stock:', error)
+      } finally {
+        setLoadingStock(false)
+      }
+    }
+
+    if (restaurants.length > 0) {
+      calculateLowStock()
+    }
+  }, [restaurants])
 
   const cards = [
-    { label: 'Restaurantes', value: '—', icon: Utensils, color: 'orange' },
-    { label: 'Pedidos activos', value: '—', icon: ShoppingCart, color: 'orange' },
-    { label: 'Reservaciones hoy', value: '—', icon: Calendar, color: 'orange' },
-    { label: 'Stock bajo', value: '—', icon: Package, color: 'red' },
+    { 
+      label: 'Restaurantes', 
+      value: restaurantsLoading ? <Loader2 className="animate-spin w-6 h-6" /> : restaurants.length, 
+      icon: Utensils, 
+      color: 'orange' 
+    },
+    { 
+      label: 'Pedidos activos', 
+      value: '—', 
+      icon: ShoppingCart, 
+      color: 'orange' 
+    },
+    { 
+      label: 'Reservaciones hoy', 
+      value: '—', 
+      icon: Calendar, 
+      color: 'orange' 
+    },
+    { 
+      label: 'Stock bajo', 
+      value: loadingStock ? <Loader2 className="animate-spin w-6 h-6" /> : lowStockCount, 
+      icon: Package, 
+      color: lowStockCount > 0 ? 'red' : 'orange' 
+    },
   ]
 
   const quickAccess = [

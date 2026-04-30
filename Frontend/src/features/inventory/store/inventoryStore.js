@@ -41,7 +41,7 @@ const useInventoryStore = create((set) => ({
       const updatedItem = await updateItemApi(id, data)
       set((state) => ({
         items: state.items.map((item) => {
-            const itemId = item.id || item._id
+            const itemId = item.id || item._id || item.Id
             if (itemId === id) {
               // Combinamos el item viejo con el nuevo para no perder campos si el backend no los manda todos
               return { ...item, ...updatedItem }
