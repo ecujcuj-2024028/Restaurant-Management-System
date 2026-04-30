@@ -1,7 +1,6 @@
-'use strict';
-
 import { Review } from './review.model.js';
 import Order from '../orders/order.model.js';
+import ExternalOrder from '../orders/external-order.model.js';
 import mongoose from 'mongoose';
 
 /* ─────────────────────────────────────────────
@@ -94,7 +93,7 @@ export const getPlatosMasVendidos = async (req, res) => {
             matchStage.restaurantId = new mongoose.Types.ObjectId(restauranteId);
         }
 
-        const resultado = await Order.aggregate([
+        const aggregationPipeline = [
             { $match: matchStage },
             { $unwind: '$items' },
             {
@@ -104,14 +103,36 @@ export const getPlatosMasVendidos = async (req, res) => {
                     cantidadVendida: { $sum: '$items.quantity' },
                     ingresosGenerados: { $sum: '$items.subtotal' }
                 }
-            },
-            { $sort: { cantidadVendida: -1 } },
-            { $limit: limite }
+            }
+        ];
+
+        // Obtener datos de ambas colecciones
+        const [ordenesLocales, ordenesExternas] = await Promise.all([
+            Order.aggregate(aggregationPipeline),
+            ExternalOrder.aggregate(aggregationPipeline)
         ]);
+
+        // Combinar resultados
+        const combinedMap = new Map();
+
+        [...ordenesLocales, ...ordenesExternas].forEach(item => {
+            const id = item._id.toString();
+            if (combinedMap.has(id)) {
+                const existing = combinedMap.get(id);
+                existing.cantidadVendida += item.cantidadVendida;
+                existing.ingresosGenerados += item.ingresosGenerados;
+            } else {
+                combinedMap.set(id, { ...item });
+            }
+        });
+
+        const resultado = Array.from(combinedMap.values())
+            .sort((a, b) => b.cantidadVendida - a.cantidadVendida)
+            .slice(0, limite);
 
         return res.status(200).json({
             success: true,
-            message: `Top ${limite} platos con ventas reales`,
+            message: `Top ${limite} platos con ventas locales y externas`,
             data: resultado
         });
 
@@ -125,27 +146,36 @@ export const getPlatosMasVendidos = async (req, res) => {
 ─────────────────────────────────────────────── */
 export const getStatsAdmin = async (req, res) => {
     try {
-        const statsVentas = await Order.aggregate([
+        const pipeline = [
             { $match: { status: { $ne: 'cancelado' } } },
             {
                 $group: {
                     _id: null,
                     totalIngresos: { $sum: '$total' },
-                    totalPedidos: { $sum: 1 },
-                    ticketPromedio: { $avg: '$total' }
+                    totalPedidos: { $sum: 1 }
                 }
             }
+        ];
+
+        const [statsLocales, statsExternas] = await Promise.all([
+            Order.aggregate(pipeline),
+            ExternalOrder.aggregate(pipeline)
         ]);
 
-        const resumen = statsVentas[0] || { totalIngresos: 0, totalPedidos: 0, ticketPromedio: 0 };
+        const local = statsLocales[0] || { totalIngresos: 0, totalPedidos: 0 };
+        const externa = statsExternas[0] || { totalIngresos: 0, totalPedidos: 0 };
+
+        const totalIngresos = local.totalIngresos + externa.totalIngresos;
+        const totalPedidos = local.totalPedidos + externa.totalPedidos;
+        const ticketPromedio = totalPedidos > 0 ? (totalIngresos / totalPedidos) : 0;
 
         return res.status(200).json({
             success: true,
-            message: 'Estadísticas globales de administración',
+            message: 'Estadísticas globales (Locales + Externas)',
             data: {
-                ingresosTotales: resumen.totalIngresos,
-                pedidosTotales: resumen.totalPedidos,
-                ticketPromedio: parseFloat(resumen.ticketPromedio.toFixed(2))
+                ingresosTotales: totalIngresos,
+                pedidosTotales: totalPedidos,
+                ticketPromedio: parseFloat(ticketPromedio.toFixed(2))
             }
         });
 
@@ -173,78 +203,88 @@ export const getStatsByRestaurant = async (req, res) => {
             status: { $ne: 'cancelado' }
         };
 
-        const [statsVentas, topProductos, estadosPedidos, reviewStats] = await Promise.all([
-            Order.aggregate([
-                { $match: matchStage },
-                {
-                    $group: {
-                        _id           : null,
-                        totalIngresos : { $sum: '$total' },
-                        totalPedidos  : { $sum: 1 },
-                        ticketPromedio: { $avg: '$total' }
-                    }
+        const topProductsPipeline = [
+            { $match: matchStage },
+            { $unwind: '$items' },
+            {
+                $group: {
+                    _id            : '$items.productId',
+                    nombre         : { $first: '$items.name' },
+                    cantidadVendida: { $sum: '$items.quantity' },
+                    ingresos       : { $sum: '$items.subtotal' }
                 }
-            ]),
-            Order.aggregate([
-                { $match: matchStage },
-                { $unwind: '$items' },
-                {
-                    $group: {
-                        _id            : '$items.productId',
-                        nombre         : { $first: '$items.name' },
-                        cantidadVendida: { $sum: '$items.quantity' },
-                        ingresos       : { $sum: '$items.subtotal' }
-                    }
-                },
-                { $sort: { cantidadVendida: -1 } },
-                { $limit: 5 }
-            ]),
-            Order.aggregate([
-                { $match: { restaurantId: new mongoose.Types.ObjectId(restaurantId) } },
-                { $group: { _id: '$status', total: { $sum: 1 } } }
-            ]),
+            }
+        ];
+
+        const [localStats, externaStats, localTop, externaTop, localStates, externaStates, reviewStats] = await Promise.all([
+            Order.aggregate([{ $match: matchStage }, { $group: { _id: null, total: { $sum: '$total' }, count: { $sum: 1 } } }]),
+            ExternalOrder.aggregate([{ $match: matchStage }, { $group: { _id: null, total: { $sum: '$total' }, count: { $sum: 1 } } }]),
+            Order.aggregate(topProductsPipeline),
+            ExternalOrder.aggregate(topProductsPipeline),
+            Order.aggregate([{ $match: { restaurantId: new mongoose.Types.ObjectId(restaurantId) } }, { $group: { _id: '$status', total: { $sum: 1 } } }]),
+            ExternalOrder.aggregate([{ $match: { restaurantId: new mongoose.Types.ObjectId(restaurantId) } }, { $group: { _id: '$status', total: { $sum: 1 } } }]),
             Review.aggregate([
                 { $match: { restauranteId: new mongoose.Types.ObjectId(restaurantId), estado: 'activa' } },
-                {
-                    $group: {
-                        _id           : null,
-                        promedioRating: { $avg: '$rating' },
-                        totalReviews  : { $sum: 1 }
-                    }
-                }
+                { $group: { _id: null, avg: { $avg: '$rating' }, count: { $sum: 1 } } }
             ])
         ]);
 
-        const resumen = statsVentas[0] || { totalIngresos: 0, totalPedidos: 0, ticketPromedio: 0 };
-        const reviews = reviewStats[0] || { promedioRating: 0, totalReviews: 0 };
+        const lRes = localStats[0] || { total: 0, count: 0 };
+        const eRes = externaStats[0] || { total: 0, count: 0 };
+        const rRes = reviewStats[0] || { avg: 0, count: 0 };
+
+        const totalIngresos = lRes.total + eRes.total;
+        const totalPedidos = lRes.count + eRes.count;
+        const ticketPromedio = totalPedidos > 0 ? (totalIngresos / totalPedidos) : 0;
+
+        // Combinar Top Productos
+        const topMap = new Map();
+        [...localTop, ...externaTop].forEach(item => {
+            const id = item._id.toString();
+            if (topMap.has(id)) {
+                const ex = topMap.get(id);
+                ex.cantidadVendida += item.cantidadVendida;
+                ex.ingresos += item.ingresos;
+            } else {
+                topMap.set(id, { ...item });
+            }
+        });
+        const topProductos = Array.from(topMap.values()).sort((a,b) => b.cantidadVendida - a.cantidadVendida).slice(0, 5);
+
+        // Combinar Estados
+        const stateMap = new Map();
+        [...localStates, ...externaStates].forEach(s => {
+            stateMap.set(s._id, (stateMap.get(s._id) || 0) + s.total);
+        });
+        const estadosPedidos = Array.from(stateMap.entries()).map(([k, v]) => ({ _id: k, total: v }));
 
         return res.status(200).json({
             success: true,
             restaurantId,
             data: {
-                ingresosTotales: resumen.totalIngresos,
-                pedidosTotales : resumen.totalPedidos,
-                ticketPromedio : parseFloat(resumen.ticketPromedio.toFixed(2)),
-                promedioRating : parseFloat(reviews.promedioRating.toFixed(2)),
-                totalReviews   : reviews.totalReviews,
+                ingresosTotales: totalIngresos,
+                pedidosTotales : totalPedidos,
+                ticketPromedio : parseFloat(ticketPromedio.toFixed(2)),
+                promedioRating : parseFloat(rRes.avg.toFixed(2)),
+                totalReviews   : rRes.count,
                 topProductos,
                 estadosPedidos
             }
         });
 
-        } catch (error) {
+    } catch (error) {
         return res.status(500).json({ success: false, message: error.message });
-        }
-        };
+    }
+};
 
-        /* ─────────────────────────────────────────────
-        GET /analytics/chart-data — Datos para Gráfica
-        ─────────────────────────────────────────────── */
-        export const getSalesChartData = async (req, res) => {
-        try {
+/* ─────────────────────────────────────────────
+   GET /analytics/chart-data — Datos para Gráfica
+─────────────────────────────────────────────── */
+export const getSalesChartData = async (req, res) => {
+    try {
         const { restauranteId } = req.query;
         const days = parseInt(req.query.days) || 7;
-
+        
         const startDate = new Date();
         startDate.setHours(0, 0, 0, 0);
         startDate.setDate(startDate.getDate() - days);
@@ -254,12 +294,11 @@ export const getStatsByRestaurant = async (req, res) => {
             status: { $ne: 'cancelado' } 
         };
 
-        // Si se pasa un restauranteId, filtramos por él
         if (restauranteId && mongoose.Types.ObjectId.isValid(restauranteId)) {
             matchStage.restaurantId = new mongoose.Types.ObjectId(restauranteId);
         }
 
-        const data = await Order.aggregate([
+        const pipeline = [
             { $match: matchStage },
             { 
                 $group: {
@@ -267,25 +306,47 @@ export const getStatsByRestaurant = async (req, res) => {
                     sales: { $sum: "$total" },
                     orders: { $sum: 1 }
                 }
-            },
-            { $sort: { "_id": 1 } },
-            {
-                $project: {
-                    _id: 0,
-                    name: "$_id",
-                    sales: { $round: ["$sales", 2] },
-                    orders: 1
-                }
             }
+        ];
+
+        const [localData, externaData] = await Promise.all([
+            Order.aggregate(pipeline),
+            ExternalOrder.aggregate(pipeline)
         ]);
+
+        // Combinar por fecha
+        const combinedMap = new Map();
+        
+        const process = (arr) => {
+            arr.forEach(item => {
+                if (combinedMap.has(item._id)) {
+                    const existing = combinedMap.get(item._id);
+                    existing.sales += item.sales;
+                    existing.orders += item.orders;
+                } else {
+                    combinedMap.set(item._id, { ...item });
+                }
+            });
+        };
+
+        process(localData);
+        process(externaData);
+
+        const data = Array.from(combinedMap.values())
+            .sort((a, b) => a._id.localeCompare(b._id))
+            .map(item => ({
+                name: item._id,
+                sales: parseFloat(item.sales.toFixed(2)),
+                orders: item.orders
+            }));
 
         return res.status(200).json({
             success: true,
-            message: `Datos de ventas de los últimos ${days} días`,
+            message: `Datos combinados de ventas de los últimos ${days} días`,
             data
         });
 
-        } catch (error) {
+    } catch (error) {
         return res.status(500).json({ success: false, message: error.message });
-        }
-        };
+    }
+};

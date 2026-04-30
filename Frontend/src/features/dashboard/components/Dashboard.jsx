@@ -11,6 +11,7 @@ import {
 } from 'recharts'
 import useAuthStore from '../../auth/store/authStore'
 import useRestaurantStore from '../../restaurants/store/restaurantStore'
+import useAnalyticsStore from '../store/analyticsStore'
 import { getInventoryByRestaurant } from '../../../shared/api/inventory'
 import { useNavigate } from 'react-router-dom'
 import { 
@@ -25,17 +26,6 @@ import {
   Clock
 } from 'lucide-react'
 import Skeleton from '../../../shared/components/ui/Skeleton'
-
-// Datos ficticios para el gráfico de ejemplo (pueden venir de un store de analytics luego)
-const chartData = [
-  { name: 'Lun', sales: 4000 },
-  { name: 'Mar', sales: 3000 },
-  { name: 'Mie', sales: 5000 },
-  { name: 'Jue', sales: 4500 },
-  { name: 'Vie', sales: 6000 },
-  { name: 'Sab', sales: 8000 },
-  { name: 'Dom', sales: 7000 },
-]
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -55,12 +45,23 @@ const Dashboard = () => {
   const navigate = useNavigate()
 
   const { restaurants, fetchRestaurants, loading: restaurantsLoading } = useRestaurantStore()
+  const { 
+    chartData, 
+    fetchChartData, 
+    globalStats, 
+    fetchGlobalStats, 
+    loading: analyticsLoading 
+  } = useAnalyticsStore()
+
   const [lowStockItems, setLowStockItems] = useState([])
   const [loadingStock, setLoadingStock] = useState(false)
+  const [selectedMetric, setSelectedMetric] = useState('sales')
 
   useEffect(() => {
     fetchRestaurants()
-  }, [fetchRestaurants])
+    fetchChartData()
+    fetchGlobalStats()
+  }, [fetchRestaurants, fetchChartData, fetchGlobalStats])
 
   useEffect(() => {
     const fetchDetailedLowStock = async () => {
@@ -104,21 +105,21 @@ const Dashboard = () => {
       color: 'orange' 
     },
     { 
-      label: 'Pedidos activos', 
-      value: '0', 
-      loading: false,
+      label: 'Pedidos totales', 
+      value: globalStats?.pedidosTotales || '0', 
+      loading: analyticsLoading,
       icon: ShoppingCart, 
       color: 'orange' 
     },
     { 
-      label: 'Reservas hoy', 
-      value: '0', 
-      loading: false,
-      icon: Calendar, 
+      label: 'Ingresos Totales', 
+      value: `Q${globalStats?.ingresosTotales?.toLocaleString() || '0.00'}`, 
+      loading: analyticsLoading,
+      icon: BarChart3, 
       color: 'orange' 
     },
     { 
-      label: 'Stock bajo', 
+      label: 'Insumos Críticos', 
       value: lowStockItems.length > 0 ? lowStockItems.length : '0', 
       loading: loadingStock,
       icon: Package, 
@@ -184,7 +185,7 @@ const Dashboard = () => {
                     </span>
                   )}
                 </div>
-                <p className="text-4xl font-black text-white mb-1">{card.value}</p>
+                <p className="text-2xl font-black text-white mb-1 truncate">{card.value}</p>
                 <p className="text-zinc-500 text-xs font-bold uppercase tracking-widest">{card.label}</p>
               </>
             )}
@@ -197,49 +198,63 @@ const Dashboard = () => {
         <motion.div variants={itemVariants} className="lg:col-span-2 bg-zinc-900/50 border border-white/5 rounded-3xl p-8">
           <div className="flex items-center justify-between mb-8">
             <div>
-              <h3 className="text-white text-xl font-bold">Rendimiento Semanal</h3>
-              <p className="text-zinc-500 text-xs font-medium mt-1 flex items-center gap-1 text-emerald-500">
-                <TrendingUp size={12} /> +12.5% más que la semana pasada
+              <h3 className="text-white text-xl font-bold">Rendimiento</h3>
+              <p className="text-zinc-500 text-xs font-medium mt-1 flex items-center gap-1">
+                Visualización de los últimos 7 días
               </p>
             </div>
-            <select className="bg-zinc-800 border-none text-zinc-400 text-xs font-bold rounded-xl px-3 py-2 outline-none">
-              <option>Ventas (Q)</option>
-              <option>Pedidos</option>
+            <select 
+              value={selectedMetric}
+              onChange={(e) => setSelectedMetric(e.target.value)}
+              className="bg-zinc-800 border-none text-zinc-400 text-xs font-bold rounded-xl px-3 py-2 outline-none cursor-pointer"
+            >
+              <option value="sales">Ventas (Q)</option>
+              <option value="orders">Pedidos</option>
             </select>
           </div>
 
           <div className="h-[250px] w-full">
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={chartData}>
-                <defs>
-                  <linearGradient id="colorSales" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#f97316" stopOpacity={0.3}/>
-                    <stop offset="95%" stopColor="#f97316" stopOpacity={0}/>
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#27272a" />
-                <XAxis 
-                  dataKey="name" 
-                  axisLine={false} 
-                  tickLine={false} 
-                  tick={{ fill: '#71717a', fontSize: 12, fontWeight: 600 }}
-                  dy={10}
-                />
-                <YAxis hide />
-                <Tooltip 
-                  contentStyle={{ backgroundColor: '#18181b', border: '1px solid #3f3f46', borderRadius: '16px' }}
-                  itemStyle={{ color: '#f97316', fontWeight: 'bold' }}
-                />
-                <Area 
-                  type="monotone" 
-                  dataKey="sales" 
-                  stroke="#f97316" 
-                  strokeWidth={3}
-                  fillOpacity={1} 
-                  fill="url(#colorSales)" 
-                />
-              </AreaChart>
-            </ResponsiveContainer>
+            {analyticsLoading ? (
+              <Skeleton className="w-full h-full rounded-2xl" />
+            ) : chartData.length > 0 ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={chartData}>
+                  <defs>
+                    <linearGradient id="colorMetric" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#f97316" stopOpacity={0.3}/>
+                      <stop offset="95%" stopColor="#f97316" stopOpacity={0}/>
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#27272a" />
+                  <XAxis 
+                    dataKey="name" 
+                    axisLine={false} 
+                    tickLine={false} 
+                    tick={{ fill: '#71717a', fontSize: 12, fontWeight: 600 }}
+                    dy={10}
+                  />
+                  <YAxis hide />
+                  <Tooltip 
+                    contentStyle={{ backgroundColor: '#18181b', border: '1px solid #3f3f46', borderRadius: '16px' }}
+                    itemStyle={{ color: '#f97316', fontWeight: 'bold' }}
+                  />
+                  <Area 
+                    type="monotone" 
+                    dataKey={selectedMetric} 
+                    stroke="#f97316" 
+                    strokeWidth={3}
+                    fillOpacity={1} 
+                    fill="url(#colorMetric)" 
+                    animationDuration={1500}
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="w-full h-full flex flex-col items-center justify-center text-zinc-500 gap-2">
+                <BarChart3 size={40} className="opacity-20" />
+                <p className="text-sm font-medium">No hay datos suficientes para mostrar la gráfica.</p>
+              </div>
+            )}
           </div>
         </motion.div>
 
