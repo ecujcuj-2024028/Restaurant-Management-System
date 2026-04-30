@@ -6,7 +6,8 @@ import {
     getReviewsPorPlato,
     getPlatosMasVendidos,
     getStatsAdmin,
-    getStatsByRestaurant
+    getStatsByRestaurant,
+    getSalesChartData
 } from './analytics.controller.js';
 
 import { validateJWT } from '../../middlewares/validate-JWT.js';
