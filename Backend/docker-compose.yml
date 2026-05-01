@@ -1,0 +1,102 @@
+version: "3.9"
+name: restaurant-management-system
+
+services:
+  postgres_db:
+    image: postgres:16
+    container_name: restaurant_postgres
+    restart: always
+    environment:
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${DB_NAME}
+    ports:
+      - ${DB_PORT}:5432
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  mongo_db:
+    image: mongo:latest
+    container_name: restaurant_mongo
+    restart: always
+    ports:
+      - ${PORT_MONGO}:27017
+    volumes:
+      - mongo_data:/data/db
+
+  api_gateway:
+    build: ./services/api-gateway
+    container_name: rms_api_gateway
+    ports:
+      - "3000:3000"
+    depends_on:
+      - identity_service
+      - management_service
+      - order_service
+      - analytics_service
+    env_file: .env
+    environment:
+      - IDENTITY_SERVICE_URL=http://identity_service:3001
+      - MANAGEMENT_SERVICE_URL=http://management_service:3002
+      - ORDER_SERVICE_URL=http://order_service:3003
+      - ANALYTICS_SERVICE_URL=http://analytics_service:3004
+
+  identity_service:
+    build: ./services/identity-service
+    container_name: rms_identity_service
+    ports:
+      - "3001:3001"
+    env_file: .env
+    environment:
+      - DB_HOST=postgres_db
+      - DB_PORT=5432
+      - MONGO_URI=mongodb://mongo_db:27017/${DB_NAME}
+    depends_on:
+      - postgres_db
+      - mongo_db
+
+  management_service:
+    build: ./services/management-service
+    container_name: rms_management_service
+    ports:
+      - "3002:3002"
+    env_file: .env
+    environment:
+      - DB_HOST=postgres_db
+      - DB_PORT=5432
+      - MONGO_URI=mongodb://mongo_db:27017/${DB_NAME}
+    depends_on:
+      - postgres_db
+      - mongo_db
+
+  order_service:
+    build: ./services/order-service
+    container_name: rms_order_service
+    ports:
+      - "3003:3003"
+    env_file: .env
+    environment:
+      - DB_HOST=postgres_db
+      - DB_PORT=5432
+      - MONGO_URI=mongodb://mongo_db:27017/${DB_NAME}
+    depends_on:
+      - postgres_db
+      - mongo_db
+
+  analytics_service:
+    build: ./services/analytics-events-service
+    container_name: rms_analytics_service
+    ports:
+      - "3004:3004"
+    env_file: .env
+    environment:
+      - DB_HOST=postgres_db
+      - DB_PORT=5432
+      - MONGO_URI=mongodb://mongo_db:27017/${DB_NAME}
+    depends_on:
+      - postgres_db
+      - mongo_db
+
+volumes:
+  postgres_data:
+  mongo_data:
