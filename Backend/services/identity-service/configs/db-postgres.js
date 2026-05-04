@@ -14,6 +14,9 @@ export const sequelize = new Sequelize({
     username: process.env.DB_USER,
     password: process.env.DB_PASSWORD,
     logging: process.env.DB_SQL_LOGGING === 'true' ? console.log : false,
+    retry: {
+        max: 10,
+    },
     define: {
         freezeTableName: true, // Usar nombres exactos sin pluralización
         timestamps: true,
