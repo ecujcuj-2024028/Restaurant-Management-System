@@ -10,8 +10,6 @@ import ProductList from '../../features/product/components/ProductList'
 import InventoryList from '../../features/inventory/components/InventoryList'
 import TableList from '../../features/tables/components/TableList'
 
-
-
 const ProtectedRoute = ({ children }) => {
   const { isAuthenticated } = useAuthStore()
   return isAuthenticated ? children : <Navigate to="/login" />
@@ -37,7 +35,7 @@ const AppRoutes = () => {
           <Route path="categories" element={<CategoryList />} />
           <Route path="tables" element={<TableList />} />
           <Route path="menus" element={<div className="text-white">Menús (próximamente)</div>} />
-          <Route path="inventory" element={<InventoryList />} />
+          <Route path="inventory" element={<div className="text-white">Inventario (próximamente)</div>} />
           <Route path="orders" element={<div className="text-white">Pedidos (próximamente)</div>} />
           <Route path="reservations" element={<div className="text-white">Reservaciones (próximamente)</div>} />
           <Route path="events" element={<div className="text-white">Eventos (próximamente)</div>} />
