@@ -64,5 +64,5 @@ app.use(createProxyMiddleware({
 }));
 
 app.listen(PORT, () => {
-    console.log(`🚀 API Gateway funcionando en http://localhost:${PORT}${BASE_PATH}`);
+    console.log(`API Gateway funcionando en http://localhost:${PORT}${BASE_PATH}`);
 });

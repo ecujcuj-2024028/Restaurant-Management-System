@@ -209,4 +209,4 @@ const TableList = () => {
     )
 }
 
-export default TableLists
+export default TableList

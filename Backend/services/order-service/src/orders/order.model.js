@@ -49,14 +49,11 @@ const orderSchema = new mongoose.Schema(
     invoiceGenerated: {
       type: Boolean,
       default: false
-<<<<<<< HEAD:src/orders/order.model.js
-=======
     },
-    
+
     isDeleted: {
       type: Boolean,
       default: false
->>>>>>> origin/develop:Backend/services/order-service/src/orders/order.model.js
     }
   },
   { timestamps: true }
