@@ -23,6 +23,8 @@ const InventoryForm = ({ itemToEdit = null, onClose }) => {
     }
   })
 
+
+  
   // Normalización de datos para que el formulario se llene correctamente
   useEffect(() => {
     if (itemToEdit) {
