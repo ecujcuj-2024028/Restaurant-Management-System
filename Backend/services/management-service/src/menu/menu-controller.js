@@ -123,7 +123,9 @@ export const updateMenu = async (req, res) => {
                 message: `Menú no encontrado con id ${req.params.id}`
             });
 
-        const userRoles = req.user.UserRoles.map(ur => ur.Role.Name);
+        const userRoles = req.user?.UserRoles?.map(
+   ur => ur.Role.Name
+) || [];
         const isAdmin   = userRoles.includes('ADMIN_SISTEMA');
 
         if (!isAdmin && menu.restaurant.toString() !== req.body.restaurantId) {
@@ -162,7 +164,9 @@ export const addMenuItem = async (req, res) => {
                 message: `Menú no encontrado con id ${req.params.id}`
             });
 
-        const userRoles = req.user.UserRoles.map(ur => ur.Role.Name);
+        const userRoles = req.user?.UserRoles?.map(
+   ur => ur.Role.Name
+) || [];
         const isAdmin   = userRoles.includes('ADMIN_SISTEMA');
 
         if (!isAdmin && menu.restaurant.toString() !== req.body.restaurantId) {
@@ -208,7 +212,9 @@ export const removeMenuItem = async (req, res) => {
                 message: `Menú no encontrado con id ${req.params.id}`
             });
 
-        const userRoles = req.user.UserRoles.map(ur => ur.Role.Name);
+        const userRoles = req.user?.UserRoles?.map(
+   ur => ur.Role.Name
+) || [];
         const isAdmin   = userRoles.includes('ADMIN_SISTEMA');
 
         if (!isAdmin && menu.restaurant.toString() !== req.body.restaurantId) {
@@ -247,7 +253,9 @@ export const deleteMenu = async (req, res) => {
                 message: `Menú no encontrado con id ${req.params.id}`
             });
 
-        const userRoles = req.user.UserRoles.map(ur => ur.Role.Name);
+        const userRoles = req.user?.UserRoles?.map(
+   ur => ur.Role.Name
+) || [];
         const isAdmin   = userRoles.includes('ADMIN_SISTEMA');
 
         if (!isAdmin && menu.restaurant.toString() !== req.body.restaurantId) {
