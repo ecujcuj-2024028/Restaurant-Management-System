@@ -52,7 +52,7 @@ const Reservation = sequelize.define('Reservation', {
         }
     },
     status: {
-        type: DataTypes.ENUM('pendiente', 'confirmada', 'cancelada'),
+        type: DataTypes.ENUM('pendiente', 'confirmada', 'cancelada', 'completada'),
         defaultValue: 'pendiente',
     },
     guestCount: {
@@ -75,13 +75,11 @@ const Reservation = sequelize.define('Reservation', {
     indexes: [
         {
             unique: true,
-            fields: ['table_id', 'date', 'time'],
-            where: {
-                status: ['pendiente', 'confirmada']
-            }
+            fields: ['tableId', 'date', 'time'],
+            where: "status IN ('pendiente', 'confirmada')"
         },
         {
-            fields: ['user_id', 'date']
+            fields: ['userId', 'date']
         }
     ]
 });

@@ -122,13 +122,18 @@ export const login = async (req, res) => {
         if (!isMatch) return res.status(401).json({ success: false, message: 'Credenciales inválidas.' });
 
         const roles = user.UserRoles.map(ur => ur.Role.Name);
-        const token = await generateJWT(user.Id, { roles });
+        const token = await generateJWT(user.Id, {
+            roles,
+            name: user.Name,
+            surname: user.Surname,
+            email: user.Email,
+        });
 
         return res.status(200).json({
             success: true,
             message: `Bienvenido, ${user.Name}`,
             token,
-            user: { id: user.Id, username: user.Username, roles }
+            user: { id: user.Id, username: user.Username, name: user.Name, surname: user.Surname, email: user.Email, roles }
         });
     } catch (error) {
         return res.status(500).json({ success: false, message: 'Error interno.' });
