@@ -5,8 +5,10 @@ import {
     createReservation,
     getMyReservations,
     getReservationsByRestaurant,
+    updateReservation,
     cancelReservation,
 } from './reservation.controller.js';
+import { validateJWT } from '../../middlewares/validate-JWT.js';
 
 const router = Router();
 
@@ -44,7 +46,7 @@ const router = Router();
  *       201: { description: Reserva creada }
  *       400: { description: Mesa no disponible o datos inválidos }
  */
-router.post('/', createReservation);
+router.post('/', validateJWT, createReservation);
 
 /**
  * @swagger
@@ -64,7 +66,7 @@ router.post('/', createReservation);
  *     responses:
  *       200: { description: Lista de reservaciones }
  */
-router.get('/', getMyReservations);
+router.get('/', validateJWT, getMyReservations);
 
 /**
  * @swagger
@@ -82,7 +84,37 @@ router.get('/', getMyReservations);
  *     responses:
  *       200: { description: Lista de reservaciones del restaurante }
  */
-router.get('/restaurant/:restaurantId', getReservationsByRestaurant);
+router.get('/restaurant/:restaurantId', validateJWT, getReservationsByRestaurant);
+
+/**
+ * @swagger
+ * /reservations/{id}:
+ *   put:
+ *     summary: Actualizar una reserva existente
+ *     tags: [Reservations]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string }
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               status: { type: string, enum: [pendiente, confirmada, cancelada, completada] }
+ *               customerName: { type: string }
+ *               customerPhone: { type: string }
+ *               guestCount: { type: number }
+ *               notes: { type: string }
+ *     responses:
+ *       200: { description: Reserva actualizada }
+ */
+router.put('/:id', validateJWT, updateReservation);
 
 /**
  * @swagger
@@ -100,6 +132,6 @@ router.get('/restaurant/:restaurantId', getReservationsByRestaurant);
  *     responses:
  *       200: { description: Reserva cancelada }
  */
-router.patch('/:id/cancel', cancelReservation);
+router.patch('/:id/cancel', validateJWT, cancelReservation);
 
 export default router;

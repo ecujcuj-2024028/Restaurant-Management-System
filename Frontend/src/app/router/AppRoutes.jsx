@@ -9,6 +9,7 @@ import Dashboard from '../../features/dashboard/components/Dashboard'
 import ProductList from '../../features/product/components/ProductList'
 import InventoryList from '../../features/inventory/components/InventoryList'
 import TableList from '../../features/tables/components/TableList'
+import ReservationList from '../../features/reservations/components/ReservationList'
 
 const ProtectedRoute = ({ children }) => {
   const { isAuthenticated } = useAuthStore()
@@ -39,7 +40,7 @@ const AppRoutes = () => {
 
           <Route path="menus" element={<div className="text-white">Menús (próximamente)</div>} />
           <Route path="orders" element={<div className="text-white">Pedidos (próximamente)</div>} />
-          <Route path="reservations" element={<div className="text-white">Reservaciones (próximamente)</div>} />
+          <Route path="reservations" element={<ReservationList />} />
           <Route path="events" element={<div className="text-white">Eventos (próximamente)</div>} />
           <Route path="reports" element={<div className="text-white">Reportes (próximamente)</div>} />
 

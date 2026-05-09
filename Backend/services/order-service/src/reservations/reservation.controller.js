@@ -29,10 +29,18 @@ const buildPaginationMeta = (page, limit, total) => ({
 ───────────────────────────────────────────────────────────────────────────── */
 export const createReservation = async (req, res) => {
     const transaction = await sequelize.transaction();
-    
+
     try {
         const { tableId, restaurantId, date, time, guestCount, notes } = req.body;
         const userId = req.user?.Id?.toString() || req.user?.id?.toString();
+
+        if (!userId) {
+            await transaction.rollback();
+            return res.status(401).json({
+                success: false,
+                message: 'Usuario no autenticado. Token inválido o expirado.',
+            });
+        }
 
         /* ── 1. Validaciones de presencia ── */
         if (!tableId || !restaurantId || !date || !time) {
@@ -182,6 +190,14 @@ export const createReservation = async (req, res) => {
 export const getMyReservations = async (req, res) => {
     try {
         const userId = req.user?.Id?.toString() || req.user?.id?.toString();
+
+        if (!userId) {
+            return res.status(401).json({
+                success: false,
+                message: 'Usuario no autenticado. Token inválido o expirado.',
+            });
+        }
+
         const { status, date } = req.query;
         const { page, limit, skip } = getPagination(req.query);
 
@@ -241,12 +257,84 @@ export const getReservationsByRestaurant = async (req, res) => {
 };
 
 /* ─────────────────────────────────────────────────────────────────────────────
+   PUT /reservations/:id  — Actualizar reserva (soporte para edición de estado)
+   ───────────────────────────────────────────────────────────────────────────── */
+export const updateReservation = async (req, res) => {
+    const transaction = await sequelize.transaction();
+    try {
+        const userId = req.user?.Id?.toString() || req.user?.id?.toString();
+        const { id } = req.params;
+        const { status, customerName, customerPhone, guestCount, notes } = req.body;
+
+        if (!userId) {
+            await transaction.rollback();
+            return res.status(401).json({
+                success: false,
+                message: 'Usuario no autenticado. Token inválido o expirado.',
+            });
+        }
+
+        const reservation = await Reservation.findByPk(id, { transaction });
+
+        if (!reservation) {
+            await transaction.rollback();
+            return res.status(404).json({ success: false, message: 'Reserva no encontrada.' });
+        }
+
+        if (reservation.userId !== userId) {
+            await transaction.rollback();
+            return res.status(403).json({
+                success: false,
+                message: 'No tienes permiso para editar esta reserva.',
+            });
+        }
+
+        // Permitir actualizar solo los campos proporcionados
+        if (status) reservation.status = status;
+        if (customerName) reservation.customerName = customerName;
+        if (customerPhone !== undefined) reservation.customerPhone = customerPhone;
+        if (guestCount !== undefined) reservation.guestCount = guestCount;
+        if (notes !== undefined) reservation.notes = notes;
+
+        await reservation.save({ transaction });
+        await transaction.commit();
+
+        const populated = await Reservation.findByPk(reservation.id, {
+            include: [{ model: Table, as: 'table' }],
+        });
+
+        return res.status(200).json({
+            success: true,
+            message: 'Reserva actualizada correctamente.',
+            reservation: populated,
+        });
+
+    } catch (error) {
+        await transaction.rollback();
+        return res.status(500).json({
+            success: false,
+            message: 'Error interno al actualizar la reserva.',
+            error: error.message,
+        });
+    }
+};
+
+/* ─────────────────────────────────────────────────────────────────────────────
    PATCH /reservations/:id/cancel  — Cancelar reserva y liberar mesa
-───────────────────────────────────────────────────────────────────────────── */
+   ───────────────────────────────────────────────────────────────────────────── */
 export const cancelReservation = async (req, res) => {
     const transaction = await sequelize.transaction();
     try {
         const userId = req.user?.Id?.toString() || req.user?.id?.toString();
+
+        if (!userId) {
+            await transaction.rollback();
+            return res.status(401).json({
+                success: false,
+                message: 'Usuario no autenticado. Token inválido o expirado.',
+            });
+        }
+
         const { id } = req.params;
 
         const reservation = await Reservation.findByPk(id, { transaction });

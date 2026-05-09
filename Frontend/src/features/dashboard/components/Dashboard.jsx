@@ -73,10 +73,11 @@ const Dashboard = () => {
         const inventoryPromises = restaurants.map(r => getInventoryByRestaurant(r._id || r.id))
         const inventories = await Promise.all(inventoryPromises)
 
-        inventories.forEach((items, index) => {
+        inventories.forEach((response, index) => {
           const restaurantName = restaurants[index].name
-          const low = items.filter(item => 
-            !item.MongoProductId && 
+          const items = response.data?.items || []
+          const low = items.filter(item =>
+            !item.MongoProductId &&
             parseFloat(item.Quantity || item.quantity) <= parseFloat(item.MinStock || item.minStock)
           ).map(i => ({ ...i, restaurantName }))
 
