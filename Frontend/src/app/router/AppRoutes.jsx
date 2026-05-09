@@ -33,15 +33,17 @@ const AppRoutes = () => {
           <Route path="dashboard" element={<Dashboard />} />
           <Route path="restaurants" element={<RestaurantList />} />
           <Route path="categories" element={<CategoryList />} />
+          <Route path="products" element={<ProductList />} />
           <Route path="tables" element={<TableList />} />
+          <Route path="inventory" element={<InventoryList />} />
+
           <Route path="menus" element={<div className="text-white">Menús (próximamente)</div>} />
-          <Route path="inventory" element={<div className="text-white">Inventario (próximamente)</div>} />
           <Route path="orders" element={<div className="text-white">Pedidos (próximamente)</div>} />
           <Route path="reservations" element={<div className="text-white">Reservaciones (próximamente)</div>} />
           <Route path="events" element={<div className="text-white">Eventos (próximamente)</div>} />
           <Route path="reports" element={<div className="text-white">Reportes (próximamente)</div>} />
+
           <Route path="users" element={<UserList />} />
-          <Route path="products" element={<ProductList />} />
         </Route>
 
         <Route path="*" element={<Navigate to="/login" />} />

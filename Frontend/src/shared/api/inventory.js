@@ -1,52 +1,57 @@
-import axios from 'axios'
+import api from './api'
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/restaurantManagement/v1'
+const INVENTORY_ENDPOINT = '/inventory'
 
-const inventoryApi = axios.create({
-  baseURL: `${API_URL}/inventory`,
+const toNumber = (value, fallback = 0) => {
+  if (value === '' || value === null || value === undefined) return fallback
+
+  const parsed = Number(value)
+  return Number.isNaN(parsed) ? fallback : parsed
+}
+
+const buildCreatePayload = (data = {}) => ({
+  restaurantId: data.restaurantId || data.RestaurantId,
+  mongoProductId: data.mongoProductId || data.MongoProductId || null,
+  name: data.name || data.Name,
+  quantity: toNumber(data.quantity ?? data.Quantity, 0),
+  unit: data.unit || data.Unit || 'unidades',
+  costPerUnit: toNumber(data.costPerUnit ?? data.CostPerUnit ?? data.cost, 0),
+  minStock: toNumber(data.minStock ?? data.MinStock, 5),
 })
 
-inventoryApi.interceptors.request.use((config) => {
-  const token = localStorage.getItem('token')
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`
-  }
-  return config
+const buildUpdatePayload = (data = {}) => ({
+  name: data.name || data.Name,
+  quantity: toNumber(data.quantity ?? data.Quantity, 0),
+  unit: data.unit || data.Unit || 'unidades',
+  costPerUnit: toNumber(data.costPerUnit ?? data.CostPerUnit ?? data.cost, 0),
+  minStock: toNumber(data.minStock ?? data.MinStock, 5),
 })
 
-export const getInventoryByRestaurant = async (restaurantId) => {
-  const { data } = await inventoryApi.get(`/${restaurantId}`)
-  return data.items || []
+export const getInventoryByRestaurant = (restaurantId, params = {}) => {
+  return api.get(`${INVENTORY_ENDPOINT}/${restaurantId}`, { params })
 }
 
-export const createInventoryItem = async (inventoryData) => {
-  const payload = {
-    name: inventoryData.name,
-    restaurantId: inventoryData.restaurantId,
-    quantity: Number(inventoryData.quantity),
-    minStock: Number(inventoryData.minStock),
-    costPerUnit: Number(inventoryData.cost || 0),
-    unit: inventoryData.unit || 'unidades'
-  }
-  const { data } = await inventoryApi.post('/', payload)
-  return data.item || data
+export const getLowStockInventoryByRestaurant = (restaurantId) => {
+  return api.get(`${INVENTORY_ENDPOINT}/${restaurantId}`, {
+    params: { lowStock: true },
+  })
 }
 
-export const updateInventoryItem = async (id, inventoryData) => {
-  const payload = {
-    name: inventoryData.name,
-    minStock: Number(inventoryData.minStock),
-    costPerUnit: Number(inventoryData.cost || 0),
-    unit: inventoryData.unit,
-    quantity: Number(inventoryData.quantity)
-  }
-  const { data } = await inventoryApi.put(`/${id}`, payload)
-  return data.item || data
+export const createInventoryItem = (data) => {
+  return api.post(INVENTORY_ENDPOINT, buildCreatePayload(data))
 }
 
-export const deleteInventoryItem = async (id) => {
-  const { data } = await inventoryApi.delete(`/${id}`)
-  return data
+export const updateInventoryItem = (id, data) => {
+  return api.put(`${INVENTORY_ENDPOINT}/${id}`, buildUpdatePayload(data))
 }
 
-export default inventoryApi
+export const updateInventoryQuantity = (id, data) => {
+  return api.patch(`${INVENTORY_ENDPOINT}/${id}/quantity`, {
+    quantity: toNumber(data.quantity, 0),
+    operation: data.operation || 'set',
+  })
+}
+
+export const deleteInventoryItem = (id) => {
+  return api.delete(`${INVENTORY_ENDPOINT}/${id}`)
+}
