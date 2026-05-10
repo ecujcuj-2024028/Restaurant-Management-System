@@ -1,8 +1,11 @@
 import { verifyJWT } from '../helpers/generate-jwt.js';
 
-/**
- * Middleware para validar JWT en microservicios (Trust JWT Payload)
- */
+const isValidUserId = (userId) => {
+    if (userId === undefined || userId === null) return false;
+    const normalized = String(userId).trim().toLowerCase();
+    return normalized !== '' && normalized !== 'undefined' && normalized !== 'null';
+};
+
 export const validateJWT = async (req, res, next) => {
     try {
         let token =
@@ -16,35 +19,36 @@ export const validateJWT = async (req, res, next) => {
             });
         }
 
-        // Limpiar el token si viene con Bearer
         token = token.replace(/^Bearer\s+/, '');
 
-        // Verificar el token
         const decoded = await verifyJWT(token);
+        const userId = decoded?.sub;
 
-        // En microservicios que no son Identity, confiamos en el payload del JWT
-        // decoded suele traer { sub, email, roles, name, surname }
+        if (!isValidUserId(userId)) {
+            return res.status(401).json({
+                success: false,
+                message: 'Token inválido: identificador de usuario inválido.',
+            });
+        }
+
         req.user = {
-            Id: decoded.sub,
-            Name: decoded.name,
+            Id     : String(userId),
+            id     : String(userId),
+            Name   : decoded.name,
             Surname: decoded.surname,
-            Email: decoded.email,
-            Status: true // Asumimos true ya que el token es válido
+            Email  : decoded.email,
+            Status : true,
         };
-        req.userId = decoded.sub;
-        req.userRoles = decoded.roles;
-        
+        req.userId    = String(userId);
+        req.userRoles = decoded.roles || [];
+
         next();
     } catch (error) {
         console.error('Error validating JWT:', error);
 
         let message = 'Error al verificar el token';
-
-        if (error.name === 'TokenExpiredError') {
-            message = 'Token expirado';
-        } else if (error.name === 'JsonWebTokenError') {
-            message = 'Token inválido';
-        }
+        if (error.name === 'TokenExpiredError') message = 'Token expirado';
+        if (error.name === 'JsonWebTokenError')  message = 'Token inválido';
 
         return res.status(401).json({
             success: false,

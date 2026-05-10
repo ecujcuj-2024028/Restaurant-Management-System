@@ -20,6 +20,9 @@ import reservationRoutes      from './src/reservations/reservation.routes.js';
 import externalOrderRoutes    from './src/external-orders/external-order.routes.js';
 import customerHistoryRoutes  from './src/customer/customerHistory.routes.js';
 
+// Importar modelos ANTES de sequelize.sync() para registrarlos
+import './models/index.js';
+
 dotenv.config();
 
 const app = express();

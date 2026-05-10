@@ -6,6 +6,10 @@ export const getTables = () => {
     return api.get(TABLE_ENDPOINT)
 }
 
+export const getTablesByRestaurant = (restaurantId) => {
+    return api.get(`${TABLE_ENDPOINT}/restaurant/${restaurantId}`)
+}
+
 export const createTable = (data) => {
     return api.post(`${TABLE_ENDPOINT}/create`, data)
 }

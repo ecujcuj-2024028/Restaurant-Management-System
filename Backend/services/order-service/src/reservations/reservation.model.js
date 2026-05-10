@@ -55,6 +55,14 @@ const Reservation = sequelize.define('Reservation', {
         type: DataTypes.ENUM('pendiente', 'confirmada', 'cancelada', 'completada'),
         defaultValue: 'pendiente',
     },
+    customerName: {
+        type: DataTypes.STRING(150),
+        allowNull: true,
+    },
+    customerPhone: {
+        type: DataTypes.STRING(30),
+        allowNull: true,
+    },
     guestCount: {
         type: DataTypes.INTEGER,
         validate: {

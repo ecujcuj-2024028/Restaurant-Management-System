@@ -6,9 +6,14 @@ import { sendReservationConfirmationEmail } from '../../helpers/email-service.js
 import { sequelize } from '../../configs/db-postgres.js';
 import { Op } from 'sequelize';
 
-/* ─────────────────────────────────────────────────────────────────────────────
-  Helper: paginación
-───────────────────────────────────────────────────────────────────────────── */
+const getUserIdFromRequest = (req) => {
+    const userId = req.user?.Id?.toString() || req.user?.id?.toString() || req.userId?.toString();
+    if (!userId) return null;
+    const normalized = userId.trim().toLowerCase();
+    if (normalized === '' || normalized === 'undefined' || normalized === 'null') return null;
+    return userId.trim();
+};
+
 const getPagination = (query) => {
     const page  = Math.max(1, parseInt(query.page)  || 1);
     const limit = Math.min(100, Math.max(1, parseInt(query.limit) || 10));
@@ -24,15 +29,12 @@ const buildPaginationMeta = (page, limit, total) => ({
     hasPrevPage: page > 1,
 });
 
-/* ─────────────────────────────────────────────────────────────────────────────
-  POST /reservations  — Crear reserva (con transacción de PostgreSQL)
-───────────────────────────────────────────────────────────────────────────── */
 export const createReservation = async (req, res) => {
     const transaction = await sequelize.transaction();
 
     try {
-        const { tableId, restaurantId, date, time, guestCount, notes } = req.body;
-        const userId = req.user?.Id?.toString() || req.user?.id?.toString();
+        const { tableId, restaurantId, date, time, guestCount, notes, customerName, customerPhone } = req.body;
+        const userId = getUserIdFromRequest(req);
 
         if (!userId) {
             await transaction.rollback();
@@ -42,7 +44,6 @@ export const createReservation = async (req, res) => {
             });
         }
 
-        /* ── 1. Validaciones de presencia ── */
         if (!tableId || !restaurantId || !date || !time) {
             await transaction.rollback();
             return res.status(400).json({
@@ -51,7 +52,6 @@ export const createReservation = async (req, res) => {
             });
         }
 
-        /* ── 2. Verificar que la mesa existe y bloquear la fila ── */
         const table = await Table.findOne({
             where: {
                 id: tableId,
@@ -70,7 +70,6 @@ export const createReservation = async (req, res) => {
             });
         }
 
-        /* ── 3. Verificar disponibilidad ── */
         if (table.availability !== 'disponible') {
             await transaction.rollback();
             const estadoMsg = {
@@ -90,7 +89,6 @@ export const createReservation = async (req, res) => {
             });
         }
 
-        /* ── 4. Verificar capacidad ── */
         if (guestCount && guestCount > table.capacity) {
             await transaction.rollback();
             return res.status(400).json({
@@ -99,7 +97,6 @@ export const createReservation = async (req, res) => {
             });
         }
 
-        /* ── 5. Verificar conflicto de horario ── */
         const conflicto = await Reservation.findOne({
             where: {
                 tableId,
@@ -118,28 +115,25 @@ export const createReservation = async (req, res) => {
             });
         }
 
-        /* ── 6. Crear la reserva ── */
         const reservation = await Reservation.create({
             tableId,
             userId,
             restaurantId,
             date,
             time,
-            status    : 'confirmada',
-            guestCount: guestCount || null,
-            notes     : notes      || null,
+            status       : 'confirmada',
+            guestCount   : guestCount || null,
+            notes        : notes      || null,
+            customerName : customerName?.trim()  || null,
+            customerPhone: customerPhone?.trim() || null,
         }, { transaction });
 
-        /* ── 7. Actualizar estado de la mesa a 'reservado' ── */
         table.availability = 'reservado';
         await table.save({ transaction });
 
         await transaction.commit();
 
-        /* ── 8. GT-03: Email de confirmación al cliente (background) ── */
         try {
-            // Nota: En microservicios, los datos del usuario (email, nombre) ya vienen 
-            // usualmente en el req.user si el middleware validate-JWT los extrajo del token.
             if (req.user && req.user.Email) {
                 sendReservationConfirmationEmail({
                     customerEmail : req.user.Email,
@@ -157,7 +151,6 @@ export const createReservation = async (req, res) => {
             console.error('[Reservation] Error al obtener datos para email:', emailErr.message);
         }
 
-        /* ── 9. Retornar respuesta ── */
         const populatedReservation = await Reservation.findByPk(reservation.id, {
             include: [{ model: Table, as: 'table' }]
         });
@@ -184,12 +177,9 @@ export const createReservation = async (req, res) => {
     }
 };
 
-/* ─────────────────────────────────────────────────────────────────────────────
-   GET /reservations  — Reservas del usuario autenticado
-───────────────────────────────────────────────────────────────────────────── */
 export const getMyReservations = async (req, res) => {
     try {
-        const userId = req.user?.Id?.toString() || req.user?.id?.toString();
+        const userId = getUserIdFromRequest(req);
 
         if (!userId) {
             return res.status(401).json({
@@ -206,27 +196,30 @@ export const getMyReservations = async (req, res) => {
         if (date)   filter.date   = date;
 
         const { count, rows } = await Reservation.findAndCountAll({
-            where: filter,
+            where  : filter,
             include: [{ model: Table, as: 'table' }],
-            order: [['date', 'DESC'], ['time', 'DESC']],
-            offset: skip,
-            limit: limit
+            order  : [['date', 'DESC'], ['time', 'DESC']],
+            offset : skip,
+            limit  : limit,
         });
 
         return res.status(200).json({
-            success    : true,
-            pagination : buildPaginationMeta(page, limit, count),
+            success     : true,
+            pagination  : buildPaginationMeta(page, limit, count),
             reservations: rows,
         });
 
     } catch (error) {
-        return res.status(500).json({ success: false, message: error.message });
+        console.error('[getMyReservations Error]:', error.message);
+        console.error('[getMyReservations Stack]:', error.stack);
+        return res.status(500).json({ 
+            success: false, 
+            message: error.message,
+            error: process.env.NODE_ENV === 'development' ? error.stack : undefined
+        });
     }
 };
 
-/* ─────────────────────────────────────────────────────────────────────────────
-   GET /reservations/restaurant/:restaurantId  — Reservas de un restaurante
-───────────────────────────────────────────────────────────────────────────── */
 export const getReservationsByRestaurant = async (req, res) => {
     try {
         const { restaurantId } = req.params;
@@ -238,31 +231,34 @@ export const getReservationsByRestaurant = async (req, res) => {
         if (date)   filter.date   = date;
 
         const { count, rows } = await Reservation.findAndCountAll({
-            where: filter,
+            where  : filter,
             include: [{ model: Table, as: 'table' }],
-            order: [['date', 'DESC'], ['time', 'DESC']],
-            offset: skip,
-            limit: limit
+            order  : [['date', 'DESC'], ['time', 'DESC']],
+            offset : skip,
+            limit  : limit,
         });
 
         return res.status(200).json({
-            success    : true,
-            pagination : buildPaginationMeta(page, limit, count),
+            success     : true,
+            pagination  : buildPaginationMeta(page, limit, count),
             reservations: rows,
         });
 
     } catch (error) {
-        return res.status(500).json({ success: false, message: error.message });
+        console.error('[getReservationsByRestaurant Error]:', error.message);
+        console.error('[getReservationsByRestaurant Stack]:', error.stack);
+        return res.status(500).json({ 
+            success: false, 
+            message: error.message,
+            error: process.env.NODE_ENV === 'development' ? error.stack : undefined
+        });
     }
 };
 
-/* ─────────────────────────────────────────────────────────────────────────────
-   PUT /reservations/:id  — Actualizar reserva (soporte para edición de estado)
-   ───────────────────────────────────────────────────────────────────────────── */
 export const updateReservation = async (req, res) => {
     const transaction = await sequelize.transaction();
     try {
-        const userId = req.user?.Id?.toString() || req.user?.id?.toString();
+        const userId = getUserIdFromRequest(req);
         const { id } = req.params;
         const { status, customerName, customerPhone, guestCount, notes } = req.body;
 
@@ -289,12 +285,11 @@ export const updateReservation = async (req, res) => {
             });
         }
 
-        // Permitir actualizar solo los campos proporcionados
-        if (status) reservation.status = status;
-        if (customerName) reservation.customerName = customerName;
+        if (status !== undefined)       reservation.status        = status;
+        if (customerName !== undefined)  reservation.customerName  = customerName;
         if (customerPhone !== undefined) reservation.customerPhone = customerPhone;
-        if (guestCount !== undefined) reservation.guestCount = guestCount;
-        if (notes !== undefined) reservation.notes = notes;
+        if (guestCount !== undefined)    reservation.guestCount    = guestCount;
+        if (notes !== undefined)         reservation.notes         = notes;
 
         await reservation.save({ transaction });
         await transaction.commit();
@@ -304,8 +299,8 @@ export const updateReservation = async (req, res) => {
         });
 
         return res.status(200).json({
-            success: true,
-            message: 'Reserva actualizada correctamente.',
+            success    : true,
+            message    : 'Reserva actualizada correctamente.',
             reservation: populated,
         });
 
@@ -314,18 +309,15 @@ export const updateReservation = async (req, res) => {
         return res.status(500).json({
             success: false,
             message: 'Error interno al actualizar la reserva.',
-            error: error.message,
+            error  : error.message,
         });
     }
 };
 
-/* ─────────────────────────────────────────────────────────────────────────────
-   PATCH /reservations/:id/cancel  — Cancelar reserva y liberar mesa
-   ───────────────────────────────────────────────────────────────────────────── */
 export const cancelReservation = async (req, res) => {
     const transaction = await sequelize.transaction();
     try {
-        const userId = req.user?.Id?.toString() || req.user?.id?.toString();
+        const userId = getUserIdFromRequest(req);
 
         if (!userId) {
             await transaction.rollback();
