@@ -12,6 +12,7 @@ import InventoryList from '../../features/inventory/components/InventoryList'
 import TableList from '../../features/tables/components/TableList'
 import ReservationList from '../../features/reservations/components/ReservationList'
 import MyReservations from '../../features/reservations/components/MyReservations'
+import ExternalOrderList from '../../features/external-orders/components/ExternalOrderList'
 import UserProfile from '../../features/users/components/UserProfile'
 import RoleRoute from '../../shared/components/RoleRoute'
 
@@ -123,6 +124,14 @@ const AppRoutes = () => {
             element={
               <RoleRoute roles={ADMIN_ROLES}>
                 <div className="text-white">Pedidos (próximamente)</div>
+              </RoleRoute>
+            }
+          />
+          <Route
+            path="external-orders"
+            element={
+              <RoleRoute roles={ADMIN_ROLES}>
+                <ExternalOrderList />
               </RoleRoute>
             }
           />

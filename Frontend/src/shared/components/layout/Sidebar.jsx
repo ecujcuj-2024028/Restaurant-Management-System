@@ -15,6 +15,7 @@ import {
   LogOut,
   X,
   User,
+  Truck,
 } from "lucide-react";
 import useAuthStore from "../../../features/auth/store/authStore";
 
@@ -87,6 +88,12 @@ const NAV_ITEMS = [
     label: "Pedidos",
     path: "/orders",
     icon: ShoppingCart,
+    roles: [ROLES.ADMIN_SISTEMA, ROLES.ADMIN_RESTAURANTE],
+  },
+  {
+    label: "Pedidos Externos",
+    path: "/external-orders",
+    icon: Truck,
     roles: [ROLES.ADMIN_SISTEMA, ROLES.ADMIN_RESTAURANTE],
   },
   {
