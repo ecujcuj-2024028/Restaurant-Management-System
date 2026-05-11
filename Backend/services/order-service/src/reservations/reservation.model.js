@@ -12,6 +12,7 @@ const Reservation = sequelize.define('Reservation', {
     tableId: {
         type: DataTypes.UUID,
         allowNull: false,
+        field: 'table_id', // Forzamos el nombre de la columna en la DB
         validate: {
             notNull: { msg: 'La mesa es requerida' }
         }
@@ -19,6 +20,7 @@ const Reservation = sequelize.define('Reservation', {
     userId: {
         type: DataTypes.STRING,
         allowNull: false,
+        field: 'user_id',
         validate: {
             notNull: { msg: 'El usuario es requerido' }
         }
@@ -26,6 +28,7 @@ const Reservation = sequelize.define('Reservation', {
     restaurantId: {
         type: DataTypes.STRING,
         allowNull: false,
+        field: 'restaurant_id',
         validate: {
             notNull: { msg: 'El restaurante es requerido' }
         }
@@ -57,13 +60,16 @@ const Reservation = sequelize.define('Reservation', {
     customerName: {
         type: DataTypes.STRING(150),
         allowNull: true,
+        field: 'customer_name', // Mapeo explícito
     },
     customerPhone: {
         type: DataTypes.STRING(30),
         allowNull: true,
+        field: 'customer_phone',
     },
     guestCount: {
         type: DataTypes.INTEGER,
+        field: 'guest_count',
         validate: {
             min: {
                 args: [1],
@@ -96,7 +102,7 @@ const Reservation = sequelize.define('Reservation', {
 });
 
 // Relaciones
-Table.hasMany(Reservation, { foreignKey: 'tableId' });
-Reservation.belongsTo(Table, { foreignKey: 'tableId', as: 'table' });
+Table.hasMany(Reservation, { foreignKey: 'table_id', as: 'reservations' });
+Reservation.belongsTo(Table, { foreignKey: 'table_id', as: 'table' });
 
-export default Reservation; 
+export default Reservation;
