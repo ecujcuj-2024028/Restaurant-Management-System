@@ -1,12 +1,26 @@
 import { useForm } from 'react-hook-form'
 import useAuthStore from '../store/authStore'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { CheckCircle2, ArrowLeft } from 'lucide-react'
 
 const VerifyEmailForm = ({ onBack }) => {
-  const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm()
+  const { register, handleSubmit, setValue, formState: { errors, isSubmitting } } = useForm()
   const verifyEmail = useAuthStore((state) => state.verifyEmail)
   const [verified, setVerified] = useState(false)
+  const [autoVerifying, setAutoVerifying] = useState(false)
+  const [searchParams] = useSearchParams()
+
+  useEffect(() => {
+    const verifyToken = searchParams.get('verifyToken') || searchParams.get('token')
+    if (verifyToken) {
+      setValue('token', verifyToken)
+      setAutoVerifying(true)
+      verifyEmail(verifyToken)
+        .then(() => setVerified(true))
+        .catch(() => setAutoVerifying(false))
+    }
+  }, [])
 
   const onSubmit = async (data) => {
     try {
@@ -15,6 +29,15 @@ const VerifyEmailForm = ({ onBack }) => {
     } catch (error) {
       alert('Token inválido o expirado')
     }
+  }
+
+  if (autoVerifying && !verified) {
+    return (
+      <div className="text-center space-y-6 py-4">
+        <div className="w-16 h-16 rounded-full border-4 border-orange-500/20 border-t-orange-500 animate-spin mx-auto"></div>
+        <p className="text-zinc-400 text-sm">Verificando tu cuenta...</p>
+      </div>
+    )
   }
 
   if (verified) {

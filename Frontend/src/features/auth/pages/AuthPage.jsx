@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { Utensils } from 'lucide-react'
 import LoginForm from '../components/LoginForm'
+import RegisterForm from '../components/RegisterForm'
 import ForgotPasswordForm from '../components/ForgotPasswordForm'
 import VerifyEmailForm from '../components/VerifyEmailForm'
 import ResetPasswordForm from '../components/ResetPasswordForm'
@@ -11,11 +12,32 @@ const AuthPage = () => {
   const [searchParams] = useSearchParams()
 
   useEffect(() => {
-    // Si detectamos un token en la URL, mostramos la vista de reset
-    if (searchParams.get('token')) {
+    const token = searchParams.get('token') || searchParams.get('verifyToken')
+    if (!token) return
+
+    // Decodifica el payload del JWT para saber qué tipo de token es
+    try {
+      const payload = JSON.parse(atob(token.split('.')[1]))
+      if (payload.type === 'EMAIL_VERIFICATION') {
+        setView('verify')
+      } else {
+        setView('reset')
+      }
+    } catch {
+      // Si no se puede decodificar, asumir reset (comportamiento anterior)
       setView('reset')
     }
   }, [searchParams])
+
+  const titles = {
+    login:    { h1: 'Bienvenido',           sub: 'Ingresa tus credenciales para continuar' },
+    register: { h1: 'Crear cuenta',         sub: 'Completa el formulario para registrarte' },
+    forgot:   { h1: 'Recuperar contraseña', sub: 'Te enviaremos un correo con instrucciones' },
+    verify:   { h1: 'Verificar correo',     sub: 'Ingresa el token que recibiste en tu correo' },
+    reset:    { h1: 'Nueva Contraseña',     sub: 'Estás a un paso de recuperar tu acceso' },
+  }
+
+  const { h1, sub } = titles[view] || titles.login
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-zinc-950 p-4"
@@ -29,54 +51,43 @@ const AuthPage = () => {
       <div className="w-full max-w-md bg-zinc-900 border border-zinc-800 rounded-3xl shadow-2xl p-10 relative overflow-hidden">
         <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-orange-600 via-orange-400 to-orange-600"></div>
 
-        <div className="flex items-center justify-center gap-3 mb-10">
+        <div className="flex items-center justify-center gap-3 mb-8">
           <div className="w-12 h-12 rounded-2xl bg-orange-500 flex items-center justify-center shadow-lg shadow-orange-500/20">
             <Utensils className="text-white" size={24} />
           </div>
           <span className="text-white font-black text-2xl tracking-tighter">GastroManager</span>
         </div>
 
+        <div className="mb-6 text-center">
+          <h1 className="text-2xl font-bold text-white mb-1">{h1}</h1>
+          <p className="text-zinc-500 text-sm">{sub}</p>
+        </div>
+
         {view === 'login' && (
-          <>
-            <div className="mb-6 text-center">
-              <h1 className="text-2xl font-bold text-white mb-1">Bienvenido</h1>
-              <p className="text-zinc-500 text-sm">Ingresa tus credenciales para continuar</p>
-            </div>
-            <LoginForm
-              onForgotPassword={() => setView('forgot')}
-              onVerifyEmail={() => setView('verify')}
-            />
-          </>
+          <LoginForm
+            onForgotPassword={() => setView('forgot')}
+            onVerifyEmail={() => setView('verify')}
+            onRegister={() => setView('register')}
+          />
+        )}
+
+        {view === 'register' && (
+          <RegisterForm
+            onBack={() => setView('login')}
+            onVerifyEmail={() => setView('verify')}
+          />
         )}
 
         {view === 'forgot' && (
-          <>
-            <div className="mb-6 text-center">
-              <h1 className="text-2xl font-bold text-white mb-1">Recuperar contraseña</h1>
-              <p className="text-zinc-500 text-sm">Te enviaremos un correo con instrucciones</p>
-            </div>
-            <ForgotPasswordForm onBack={() => setView('login')} />
-          </>
+          <ForgotPasswordForm onBack={() => setView('login')} />
         )}
 
         {view === 'verify' && (
-          <>
-            <div className="mb-6 text-center">
-              <h1 className="text-2xl font-bold text-white mb-1">Verificar correo</h1>
-              <p className="text-zinc-500 text-sm">Ingresa el token que recibiste en tu correo</p>
-            </div>
-            <VerifyEmailForm onBack={() => setView('login')} />
-          </>
+          <VerifyEmailForm onBack={() => setView('login')} />
         )}
 
         {view === 'reset' && (
-          <>
-            <div className="mb-6 text-center">
-              <h1 className="text-2xl font-bold text-white mb-1">Nueva Contraseña</h1>
-              <p className="text-zinc-500 text-sm">Estás a un paso de recuperar tu acceso</p>
-            </div>
-            <ResetPasswordForm onBack={() => setView('login')} />
-          </>
+          <ResetPasswordForm onBack={() => setView('login')} />
         )}
 
         <p className="text-center text-zinc-600 text-xs mt-8">

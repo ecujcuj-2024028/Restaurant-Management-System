@@ -1,7 +1,7 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import api from '../../../shared/api/api'
-import { forgotPassword, verifyEmail, resetPassword } from '../../../shared/api/auth'
+import { registerUser, forgotPassword, verifyEmail, resetPassword } from '../../../shared/api/auth'
 
 const useAuthStore = create(
   persist(
@@ -9,6 +9,10 @@ const useAuthStore = create(
       user: null,
       token: null,
       isAuthenticated: false,
+
+      register: async (data) => {
+        await registerUser(data)
+      },
 
       login: async (email, password) => {
       const response = await api.post('/auth/login', { emailOrUsername: email, password })

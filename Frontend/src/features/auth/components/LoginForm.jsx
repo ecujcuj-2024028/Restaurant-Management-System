@@ -5,7 +5,7 @@ import { toast } from 'react-hot-toast'
 import { Eye, EyeOff, Mail, Lock } from 'lucide-react'
 import useAuthStore from '../store/authStore'
 
-const LoginForm = ({ onForgotPassword, onVerifyEmail }) => {
+const LoginForm = ({ onForgotPassword, onVerifyEmail, onRegister }) => {
   const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm()
   const [showPassword, setShowPassword] = useState(false)
   const login = useAuthStore((state) => state.login)
@@ -104,7 +104,7 @@ const LoginForm = ({ onForgotPassword, onVerifyEmail }) => {
         ) : 'Iniciar sesión'}
       </button>
 
-      <div className="text-center pt-2">
+      <div className="text-center pt-2 space-y-3">
         <button 
           type="button"
           onClick={onVerifyEmail}
@@ -112,6 +112,18 @@ const LoginForm = ({ onForgotPassword, onVerifyEmail }) => {
         >
           Tengo un código de verificación
         </button>
+        <div className="border-t border-zinc-800 pt-3">
+          <p className="text-zinc-500 text-sm">
+            ¿No tienes cuenta?{' '}
+            <button
+              type="button"
+              onClick={onRegister}
+              className="text-orange-500 hover:text-orange-400 font-semibold transition-colors"
+            >
+              Regístrate
+            </button>
+          </p>
+        </div>
       </div>
     </form>
   )

@@ -48,7 +48,7 @@ const getFrontendUrl = () => {
 
 export const sendVerificationEmail = async (email, name, verificationToken) => {
     if (!transporter) throw new Error('SMTP transporter not configured');
-    const url = `${getFrontendUrl()}?token=${verificationToken}`;
+    const url = `${getFrontendUrl()}?verifyToken=${verificationToken}`;
 
     await transporter.sendMail({
         from: `"${config.smtp.fromName}" <${config.smtp.fromEmail}>`,
