@@ -32,7 +32,7 @@ const ROLES = {
  */
 const NAV_ITEMS = [
   {
-    label: "Dashboard",
+    label: "Página Principal",
     path: "/dashboard",
     icon: LayoutDashboard,
     roles: [], // Visible para todos
@@ -70,12 +70,12 @@ const NAV_ITEMS = [
     roles: [ROLES.ADMIN_SISTEMA],
   },
 
-  // ── ADMIN_SISTEMA y ADMIN_RESTAURANTE ──
+  // ── Todos pueden ver el catálogo ──
   {
     label: "Restaurantes",
     path: "/restaurants",
     icon: Utensils,
-    roles: [ROLES.ADMIN_SISTEMA, ROLES.ADMIN_RESTAURANTE],
+    roles: [ROLES.ADMIN_SISTEMA, ROLES.ADMIN_RESTAURANTE, ROLES.CLIENTE],
   },
   {
     label: "Menús",
