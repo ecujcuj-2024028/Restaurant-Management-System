@@ -1,6 +1,5 @@
 'use strict';
-
-import { DataTypes } from 'sequelize';
+import { DataTypes, Op } from 'sequelize';
 import { sequelize } from '../../configs/db-postgres.js';
 import Table from '../tables/table.model.js';
 
@@ -83,11 +82,15 @@ const Reservation = sequelize.define('Reservation', {
     indexes: [
         {
             unique: true,
-            fields: ['tableId', 'date', 'time'],
-            where: "status IN ('pendiente', 'confirmada')"
+            fields: ['table_id', 'date', 'time'],
+            where: {
+                status: {
+                    [Op.ne]: 'cancelada'
+                }
+            }
         },
         {
-            fields: ['userId', 'date']
+            fields: ['user_id', 'date']
         }
     ]
 });
@@ -96,4 +99,4 @@ const Reservation = sequelize.define('Reservation', {
 Table.hasMany(Reservation, { foreignKey: 'tableId' });
 Reservation.belongsTo(Table, { foreignKey: 'tableId', as: 'table' });
 
-export default Reservation;
+export default Reservation; 
