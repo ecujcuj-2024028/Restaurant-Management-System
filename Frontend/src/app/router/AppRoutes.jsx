@@ -10,10 +10,22 @@ import ProductList from '../../features/product/components/ProductList'
 import InventoryList from '../../features/inventory/components/InventoryList'
 import TableList from '../../features/tables/components/TableList'
 import ReservationList from '../../features/reservations/components/ReservationList'
+import RoleRoute from '../../shared/components/RoleRoute'
 
+// Roles disponibles en el sistema
+const ROLES = {
+  ADMIN_SISTEMA: 'ADMIN_SISTEMA',
+  ADMIN_RESTAURANTE: 'ADMIN_RESTAURANTE',
+  CLIENTE: 'CLIENTE',
+}
+
+// Roles con acceso de administración (sistema + restaurante)
+const ADMIN_ROLES = [ROLES.ADMIN_SISTEMA, ROLES.ADMIN_RESTAURANTE]
+
+// Protege rutas que requieren autenticación (cualquier rol)
 const ProtectedRoute = ({ children }) => {
   const { isAuthenticated } = useAuthStore()
-  return isAuthenticated ? children : <Navigate to="/login" />
+  return isAuthenticated ? children : <Navigate to="/login" replace />
 }
 
 const AppRoutes = () => {
@@ -30,24 +42,132 @@ const AppRoutes = () => {
             </ProtectedRoute>
           }
         >
-          <Route index element={<Navigate to="/dashboard" />} />
+          {/* Redirección raíz */}
+          <Route index element={<Navigate to="/dashboard" replace />} />
+
+          {/* ── Accesible por todos los roles autenticados ── */}
           <Route path="dashboard" element={<Dashboard />} />
-          <Route path="restaurants" element={<RestaurantList />} />
-          <Route path="categories" element={<CategoryList />} />
-          <Route path="products" element={<ProductList />} />
-          <Route path="tables" element={<TableList />} />
-          <Route path="inventory" element={<InventoryList />} />
 
-          <Route path="menus" element={<div className="text-white">Menús (próximamente)</div>} />
-          <Route path="orders" element={<div className="text-white">Pedidos (próximamente)</div>} />
-          <Route path="reservations" element={<ReservationList />} />
-          <Route path="events" element={<div className="text-white">Eventos (próximamente)</div>} />
-          <Route path="reports" element={<div className="text-white">Reportes (próximamente)</div>} />
+          {/* ── Solo ADMIN_SISTEMA ── */}
+          <Route
+            path="users"
+            element={
+              <RoleRoute roles={ROLES.ADMIN_SISTEMA}>
+                <UserList />
+              </RoleRoute>
+            }
+          />
+          <Route
+            path="categories"
+            element={
+              <RoleRoute roles={ROLES.ADMIN_SISTEMA}>
+                <CategoryList />
+              </RoleRoute>
+            }
+          />
+          <Route
+            path="tables"
+            element={
+              <RoleRoute roles={ROLES.ADMIN_SISTEMA}>
+                <TableList />
+              </RoleRoute>
+            }
+          />
+          <Route
+            path="products"
+            element={
+              <RoleRoute roles={ROLES.ADMIN_SISTEMA}>
+                <ProductList />
+              </RoleRoute>
+            }
+          />
+          <Route
+            path="reports"
+            element={
+              <RoleRoute roles={ROLES.ADMIN_SISTEMA}>
+                <div className="text-white">Reportes (próximamente)</div>
+              </RoleRoute>
+            }
+          />
 
-          <Route path="users" element={<UserList />} />
+          {/* ── ADMIN_SISTEMA y ADMIN_RESTAURANTE ── */}
+          <Route
+            path="restaurants"
+            element={
+              <RoleRoute roles={ADMIN_ROLES}>
+                <RestaurantList />
+              </RoleRoute>
+            }
+          />
+          <Route
+            path="menus"
+            element={
+              <RoleRoute roles={ADMIN_ROLES}>
+                <div className="text-white">Menús (próximamente)</div>
+              </RoleRoute>
+            }
+          />
+          <Route
+            path="orders"
+            element={
+              <RoleRoute roles={ADMIN_ROLES}>
+                <div className="text-white">Pedidos (próximamente)</div>
+              </RoleRoute>
+            }
+          />
+          <Route
+            path="inventory"
+            element={
+              <RoleRoute roles={ADMIN_ROLES}>
+                <InventoryList />
+              </RoleRoute>
+            }
+          />
+          <Route
+            path="reservations"
+            element={
+              <RoleRoute roles={ADMIN_ROLES}>
+                <ReservationList />
+              </RoleRoute>
+            }
+          />
+          <Route
+            path="events"
+            element={
+              <RoleRoute roles={ADMIN_ROLES}>
+                <div className="text-white">Eventos (próximamente)</div>
+              </RoleRoute>
+            }
+          />
+
+          {/* ── CLIENTE ── */}
+          <Route
+            path="my-orders"
+            element={
+              <RoleRoute roles={ROLES.CLIENTE}>
+                <div className="text-white">Mis Pedidos (próximamente)</div>
+              </RoleRoute>
+            }
+          />
+          <Route
+            path="my-reservations"
+            element={
+              <RoleRoute roles={ROLES.CLIENTE}>
+                <div className="text-white">Mis Reservaciones (próximamente)</div>
+              </RoleRoute>
+            }
+          />
+          <Route
+            path="profile"
+            element={
+              <RoleRoute roles={Object.values(ROLES)}>
+                <div className="text-white">Perfil (próximamente)</div>
+              </RoleRoute>
+            }
+          />
         </Route>
 
-        <Route path="*" element={<Navigate to="/login" />} />
+        <Route path="*" element={<Navigate to="/login" replace />} />
       </Routes>
     </BrowserRouter>
   )
