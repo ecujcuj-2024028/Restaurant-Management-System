@@ -35,23 +35,6 @@ const router = Router();
  */
 router.get('/', getProducts);
 
-/**
- * @swagger
- * /product/{id}:
- *   get:
- *     summary: Obtener un producto por ID
- *     tags: [Products]
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema: { type: string }
- *     responses:
- *       200: { description: Detalles del producto }
- *       404: { description: No encontrado }
- */
-router.get('/:id', getProduct);
-
 // Estadísticas de productos por restaurante — solo ADMIN_RESTAURANTE y ADMIN_SISTEMA
 /**
  * @swagger
@@ -75,6 +58,23 @@ router.get(
     hasRole(ADMIN_RESTAURANTE, ADMIN_SISTEMA),
     getProductStats
 );
+
+/**
+ * @swagger
+ * /product/{id}:
+ *   get:
+ *     summary: Obtener un producto por ID
+ *     tags: [Products]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string }
+ *     responses:
+ *       200: { description: Detalles del producto }
+ *       404: { description: No encontrado }
+ */
+router.get('/:id', getProduct);
 
 /**
  * @swagger
