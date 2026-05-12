@@ -250,6 +250,32 @@ export const resetPassword = async (req, res, next) => {
 /* =========================
    ROLE UPGRADE REQUESTS
    ========================= */
+/* =========================
+   ROLE UPGRADE REQUESTS
+   ========================= */
+export const getRoleRequests = async (req, res) => {
+    try {
+        const requests = await RoleUpgradeRequest.findAll({
+            include: [{
+                model: User,
+                attributes: ['Name', 'Surname', 'Email', 'Username']
+            }],
+            order: [['createdAt', 'DESC']]
+        });
+
+        return res.status(200).json({
+            success: true,
+            requests
+        });
+    } catch (error) {
+        return res.status(500).json({
+            success: false,
+            message: 'Error al obtener solicitudes',
+            error: error.message
+        });
+    }
+};
+
 export const requestRoleUpgrade = async (req, res) => {
     try {
         const { requestedRole } = req.body;

@@ -4,6 +4,7 @@ import {
     login,
     verifyEmail,
     handleRoleRequest,
+    getRoleRequests,
     requestRoleUpgrade,
     forgotPassword,
     resetPassword,
@@ -178,6 +179,22 @@ router.get('/role-requests/:id/approve', handleRoleRequest);
  *       403: { description: Token inválido }
  */
 router.get('/role-requests/:id/reject', handleRoleRequest);
+
+/**
+ * @swagger
+ * /auth/role-requests:
+ *   get:
+ *     summary: Listar todas las solicitudes de cambio de rol (Solo Admin)
+ *     tags: [Auth]
+ *     responses:
+ *       200: { description: Lista de solicitudes }
+ */
+router.get(
+    '/role-requests',
+    validateJWT,
+    hasRole(ADMIN_SISTEMA),
+    getRoleRequests
+);
 
 /* ============================================================
    RUTAS PROTEGIDAS (REQUIEREN JWT)

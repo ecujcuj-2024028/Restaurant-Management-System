@@ -5,104 +5,54 @@ import Table       from '../tables/table.model.js';
 import { sendReservationConfirmationEmail } from '../../helpers/email-service.js';
 import { sequelize } from '../../configs/db-postgres.js';
 import { Op } from 'sequelize';
+import { ADMIN_RESTAURANTE, ADMIN_SISTEMA } from '../../helpers/role-constants.js';
 
 const getUserIdFromRequest = (req) => {
-    const userId = req.user?.Id?.toString() || req.user?.id?.toString() || req.userId?.toString();
-    if (!userId) return null;
-    const normalized = userId.trim().toLowerCase();
-    if (normalized === '' || normalized === 'undefined' || normalized === 'null') return null;
-    return userId.trim();
+    return req.userId?.toString() || req.user?.id?.toString() || req.user?._id?.toString();
 };
 
-const getPagination = (query) => {
-    const page  = Math.max(1, parseInt(query.page)  || 1);
-    const limit = Math.min(100, Math.max(1, parseInt(query.limit) || 10));
-    return { page, limit, skip: (page - 1) * limit };
+const getTimeWindow = (time) => {
+    const [hours, minutes] = time.split(':').map(Number);
+    const start = new Date(2000, 0, 1, hours, minutes);
+    const end = new Date(2000, 0, 1, hours, minutes);
+    const windowStart = new Date(start.getTime() - 119 * 60000); 
+    const windowEnd = new Date(end.getTime() + 119 * 60000);
+    const format = (d) => `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+    return [format(windowStart), format(windowEnd)];
 };
-
-const buildPaginationMeta = (page, limit, total) => ({
-    page,
-    limit,
-    total,
-    totalPages : Math.ceil(total / limit),
-    hasNextPage: page < Math.ceil(total / limit),
-    hasPrevPage: page > 1,
-});
 
 export const createReservation = async (req, res) => {
     const transaction = await sequelize.transaction();
-
     try {
-        const { tableId, restaurantId, date, time, guestCount, notes, customerName, customerPhone } = req.body;
+        const { tableId, restaurantId, date, time, guestCount, notes, customerName, customerPhone, customerEmail } = req.body;
+        
         const userId = getUserIdFromRequest(req);
+        const userRoles = req.userRoles || [];
+        const isAdmin = userRoles.some(r => r === ADMIN_SISTEMA || r === ADMIN_RESTAURANTE);
+
+        console.log(`[Reservation Debug] User: ${userId} | Roles: ${JSON.stringify(userRoles)} | IsAdmin: ${isAdmin}`);
 
         if (!userId) {
             await transaction.rollback();
-            return res.status(401).json({
-                success: false,
-                message: 'Usuario no autenticado. Token inválido o expirado.',
-            });
-        }
-
-        if (!tableId || !restaurantId || !date || !time) {
-            await transaction.rollback();
-            return res.status(400).json({
-                success: false,
-                message: 'Los campos tableId, restaurantId, date y time son obligatorios.',
-            });
+            return res.status(401).json({ success: false, message: 'Usuario no autenticado.' });
         }
 
         const table = await Table.findOne({
-            where: {
-                id: tableId,
-                restaurant: restaurantId,
-                isActive: true,
-            },
-            lock: true,
-            transaction
+            where: { id: tableId, restaurant: restaurantId, isActive: true },
+            lock: true, transaction
         });
 
         if (!table) {
             await transaction.rollback();
-            return res.status(404).json({
-                success: false,
-                message: 'La mesa no existe, no pertenece al restaurante indicado o está inactiva.',
-            });
+            return res.status(404).json({ success: false, message: 'Mesa no disponible.' });
         }
 
-        if (table.availability !== 'disponible') {
-            await transaction.rollback();
-            const estadoMsg = {
-                ocupado  : 'La mesa ya se encuentra ocupada en este momento.',
-                reservado: 'La mesa ya tiene una reserva activa. Por favor elige otra mesa o un horario diferente.',
-            };
-            return res.status(400).json({
-                success: false,
-                message: estadoMsg[table.availability] ?? `La mesa no está disponible (estado: ${table.availability}).`,
-                table  : {
-                    id          : table.id,
-                    number      : table.number,
-                    availability: table.availability,
-                    capacity    : table.capacity,
-                    location    : table.location,
-                },
-            });
-        }
-
-        if (guestCount && guestCount > table.capacity) {
-            await transaction.rollback();
-            return res.status(400).json({
-                success: false,
-                message: `La mesa #${table.number} tiene capacidad para ${table.capacity} comensales, pero se solicitaron ${guestCount}.`,
-            });
-        }
-
+        const [timeStart, timeEnd] = getTimeWindow(time);
         const conflicto = await Reservation.findOne({
             where: {
-                tableId,
-                date,
-                time,
-                status: { [Op.in]: ['pendiente', 'confirmada'] }
+                tableId, date,
+                status: { [Op.in]: ['pendiente', 'confirmada'] },
+                time: { [Op.between]: [timeStart, timeEnd] }
             },
             transaction
         });
@@ -111,267 +61,154 @@ export const createReservation = async (req, res) => {
             await transaction.rollback();
             return res.status(400).json({
                 success: false,
-                message: `Ya existe una reserva ${conflicto.status} para la mesa #${table.number} el ${date} a las ${time}.`,
+                message: `Conflicto: Mesa ocupada a las ${conflicto.time}.`
             });
         }
 
+        // DETERMINACIÓN ESTRICTA DE ESTADO
+        const initialStatus = isAdmin ? 'confirmada' : 'pendiente';
+
         const reservation = await Reservation.create({
-            tableId,
-            userId,
-            restaurantId,
-            date,
-            time,
-            status       : 'confirmada',
-            guestCount   : guestCount || null,
-            notes        : notes      || null,
-            customerName : customerName?.trim()  || null,
-            customerPhone: customerPhone?.trim() || null,
+            tableId, userId, restaurantId, date, time,
+            status: initialStatus,
+            guestCount, notes, customerName, customerPhone, customerEmail
         }, { transaction });
 
-        table.availability = 'reservado';
-        await table.save({ transaction });
+        if (initialStatus === 'confirmada') {
+            table.availability = 'reservado';
+            await table.save({ transaction });
+        }
 
         await transaction.commit();
 
-        try {
-            if (req.user && req.user.Email) {
+        // ─── LÓGICA DE EMAIL ULTRA-ESTRICTA ───
+        // Solo enviamos si el estado es exactamente 'confirmada'
+        if (reservation.status === 'confirmada') {
+            console.log(`[Email] Disparando correo de confirmación inmediata para ${customerEmail || req.user?.Email}`);
+            const recipientEmail = customerEmail || req.user?.Email;
+            if (recipientEmail) {
                 sendReservationConfirmationEmail({
-                    customerEmail : req.user.Email,
-                    customerName  : `${req.user.Name} ${req.user.Surname}`,
-                    restaurantName: `Restaurante (${restaurantId})`,
-                    tableNumber   : table.number,
-                    tableLocation : table.location,
-                    date,
-                    time,
-                    guestCount    : guestCount || null,
-                    reservationId : reservation.id,
-                }).catch(err => console.error('[Reservation] Error enviando email:', err.message));
+                    customerEmail: recipientEmail,
+                    customerName: customerName || (req.user ? `${req.user.Name} ${req.user.Surname}` : 'Cliente'),
+                    restaurantName: `Sede ${restaurantId}`,
+                    tableNumber: table.number,
+                    tableLocation: table.location,
+                    date, time, guestCount,
+                    reservationId: reservation.id,
+                    status: 'confirmada'
+                }).catch(e => console.error('Error email:', e.message));
             }
-        } catch (emailErr) {
-            console.error('[Reservation] Error al obtener datos para email:', emailErr.message);
+        } else {
+            console.log(`[Email] Estado es ${reservation.status}. NO se envía correo todavía.`);
         }
 
-        const populatedReservation = await Reservation.findByPk(reservation.id, {
+        return res.status(201).json({ 
+            success: true, 
+            message: isAdmin ? 'Confirmada.' : 'Solicitud pendiente.',
+            reservation 
+        });
+    } catch (error) {
+        if (transaction) await transaction.rollback();
+        return res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+export const updateReservation = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { status } = req.body;
+        
+        const reservation = await Reservation.findByPk(id, {
             include: [{ model: Table, as: 'table' }]
         });
+        
+        if (!reservation) return res.status(404).json({ message: 'No encontrada' });
 
-        return res.status(201).json({
-            success    : true,
-            message    : `Reserva confirmada para la mesa #${table.number} el ${date} a las ${time}.`,
-            reservation: populatedReservation,
-        });
+        const previousStatus = reservation.status;
 
-    } catch (error) {
-        await transaction.rollback();
-        if (error.name === 'SequelizeUniqueConstraintError') {
-            return res.status(400).json({
-                success: false,
-                message: 'Conflicto: ya existe una reserva para esa mesa en el mismo horario.',
-            });
+        // Si se confirma, marcar mesa como reservada y ENVIAR EMAIL
+        if (status === 'confirmada' && previousStatus !== 'confirmada') {
+            console.log(`[Email] Reservación aprobada por Admin. Enviando correo a ${reservation.customerEmail || 'usuario'}`);
+            await Table.update({ availability: 'reservado' }, { where: { id: reservation.tableId } });
+            
+            const recipientEmail = reservation.customerEmail || (req.user?.Email && reservation.userId === req.userId ? req.user.Email : null);
+            
+            if (recipientEmail) {
+                sendReservationConfirmationEmail({
+                    customerEmail: recipientEmail,
+                    customerName: reservation.customerName || 'Cliente',
+                    restaurantName: `Sede ${reservation.restaurantId}`,
+                    tableNumber: reservation.table?.number,
+                    tableLocation: reservation.table?.location,
+                    date: reservation.date,
+                    time: reservation.time,
+                    guestCount: reservation.guestCount,
+                    reservationId: reservation.id,
+                    status: 'confirmada'
+                }).catch(e => console.error('[Update] Error email:', e.message));
+            }
         }
-        return res.status(500).json({
-            success: false,
-            message: 'Error interno al crear la reserva.',
-            error  : error.message,
-        });
+        
+        if (['cancelada', 'completada'].includes(status)) {
+            await Table.update({ availability: 'disponible' }, { where: { id: reservation.tableId } });
+        }
+
+        reservation.status = status;
+        await reservation.save();
+        
+        return res.json({ success: true, reservation });
+    } catch (error) {
+        return res.status(500).json({ success: false, error: error.message });
     }
 };
 
 export const getMyReservations = async (req, res) => {
     try {
         const userId = getUserIdFromRequest(req);
+        const userRoles = req.userRoles || [];
+        const isAdmin = userRoles.some(r => r === ADMIN_SISTEMA || r === ADMIN_RESTAURANTE);
 
-        if (!userId) {
-            return res.status(401).json({
-                success: false,
-                message: 'Usuario no autenticado. Token inválido o expirado.',
-            });
-        }
-
-        const { status, date } = req.query;
-        const { page, limit, skip } = getPagination(req.query);
-
-        const filter = { userId };
-        if (status) filter.status = status;
-        if (date)   filter.date   = date;
+        let filter = { userId };
+        if (isAdmin) filter = {}; 
 
         const { count, rows } = await Reservation.findAndCountAll({
-            where  : filter,
+            where: filter,
             include: [{ model: Table, as: 'table' }],
-            order  : [['date', 'DESC'], ['time', 'DESC']],
-            offset : skip,
-            limit  : limit,
+            order: [['date', 'DESC'], ['time', 'ASC']]
         });
-
-        return res.status(200).json({
-            success     : true,
-            pagination  : buildPaginationMeta(page, limit, count),
-            reservations: rows,
-        });
-
+        
+        return res.json({ success: true, reservations: rows });
     } catch (error) {
-        console.error('[getMyReservations Error]:', error.message);
-        console.error('[getMyReservations Stack]:', error.stack);
-        return res.status(500).json({ 
-            success: false, 
-            message: error.message,
-            error: process.env.NODE_ENV === 'development' ? error.stack : undefined
-        });
+        return res.status(500).json({ success: false, error: error.message });
     }
 };
 
 export const getReservationsByRestaurant = async (req, res) => {
     try {
         const { restaurantId } = req.params;
-        const { status, date } = req.query;
-        const { page, limit, skip } = getPagination(req.query);
-
-        const filter = { restaurantId };
-        if (status) filter.status = status;
-        if (date)   filter.date   = date;
-
         const { count, rows } = await Reservation.findAndCountAll({
-            where  : filter,
+            where: { restaurantId },
             include: [{ model: Table, as: 'table' }],
-            order  : [['date', 'DESC'], ['time', 'DESC']],
-            offset : skip,
-            limit  : limit,
+            order: [['date', 'DESC'], ['time', 'ASC']]
         });
-
-        return res.status(200).json({
-            success     : true,
-            pagination  : buildPaginationMeta(page, limit, count),
-            reservations: rows,
-        });
-
+        return res.json({ success: true, reservations: rows });
     } catch (error) {
-        console.error('[getReservationsByRestaurant Error]:', error.message);
-        console.error('[getReservationsByRestaurant Stack]:', error.stack);
-        return res.status(500).json({ 
-            success: false, 
-            message: error.message,
-            error: process.env.NODE_ENV === 'development' ? error.stack : undefined
-        });
-    }
-};
-
-export const updateReservation = async (req, res) => {
-    const transaction = await sequelize.transaction();
-    try {
-        const userId = getUserIdFromRequest(req);
-        const { id } = req.params;
-        const { status, customerName, customerPhone, guestCount, notes } = req.body;
-
-        if (!userId) {
-            await transaction.rollback();
-            return res.status(401).json({
-                success: false,
-                message: 'Usuario no autenticado. Token inválido o expirado.',
-            });
-        }
-
-        const reservation = await Reservation.findByPk(id, { transaction });
-
-        if (!reservation) {
-            await transaction.rollback();
-            return res.status(404).json({ success: false, message: 'Reserva no encontrada.' });
-        }
-
-        if (reservation.userId !== userId) {
-            await transaction.rollback();
-            return res.status(403).json({
-                success: false,
-                message: 'No tienes permiso para editar esta reserva.',
-            });
-        }
-
-        if (status !== undefined)       reservation.status        = status;
-        if (customerName !== undefined)  reservation.customerName  = customerName;
-        if (customerPhone !== undefined) reservation.customerPhone = customerPhone;
-        if (guestCount !== undefined)    reservation.guestCount    = guestCount;
-        if (notes !== undefined)         reservation.notes         = notes;
-
-        await reservation.save({ transaction });
-        await transaction.commit();
-
-        const populated = await Reservation.findByPk(reservation.id, {
-            include: [{ model: Table, as: 'table' }],
-        });
-
-        return res.status(200).json({
-            success    : true,
-            message    : 'Reserva actualizada correctamente.',
-            reservation: populated,
-        });
-
-    } catch (error) {
-        await transaction.rollback();
-        return res.status(500).json({
-            success: false,
-            message: 'Error interno al actualizar la reserva.',
-            error  : error.message,
-        });
+        return res.status(500).json({ success: false, error: error.message });
     }
 };
 
 export const cancelReservation = async (req, res) => {
-    const transaction = await sequelize.transaction();
     try {
-        const userId = getUserIdFromRequest(req);
-
-        if (!userId) {
-            await transaction.rollback();
-            return res.status(401).json({
-                success: false,
-                message: 'Usuario no autenticado. Token inválido o expirado.',
-            });
-        }
-
         const { id } = req.params;
+        const reservation = await Reservation.findByPk(id);
+        if (!reservation) return res.status(404).json({ message: 'No encontrada' });
 
-        const reservation = await Reservation.findByPk(id, { transaction });
-
-        if (!reservation) {
-            await transaction.rollback();
-            return res.status(404).json({ success: false, message: 'Reserva no encontrada.' });
-        }
-
-        if (reservation.userId !== userId) {
-            await transaction.rollback();
-            return res.status(403).json({
-                success: false,
-                message: 'No tienes permiso para cancelar esta reserva.',
-            });
-        }
-
-        if (reservation.status === 'cancelada') {
-            await transaction.rollback();
-            return res.status(400).json({ success: false, message: 'La reserva ya está cancelada.' });
-        }
-
+        await Table.update({ availability: 'disponible' }, { where: { id: reservation.tableId } });
         reservation.status = 'cancelada';
-        await reservation.save({ transaction });
+        await reservation.save();
 
-        const table = await Table.findByPk(reservation.tableId, { transaction });
-        if (table) {
-            table.availability = 'disponible';
-            await table.save({ transaction });
-        }
-
-        await transaction.commit();
-
-        const populated = await Reservation.findByPk(reservation.id, {
-            include: [{ model: Table, as: 'table' }]
-        });
-
-        return res.status(200).json({
-            success    : true,
-            message    : 'Reserva cancelada y mesa liberada correctamente.',
-            reservation: populated,
-        });
-
+        return res.json({ success: true, message: 'Cancelada' });
     } catch (error) {
-        await transaction.rollback();
-        return res.status(500).json({ success: false, message: error.message });
+        return res.status(500).json({ success: false, error: error.message });
     }
 };

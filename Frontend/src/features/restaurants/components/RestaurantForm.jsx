@@ -1,14 +1,20 @@
 import { useForm } from 'react-hook-form'
 import { toast } from 'react-hot-toast'
 import { useState, useEffect } from 'react'
-import { Image as ImageIcon, X } from 'lucide-react'
+import { Image as ImageIcon, X, ShieldAlert, Save } from 'lucide-react'
 import useRestaurantStore from '../store/restaurantStore'
+import useAuthStore from '../../auth/store/authStore'
 import Modal from '../../../shared/components/ui/Modal'
 
 const RestaurantForm = ({ onClose, restaurant }) => {
   const isEditing = !!restaurant
   const [preview, setPreview] = useState(null)
+  const user = useAuthStore((state) => state.user)
   
+  const isAdmin = user?.roles?.some(role => 
+    role === 'ADMIN_SISTEMA' || role === 'ADMIN_RESTAURANTE'
+  )
+
   const { register, handleSubmit, watch, formState: { errors, isSubmitting } } = useForm({
     defaultValues: isEditing ? {
       name: restaurant.name,
@@ -17,7 +23,8 @@ const RestaurantForm = ({ onClose, restaurant }) => {
       country: restaurant.address?.country,
       phone: restaurant.phone,
       category: restaurant.category,
-      description: restaurant.description
+      description: restaurant.description,
+      ownerId: restaurant.ownerId // Cargamos el ID del propietario actual
     } : {}
   })
 
@@ -44,16 +51,23 @@ const RestaurantForm = ({ onClose, restaurant }) => {
       formData.append('address[country]', data.country)
       formData.append('phone', data.phone)
       formData.append('category', data.category)
+      
+      // Enviamos el ownerId si es edición y el usuario es admin
+      if (isAdmin && data.ownerId) {
+        formData.append('ownerId', data.ownerId)
+      }
+
       if (data.description) formData.append('description', data.description)
       if (data.image && data.image[0]) formData.append('image', data.image[0])
       
       if (isEditing) {
-        await updateRestaurant(restaurant.id, formData)
+        await updateRestaurant(restaurant.id || restaurant._id, formData)
         toast.success('Restaurante actualizado correctamente', { id: toastId })
       } else {
         await createRestaurant(formData)
         toast.success('Restaurante creado correctamente', { id: toastId })
       }
+      onSuccess?.()
       onClose()
     } catch (error) {
       const message = error?.response?.data?.message || `Error al ${isEditing ? 'actualizar' : 'crear'} el restaurante`
@@ -63,141 +77,100 @@ const RestaurantForm = ({ onClose, restaurant }) => {
 
   return (
     <Modal 
-      title={isEditing ? 'Editar Restaurante' : 'Nuevo Restaurante'} 
+      title={isEditing ? 'Configuración de Restaurante' : 'Nuevo Restaurante'} 
       onClose={onClose}
     >
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
-        <div>
-          <label className="text-zinc-400 text-[10px] font-bold uppercase tracking-wider mb-2 block">Nombre del restaurante</label>
+      <form onSubmit={handleSubmit(onSubmit)} className="space-y-6 p-1">
+        {/* Identificación Básica */}
+        <div className="space-y-4">
+          <div>
+            <label className="text-zinc-500 text-[10px] font-black uppercase tracking-widest ml-1 mb-2 block">Nombre Comercial</label>
+            <input
+              {...register('name', { required: 'El nombre es requerido' })}
+              className="w-full bg-zinc-800/50 border border-white/5 text-white rounded-2xl px-5 py-4 focus:ring-2 focus:ring-orange-500/50 transition-all outline-none"
+              placeholder="Ej. La Parrilla de Edvin"
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="text-zinc-500 text-[10px] font-black uppercase tracking-widest ml-1 mb-2 block">Teléfono</label>
+              <input
+                {...register('phone', { required: true })}
+                className="w-full bg-zinc-800/50 border border-white/5 text-white rounded-2xl px-5 py-4 focus:ring-2 focus:ring-orange-500/50 outline-none"
+                placeholder="12345678"
+              />
+            </div>
+            <div>
+              <label className="text-zinc-500 text-[10px] font-black uppercase tracking-widest ml-1 mb-2 block">Categoría</label>
+              <select
+                {...register('category', { required: true })}
+                className="w-full bg-zinc-800/50 border border-white/5 text-white rounded-2xl px-5 py-4 focus:ring-2 focus:ring-orange-500/50 outline-none appearance-none cursor-pointer"
+              >
+                <option value="">Seleccionar...</option>
+                <option value="Comida rapida">Comida rápida</option>
+                <option value="Italiana">Italiana</option>
+                <option value="Mexicana">Mexicana</option>
+                <option value="Asiatica">Asiática</option>
+                <option value="Gourmet">Gourmet</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        {/* Ubicación */}
+        <div className="p-6 bg-zinc-800/20 rounded-[2rem] border border-white/5 space-y-4">
+          <label className="text-zinc-500 text-[10px] font-black uppercase tracking-widest mb-2 block text-center">Dirección Física</label>
           <input
-            {...register('name', { required: 'El nombre es requerido' })}
-            className="w-full bg-zinc-800/50 border border-zinc-700/50 text-white rounded-2xl px-5 py-3.5 focus:outline-none focus:ring-2 focus:ring-orange-500/50 transition-all placeholder:text-zinc-600"
-            placeholder="Ej. La Parrilla de Edvin"
+            {...register('street', { required: true })}
+            className="w-full bg-zinc-900/50 border border-white/5 text-white rounded-2xl px-5 py-3.5 focus:ring-2 focus:ring-orange-500/50 outline-none"
+            placeholder="Calle y Número..."
           />
-          {errors.name && <p className="text-red-400 text-xs mt-1.5 ml-1">{errors.name.message}</p>}
-        </div>
-
-        <div className="grid grid-cols-2 gap-4">
-          <div className="col-span-2">
-            <label className="text-zinc-400 text-[10px] font-bold uppercase tracking-wider mb-2 block">Calle y Número</label>
-            <input
-              {...register('street', { required: 'La calle es requerida' })}
-              className="w-full bg-zinc-800/50 border border-zinc-700/50 text-white rounded-2xl px-5 py-3.5 focus:outline-none focus:ring-2 focus:ring-orange-500/50 transition-all placeholder:text-zinc-600"
-              placeholder="Calle 123..."
-            />
-            {errors.street && <p className="text-red-400 text-xs mt-1.5 ml-1">{errors.street.message}</p>}
-          </div>
-
-          <div>
-            <label className="text-zinc-400 text-[10px] font-bold uppercase tracking-wider mb-2 block">Ciudad</label>
-            <input
-              {...register('city', { required: 'La ciudad es requerida' })}
-              className="w-full bg-zinc-800/50 border border-zinc-700/50 text-white rounded-2xl px-5 py-3.5 focus:outline-none focus:ring-2 focus:ring-orange-500/50 transition-all placeholder:text-zinc-600"
-              placeholder="Ciudad"
-            />
-            {errors.city && <p className="text-red-400 text-xs mt-1.5 ml-1">{errors.city.message}</p>}
-          </div>
-
-          <div>
-            <label className="text-zinc-400 text-[10px] font-bold uppercase tracking-wider mb-2 block">País</label>
-            <input
-              {...register('country', { required: 'El país es requerido' })}
-              className="w-full bg-zinc-800/50 border border-zinc-700/50 text-white rounded-2xl px-5 py-3.5 focus:outline-none focus:ring-2 focus:ring-orange-500/50 transition-all placeholder:text-zinc-600"
-              placeholder="Guatemala"
-            />
-            {errors.country && <p className="text-red-400 text-xs mt-1.5 ml-1">{errors.country.message}</p>}
+          <div className="grid grid-cols-2 gap-4">
+            <input {...register('city', { required: true })} className="w-full bg-zinc-900/50 border border-white/5 text-white rounded-2xl px-5 py-3.5 focus:ring-2 focus:ring-orange-500/50 outline-none" placeholder="Ciudad" />
+            <input {...register('country', { required: true })} className="w-full bg-zinc-900/50 border border-white/5 text-white rounded-2xl px-5 py-3.5 focus:ring-2 focus:ring-orange-500/50 outline-none" placeholder="País" />
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <label className="text-zinc-400 text-[10px] font-bold uppercase tracking-wider mb-2 block">Teléfono</label>
+        {/* Gestión de Propiedad (Solo Admins) */}
+        {isAdmin && isEditing && (
+          <div className="p-6 bg-orange-500/5 border border-orange-500/10 rounded-[2rem] space-y-4">
+            <div className="flex items-center gap-2 text-orange-500 mb-2">
+              <ShieldAlert size={16} />
+              <label className="text-[10px] font-black uppercase tracking-widest">Gestión de Propietario</label>
+            </div>
             <input
-              {...register('phone', { required: 'El teléfono es requerido' })}
-              className="w-full bg-zinc-800/50 border border-zinc-700/50 text-white rounded-2xl px-5 py-3.5 focus:outline-none focus:ring-2 focus:ring-orange-500/50 transition-all placeholder:text-zinc-600"
-              placeholder="12345678"
+              {...register('ownerId')}
+              className="w-full bg-zinc-900/80 border border-orange-500/20 text-white rounded-2xl px-5 py-4 focus:ring-2 focus:ring-orange-500/50 outline-none"
+              placeholder="ID del nuevo propietario..."
             />
-            {errors.phone && <p className="text-red-400 text-xs mt-1.5 ml-1">{errors.phone.message}</p>}
+            <p className="text-[9px] text-zinc-500 italic ml-2">* Ingrese el ID de usuario para transferir la gestión del restaurante.</p>
           </div>
-
-          <div>
-            <label className="text-zinc-400 text-[10px] font-bold uppercase tracking-wider mb-2 block">Categoría</label>
-            <select
-              {...register('category', { required: 'La categoría es requerida' })}
-              className="w-full bg-zinc-800/50 border border-zinc-700/50 text-white rounded-2xl px-5 py-3.5 focus:outline-none focus:ring-2 focus:ring-orange-500/50 transition-all appearance-none cursor-pointer"
-            >
-              <option value="" className="bg-zinc-900 text-zinc-500">Seleccionar...</option>
-              <option value="Comida rapida" className="bg-zinc-900">Comida rápida</option>
-              <option value="Italiana" className="bg-zinc-900">Italiana</option>
-              <option value="Mexicana" className="bg-zinc-900">Mexicana</option>
-              <option value="Asiatica" className="bg-zinc-900">Asiática</option>
-              <option value="Other" className="bg-zinc-900">Otra</option>
-            </select>
-            {errors.category && <p className="text-red-400 text-xs mt-1.5 ml-1">{errors.category.message}</p>}
-          </div>
-        </div>
+        )}
 
         <div>
-          <label className="text-zinc-400 text-[10px] font-bold uppercase tracking-wider mb-2 block">Descripción</label>
-          <textarea
-            {...register('description')}
-            className="w-full bg-zinc-800/50 border border-zinc-700/50 text-white rounded-2xl px-5 py-3 focus:outline-none focus:ring-2 focus:ring-orange-500/50 transition-all resize-none placeholder:text-zinc-600"
-            placeholder="Breve descripción..."
-            rows={3}
-          />
-        </div>
-
-        <div>
-          <label className="text-zinc-400 text-[10px] font-bold uppercase tracking-wider mb-2 block opacity-70">Imagen de portada</label>
-          
-          <div className="mt-2 flex flex-col items-center gap-4 p-6 border-2 border-dashed border-zinc-700 rounded-3xl bg-zinc-800/30 transition-all hover:border-orange-500/50">
+          <label className="text-zinc-500 text-[10px] font-black uppercase tracking-widest ml-1 mb-2 block">Imagen de Portada</label>
+          <div className="relative group rounded-[2rem] overflow-hidden border-2 border-dashed border-white/5 bg-zinc-800/30 p-4 transition-all hover:border-orange-500/30">
             {(preview || (restaurant?.photos && restaurant.photos[0])) ? (
-              <div className="relative w-full aspect-video rounded-2xl overflow-hidden shadow-lg ring-1 ring-zinc-700">
-                <img 
-                  src={preview || restaurant.photos[0]} 
-                  alt="Preview" 
-                  className="w-full h-full object-cover"
-                />
-                {preview && (
-                  <button 
-                    type="button"
-                    onClick={() => setPreview(null)}
-                    className="absolute top-2 right-2 p-1.5 bg-black/60 backdrop-blur-md rounded-full text-white hover:bg-red-500 transition-colors"
-                  >
-                    <X size={16} />
-                  </button>
-                )}
-              </div>
+              <img src={preview || restaurant.photos[0]} alt="Preview" className="w-full aspect-video object-cover rounded-2xl" />
             ) : (
-              <div className="flex flex-col items-center gap-2 text-zinc-500">
-                <ImageIcon size={40} strokeWidth={1} />
-                <p className="text-xs">No hay imagen seleccionada</p>
+              <div className="py-12 flex flex-col items-center text-zinc-600">
+                <ImageIcon size={48} strokeWidth={1} />
+                <p className="text-[10px] font-bold uppercase mt-2">Cargar Fotografía</p>
               </div>
             )}
-
-            <input
-              {...register('image')}
-              type="file"
-              accept="image/*"
-              className="w-full text-xs text-zinc-500 file:mr-4 file:py-2.5 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-orange-500/10 file:text-orange-500 hover:file:bg-orange-500/20 cursor-pointer transition-all"
-            />
+            <input {...register('image')} type="file" accept="image/*" className="absolute inset-0 opacity-0 cursor-pointer" />
           </div>
         </div>
 
-        <div className="flex gap-4 pt-4">
-          <button
-            type="button"
-            onClick={onClose}
-            className="flex-1 bg-zinc-800 hover:bg-zinc-700 text-white py-4 rounded-2xl text-sm font-semibold transition-all"
-          >
-            Cancelar
-          </button>
+        <div className="flex gap-4 pt-4 pb-2">
+          <button type="button" onClick={onClose} className="flex-1 bg-zinc-800 hover:bg-zinc-700 text-zinc-400 py-4 rounded-2xl font-bold transition-all">Cancelar</button>
           <button
             type="submit"
             disabled={isSubmitting}
-            className="flex-1 bg-orange-500 hover:bg-orange-600 text-white font-bold py-4 rounded-2xl text-sm transition-all shadow-lg shadow-orange-500/20 disabled:opacity-50"
+            className="flex-[2] bg-orange-500 hover:bg-orange-600 text-white font-black py-4 rounded-2xl shadow-xl shadow-orange-500/20 active:scale-95 disabled:opacity-50 transition-all flex items-center justify-center gap-2"
           >
-            {isSubmitting ? (isEditing ? 'Guardando...' : 'Creando...') : (isEditing ? 'Guardar Cambios' : 'Crear Restaurante')}
+            <Save size={18} /> {isEditing ? 'Guardar Cambios' : 'Registrar Restaurante'}
           </button>
         </div>
       </form>

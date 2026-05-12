@@ -61,7 +61,8 @@ app.use(errorHandler);
 const startServer = async () => {
     try {
         await postgresConnection();
-        await sequelize.sync();
+        // Sincronización con alter para actualizar columnas existentes
+        await sequelize.sync({ alter: true });
         await mongoConnection();
 
         setupSwagger(app);

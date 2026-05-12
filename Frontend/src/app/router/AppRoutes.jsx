@@ -4,12 +4,17 @@ import AuthPage from '../../features/auth/pages/AuthPage'
 import DashboardPage from '../layouts/DashboardPage'
 import UserList from '../../features/users/components/UserList'
 import RestaurantList from '../../features/restaurants/components/RestaurantList'
+import RestaurantDetail from '../../features/restaurants/components/RestaurantDetail'
 import CategoryList from '../../features/categories/components/CategoryList'
 import Dashboard from '../../features/dashboard/components/Dashboard'
 import ProductList from '../../features/product/components/ProductList'
 import InventoryList from '../../features/inventory/components/InventoryList'
 import TableList from '../../features/tables/components/TableList'
 import ReservationList from '../../features/reservations/components/ReservationList'
+import MyReservations from '../../features/reservations/components/MyReservations'
+import ExternalOrderList from '../../features/external-orders/components/ExternalOrderList'
+import UserProfile from '../../features/users/components/UserProfile'
+import NotFound from '../../shared/components/ui/NotFound'
 import RoleRoute from '../../shared/components/RoleRoute'
 
 // Roles disponibles en el sistema
@@ -90,12 +95,20 @@ const AppRoutes = () => {
             }
           />
 
-          {/* ── ADMIN_SISTEMA y ADMIN_RESTAURANTE ── */}
+          {/* ── Todos los roles pueden ver restaurantes (con vistas distintas) ── */}
           <Route
             path="restaurants"
             element={
-              <RoleRoute roles={ADMIN_ROLES}>
+              <RoleRoute roles={[...ADMIN_ROLES, ROLES.CLIENTE]}>
                 <RestaurantList />
+              </RoleRoute>
+            }
+          />
+          <Route
+            path="restaurants/:id"
+            element={
+              <RoleRoute roles={[...ADMIN_ROLES, ROLES.CLIENTE]}>
+                <RestaurantDetail />
               </RoleRoute>
             }
           />
@@ -112,6 +125,14 @@ const AppRoutes = () => {
             element={
               <RoleRoute roles={ADMIN_ROLES}>
                 <div className="text-white">Pedidos (próximamente)</div>
+              </RoleRoute>
+            }
+          />
+          <Route
+            path="external-orders"
+            element={
+              <RoleRoute roles={ADMIN_ROLES}>
+                <ExternalOrderList />
               </RoleRoute>
             }
           />
@@ -153,7 +174,7 @@ const AppRoutes = () => {
             path="my-reservations"
             element={
               <RoleRoute roles={ROLES.CLIENTE}>
-                <div className="text-white">Mis Reservaciones (próximamente)</div>
+                <MyReservations />
               </RoleRoute>
             }
           />
@@ -161,13 +182,13 @@ const AppRoutes = () => {
             path="profile"
             element={
               <RoleRoute roles={Object.values(ROLES)}>
-                <div className="text-white">Perfil (próximamente)</div>
+                <UserProfile />
               </RoleRoute>
             }
           />
         </Route>
 
-        <Route path="*" element={<Navigate to="/login" replace />} />
+        <Route path="*" element={<NotFound />} />
       </Routes>
     </BrowserRouter>
   )

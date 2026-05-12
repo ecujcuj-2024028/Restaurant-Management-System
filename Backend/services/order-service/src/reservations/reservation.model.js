@@ -12,42 +12,30 @@ const Reservation = sequelize.define('Reservation', {
     tableId: {
         type: DataTypes.UUID,
         allowNull: false,
-        validate: {
-            notNull: { msg: 'La mesa es requerida' }
-        }
+        field: 'table_id',
     },
     userId: {
         type: DataTypes.STRING,
         allowNull: false,
-        validate: {
-            notNull: { msg: 'El usuario es requerido' }
-        }
+        field: 'user_id',
     },
     restaurantId: {
         type: DataTypes.STRING,
         allowNull: false,
-        validate: {
-            notNull: { msg: 'El restaurante es requerido' }
-        }
+        field: 'restaurant_id',
     },
     date: {
         type: DataTypes.STRING,
         allowNull: false,
         validate: {
-            is: {
-                args: /^\d{4}-\d{2}-\d{2}$/,
-                msg: 'La fecha debe tener formato YYYY-MM-DD'
-            }
+            is: { args: /^\d{4}-\d{2}-\d{2}$/, msg: 'La fecha debe tener formato YYYY-MM-DD' }
         }
     },
     time: {
         type: DataTypes.STRING,
         allowNull: false,
         validate: {
-            is: {
-                args: /^([01]\d|2[0-3]):[0-5]\d$/,
-                msg: 'La hora debe tener formato HH:MM (24 h)'
-            }
+            is: { args: /^([01]\d|2[0-3]):[0-5]\d$/, msg: 'La hora debe tener formato HH:MM (24 h)' }
         }
     },
     status: {
@@ -57,19 +45,22 @@ const Reservation = sequelize.define('Reservation', {
     customerName: {
         type: DataTypes.STRING(150),
         allowNull: true,
+        field: 'customer_name',
+    },
+    customerEmail: {
+        type: DataTypes.STRING(150),
+        allowNull: true,
+        field: 'customer_email',
+        validate: { isEmail: { msg: 'Email inválido' } }
     },
     customerPhone: {
         type: DataTypes.STRING(30),
         allowNull: true,
+        field: 'customer_phone',
     },
     guestCount: {
         type: DataTypes.INTEGER,
-        validate: {
-            min: {
-                args: [1],
-                msg: 'Debe haber al menos 1 comensal'
-            }
-        }
+        field: 'guest_count',
     },
     notes: {
         type: DataTypes.STRING(300),
@@ -83,20 +74,13 @@ const Reservation = sequelize.define('Reservation', {
         {
             unique: true,
             fields: ['table_id', 'date', 'time'],
-            where: {
-                status: {
-                    [Op.ne]: 'cancelada'
-                }
-            }
-        },
-        {
-            fields: ['user_id', 'date']
+            where: { status: { [Op.ne]: 'cancelada' } }
         }
     ]
 });
 
 // Relaciones
-Table.hasMany(Reservation, { foreignKey: 'tableId' });
-Reservation.belongsTo(Table, { foreignKey: 'tableId', as: 'table' });
+Table.hasMany(Reservation, { foreignKey: 'table_id', as: 'reservations' });
+Reservation.belongsTo(Table, { foreignKey: 'table_id', as: 'table' });
 
-export default Reservation; 
+export default Reservation;
