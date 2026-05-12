@@ -1,7 +1,137 @@
 'use strict';
+
+import { Op } from 'sequelize';
 import { User, UserProfile } from './user.model.js';
 import { UserRole, Role } from '../auth/role.model.js';
 import { cloudinary, extractPublicId } from '../../middlewares/restaurant-uploader.js';
+
+const getPagination = (query) => {
+    const page = Math.max(1, parseInt(query.page, 10) || 1);
+    const limit = Math.min(100, Math.max(1, parseInt(query.limit, 10) || 20));
+    const offset = (page - 1) * limit;
+
+    return {
+        page,
+        limit,
+        offset
+    };
+};
+
+const buildPaginationMeta = (page, limit, total) => {
+    const totalPages = Math.ceil(total / limit) || 1;
+
+    return {
+        page,
+        limit,
+        total,
+        totalPages,
+        hasNextPage: page < totalPages,
+        hasPrevPage: page > 1
+    };
+};
+
+const formatearUsuario = (user) => ({
+    id: user.Id,
+    name: user.Name,
+    surname: user.Surname,
+    username: user.Username,
+    email: user.Email,
+    status: user.Status,
+    phone: user.UserProfile?.Phone || null,
+    profilePicture: user.UserProfile?.ProfilePicture || null,
+    roles: Array.isArray(user.UserRoles)
+        ? user.UserRoles.map((userRole) => userRole.Role?.Name).filter(Boolean)
+        : [],
+    createdAt: user.CreatedAt,
+    updatedAt: user.UpdatedAt
+});
+
+/* =========================
+   GET /users
+   Lista usuarios del sistema para ADMIN_SISTEMA
+   ========================= */
+export const getUsers = async (req, res) => {
+    try {
+        const { search, status, role } = req.query;
+        const { page, limit, offset } = getPagination(req.query);
+
+        const where = {};
+
+        if (search) {
+            const terminoBusqueda = `%${search.trim()}%`;
+
+            where[Op.or] = [
+                { Name: { [Op.iLike]: terminoBusqueda } },
+                { Surname: { [Op.iLike]: terminoBusqueda } },
+                { Username: { [Op.iLike]: terminoBusqueda } },
+                { Email: { [Op.iLike]: terminoBusqueda } }
+            ];
+        }
+
+        if (status === 'active') {
+            where.Status = true;
+        }
+
+        if (status === 'inactive') {
+            where.Status = false;
+        }
+
+        const includeRoles = {
+            model: UserRole,
+            as: 'UserRoles',
+            required: Boolean(role),
+            include: [
+                {
+                    model: Role,
+                    as: 'Role',
+                    attributes: ['Name'],
+                    ...(role && { where: { Name: role } })
+                }
+            ]
+        };
+
+        const { count, rows } = await User.findAndCountAll({
+            where,
+            attributes: [
+                'Id',
+                'Name',
+                'Surname',
+                'Username',
+                'Email',
+                'Status',
+                'CreatedAt',
+                'UpdatedAt'
+            ],
+            include: [
+                {
+                    model: UserProfile,
+                    as: 'UserProfile',
+                    attributes: ['Phone', 'ProfilePicture'],
+                    required: false
+                },
+                includeRoles
+            ],
+            order: [['CreatedAt', 'DESC']],
+            limit,
+            offset,
+            distinct: true
+        });
+
+        return res.status(200).json({
+            success: true,
+            users: rows.map(formatearUsuario),
+            pagination: buildPaginationMeta(page, limit, count)
+        });
+
+    } catch (error) {
+        console.error('[UserController] getUsers:', error);
+        return res.status(500).json({
+            success: false,
+            message: 'Error al obtener usuarios',
+            error: process.env.NODE_ENV === 'development' ? error.message : undefined
+        });
+    }
+};
 
 /* =========================
    GET /users/profile

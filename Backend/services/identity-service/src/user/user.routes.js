@@ -1,7 +1,10 @@
 'use strict';
+
 import { Router } from 'express';
-import { getProfile, updateProfile, updateProfilePicture } from './user.controller.js';
+import { getProfile, getUsers, updateProfile, updateProfilePicture } from './user.controller.js';
 import { uploadUserProfileImage } from '../../middlewares/restaurant-uploader.js';
+import { hasRole } from '../../middlewares/hasRole.js';
+import { ADMIN_SISTEMA } from '../../helpers/role-constants.js';
 
 const router = Router();
 
@@ -11,6 +14,45 @@ const router = Router();
  *   name: User
  *   description: Gestión de perfiles de usuario
  */
+
+/**
+ * @swagger
+ * /users:
+ *   get:
+ *     summary: Obtener listado de usuarios del sistema
+ *     tags: [User]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: search
+ *         schema: { type: string }
+ *         description: Buscar por nombre, apellido, usuario o correo
+ *       - in: query
+ *         name: status
+ *         schema:
+ *           type: string
+ *           enum: [active, inactive]
+ *       - in: query
+ *         name: role
+ *         schema: { type: string }
+ *       - in: query
+ *         name: page
+ *         schema: { type: integer }
+ *       - in: query
+ *         name: limit
+ *         schema: { type: integer }
+ *     responses:
+ *       200:
+ *         description: Lista de usuarios
+ *       403:
+ *         description: No autorizado
+ */
+router.get(
+    '/',
+    hasRole(ADMIN_SISTEMA),
+    getUsers
+);
 
 /**
  * @swagger
