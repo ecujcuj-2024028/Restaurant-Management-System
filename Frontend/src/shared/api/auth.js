@@ -5,3 +5,11 @@ export const login = (data) => api.post('/auth/login', data)
 export const forgotPassword = (email) => api.post('/auth/forgot-password', { email })
 export const verifyEmail = (token) => api.post('/auth/verify-email', { token })
 export const resetPassword = (token, newPassword) => api.post('/auth/reset-password', { token, newPassword })
+
+export const requestRoleUpgrade = (requestedRole) => {
+    return api.post('/auth/request-role-upgrade', { requestedRole })
+}
+
+export const getRoleRequests = () => {
+    return api.get('/auth/role-requests')
+}

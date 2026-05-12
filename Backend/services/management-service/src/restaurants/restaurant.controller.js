@@ -84,48 +84,30 @@ export const updateRestaurant = async (req, res) => {
     try {
         const { id } = req.params;
 
+        // Definimos campos permitidos, incluyendo ownerId
         const allowedFields = ['name', 'category', 'ownerId', 'phone', 'description'];
         const updateData = {};
+        
         for (const field of allowedFields) {
             if (req.body[field] !== undefined) {
                 updateData[field] = req.body[field];
             }
         }
 
-        if (req.body.street || req.body.city || req.body.country || req.body.address) {
-            updateData.address = {
-                street: req.body.street || (req.body.address && req.body.address.street),
-                city: req.body.city || (req.body.address && req.body.address.city),
-                country: req.body.country || (req.body.address && req.body.address.country)
-            };
-        }
-        console.log('ROLES:', req.userRoles);
-        console.log('BODY:', updateData);
-
+        // Validación de cambio de dueño
         if (updateData.ownerId) {
-
             const currentRestaurant = await Restaurant.findById(id);
-
-            if (!currentRestaurant) {
-                return res.status(404).json({
-                    success: false,
-                    message: 'Restaurant not found'
-                });
-            }
+            if (!currentRestaurant) return res.status(404).json({ success: false, message: 'Restaurante no encontrado' });
 
             const isAdminSistema = req.userRoles?.includes(ADMIN_SISTEMA);
-            const isOwner = currentRestaurant.ownerId.toString() === req.userId;
+            const isCurrentOwner = currentRestaurant.ownerId.toString() === req.userId;
 
-            if (!isAdminSistema && !isOwner) {
-                return res.status(403).json({
-                    success: false,
-                    message: 'Only ADMIN_SISTEMA or the owner can change ownerId'
+            if (!isAdminSistema && !isCurrentOwner) {
+                return res.status(403).json({ 
+                    success: false, 
+                    message: 'Permisos insuficientes para transferir la propiedad del restaurante.' 
                 });
             }
-
-            // NOTA: En una arquitectura de microservicios real, aquí se debería 
-            // realizar una petición HTTP al identity-service para verificar que 
-            // el nuevo ownerId existe y es válido.
         }
         
         if (req.file) {
