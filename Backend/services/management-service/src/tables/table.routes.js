@@ -1,5 +1,4 @@
 import { Router } from 'express';
-import Table from './table.model.js';
 import {
     createTable,
     getTables,
@@ -7,7 +6,6 @@ import {
     updateTableStatus
 } from './table.controller.js';
 import { validateJWT } from '../../middlewares/validate-JWT.js';
-import { validateOwnership } from '../../middlewares/validate-ownership.js';
 import { ADMIN_RESTAURANTE, ADMIN_SISTEMA } from '../../helpers/role-constants.js';
 import { hasRole } from '../../middlewares/hasRole.js';
 
@@ -34,21 +32,26 @@ const router = Router();
  *         application/json:
  *           schema:
  *             type: object
- *             required: [number, capacity, restaurantId]
+ *             required: [number, capacity, restaurant]
  *             properties:
  *               number: { type: number }
  *               capacity: { type: number }
- *               restaurantId: { type: string }
+ *               restaurant: { type: string }
  *     responses:
  *       201: { description: Mesa creada }
  */
-router.post('/create', validateJWT, hasRole(ADMIN_RESTAURANTE, ADMIN_SISTEMA), createTable);
+router.post(
+    '/create',
+    validateJWT,
+    hasRole(ADMIN_RESTAURANTE, ADMIN_SISTEMA),
+    createTable
+);
 
 /**
  * @swagger
  * /tables:
  *   get:
- *     summary: Obtener todas las mesas del sistema (Admin)
+ *     summary: Obtener todas las mesas del sistema
  *     tags: [Tables]
  *     security:
  *       - bearerAuth: []
@@ -95,13 +98,20 @@ router.get('/restaurant/:restaurantId', validateJWT, getTablesByRestaurant);
  *           schema:
  *             type: object
  *             properties:
- *               status: { type: string, enum: [AVAILABLE, OCCUPIED, RESERVED] }
+ *               availability:
+ *                 type: string
+ *                 enum: [disponible, ocupado, reservado]
+ *               status:
+ *                 type: string
+ *                 enum: [AVAILABLE, OCCUPIED, RESERVED]
  *     responses:
  *       200: { description: Estado actualizado }
  */
-router.patch('/:tableId/status', [
+router.patch(
+    '/:tableId/status',
     validateJWT,
-    validateOwnership(Table)
-], updateTableStatus);
+    hasRole(ADMIN_RESTAURANTE, ADMIN_SISTEMA),
+    updateTableStatus
+);
 
 export default router;
