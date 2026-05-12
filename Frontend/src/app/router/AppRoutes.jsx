@@ -1,38 +1,39 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
-import useAuthStore from '../../features/auth/store/authStore'
-import AuthPage from '../../features/auth/pages/AuthPage'
-import DashboardPage from '../layouts/DashboardPage'
-import UserList from '../../features/users/components/UserList'
-import RestaurantList from '../../features/restaurants/components/RestaurantList'
-import RestaurantDetail from '../../features/restaurants/components/RestaurantDetail'
-import CategoryList from '../../features/categories/components/CategoryList'
-import Dashboard from '../../features/dashboard/components/Dashboard'
-import ProductList from '../../features/product/components/ProductList'
-import InventoryList from '../../features/inventory/components/InventoryList'
-import TableList from '../../features/tables/components/TableList'
-import ReservationList from '../../features/reservations/components/ReservationList'
-import MyReservations from '../../features/reservations/components/MyReservations'
-import ExternalOrderList from '../../features/external-orders/components/ExternalOrderList'
-import UserProfile from '../../features/users/components/UserProfile'
-import NotFound from '../../shared/components/ui/NotFound'
-import RoleRoute from '../../shared/components/RoleRoute'
-import OrderList from '../../features/orders/components/OrderList'
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import useAuthStore from "../../features/auth/store/authStore";
+import AuthPage from "../../features/auth/pages/AuthPage";
+import DashboardPage from "../layouts/DashboardPage";
+import UserList from "../../features/users/components/UserList";
+import RestaurantList from "../../features/restaurants/components/RestaurantList";
+import RestaurantDetail from "../../features/restaurants/components/RestaurantDetail";
+import CategoryList from "../../features/categories/components/CategoryList";
+import Dashboard from "../../features/dashboard/components/Dashboard";
+import ProductList from "../../features/product/components/ProductList";
+import InventoryList from "../../features/inventory/components/InventoryList";
+import TableList from "../../features/tables/components/TableList";
+import ReservationList from "../../features/reservations/components/ReservationList";
+import MyReservations from "../../features/reservations/components/MyReservations";
+import ExternalOrderList from "../../features/external-orders/components/ExternalOrderList";
+import UserProfile from "../../features/users/components/UserProfile";
+import NotFound from "../../shared/components/ui/NotFound";
+import RoleRoute from "../../shared/components/RoleRoute";
+import OrderList from "../../features/orders/components/OrderList";
+import ReportsPage from "../../features/reports/components/ReportsPage";
 
 // Roles disponibles en el sistema
 const ROLES = {
-  ADMIN_SISTEMA: 'ADMIN_SISTEMA',
-  ADMIN_RESTAURANTE: 'ADMIN_RESTAURANTE',
-  CLIENTE: 'CLIENTE',
-}
+  ADMIN_SISTEMA: "ADMIN_SISTEMA",
+  ADMIN_RESTAURANTE: "ADMIN_RESTAURANTE",
+  CLIENTE: "CLIENTE",
+};
 
 // Roles con acceso de administración (sistema + restaurante)
-const ADMIN_ROLES = [ROLES.ADMIN_SISTEMA, ROLES.ADMIN_RESTAURANTE]
+const ADMIN_ROLES = [ROLES.ADMIN_SISTEMA, ROLES.ADMIN_RESTAURANTE];
 
 // Protege rutas que requieren autenticación (cualquier rol)
 const ProtectedRoute = ({ children }) => {
-  const { isAuthenticated } = useAuthStore()
-  return isAuthenticated ? children : <Navigate to="/login" replace />
-}
+  const { isAuthenticated } = useAuthStore();
+  return isAuthenticated ? children : <Navigate to="/login" replace />;
+};
 
 const AppRoutes = () => {
   return (
@@ -90,8 +91,8 @@ const AppRoutes = () => {
           <Route
             path="reports"
             element={
-              <RoleRoute roles={ROLES.ADMIN_SISTEMA}>
-                <div className="text-white">Reportes (próximamente)</div>
+              <RoleRoute roles={ADMIN_ROLES}>
+                <ReportsPage />
               </RoleRoute>
             }
           />
@@ -192,7 +193,7 @@ const AppRoutes = () => {
         <Route path="*" element={<NotFound />} />
       </Routes>
     </BrowserRouter>
-  )
-}
+  );
+};
 
-export default AppRoutes
+export default AppRoutes;
