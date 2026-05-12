@@ -49,15 +49,14 @@ const ExternalOrderForm = ({ onClose, onSuccess }) => {
 
     const toastId = toast.loading('Registrando pedido...')
     try {
-      // Ajustar estructura para el backend
       const payload = {
         ...data,
-        deliveryFee: data.orderType === 'domicilio' ? 15 : 0 // Monto simulado
+        deliveryFee: data.orderType === 'domicilio' ? 15 : 0 
       }
 
-      await createOrder(payload)
+      const newOrder = await createOrder(payload)
       toast.success('Pedido registrado con éxito', { id: toastId })
-      if (onSuccess) onSuccess()
+      if (onSuccess) onSuccess(newOrder)
       onClose()
     } catch (error) {
       toast.error(error.message || 'Error al crear el pedido', { id: toastId })
