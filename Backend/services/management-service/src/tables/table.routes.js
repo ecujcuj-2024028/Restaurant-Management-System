@@ -1,8 +1,10 @@
 import { Router } from 'express';
 import {
     createTable,
+    deleteTable,
     getTables,
     getTablesByRestaurant,
+    updateTable,
     updateTableStatus
 } from './table.controller.js';
 import { validateJWT } from '../../middlewares/validate-JWT.js';
@@ -22,23 +24,10 @@ const router = Router();
  * @swagger
  * /tables/create:
  *   post:
- *     summary: Crear una nueva mesa (Admin)
+ *     summary: Crear una nueva mesa
  *     tags: [Tables]
  *     security:
  *       - bearerAuth: []
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required: [number, capacity, restaurant]
- *             properties:
- *               number: { type: number }
- *               capacity: { type: number }
- *               restaurant: { type: string }
- *     responses:
- *       201: { description: Mesa creada }
  */
 router.post(
     '/create',
@@ -55,8 +44,6 @@ router.post(
  *     tags: [Tables]
  *     security:
  *       - bearerAuth: []
- *     responses:
- *       200: { description: Lista de mesas }
  */
 router.get('/', validateJWT, getTables);
 
@@ -68,15 +55,40 @@ router.get('/', validateJWT, getTables);
  *     tags: [Tables]
  *     security:
  *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: restaurantId
- *         required: true
- *         schema: { type: string }
- *     responses:
- *       200: { description: Lista de mesas del restaurante }
  */
 router.get('/restaurant/:restaurantId', validateJWT, getTablesByRestaurant);
+
+/**
+ * @swagger
+ * /tables/{tableId}:
+ *   put:
+ *     summary: Actualizar una mesa
+ *     tags: [Tables]
+ *     security:
+ *       - bearerAuth: []
+ */
+router.put(
+    '/:tableId',
+    validateJWT,
+    hasRole(ADMIN_RESTAURANTE, ADMIN_SISTEMA),
+    updateTable
+);
+
+/**
+ * @swagger
+ * /tables/{tableId}:
+ *   delete:
+ *     summary: Eliminar una mesa
+ *     tags: [Tables]
+ *     security:
+ *       - bearerAuth: []
+ */
+router.delete(
+    '/:tableId',
+    validateJWT,
+    hasRole(ADMIN_RESTAURANTE, ADMIN_SISTEMA),
+    deleteTable
+);
 
 /**
  * @swagger
@@ -86,26 +98,6 @@ router.get('/restaurant/:restaurantId', validateJWT, getTablesByRestaurant);
  *     tags: [Tables]
  *     security:
  *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: tableId
- *         required: true
- *         schema: { type: string }
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             properties:
- *               availability:
- *                 type: string
- *                 enum: [disponible, ocupado, reservado]
- *               status:
- *                 type: string
- *                 enum: [AVAILABLE, OCCUPIED, RESERVED]
- *     responses:
- *       200: { description: Estado actualizado }
  */
 router.patch(
     '/:tableId/status',
