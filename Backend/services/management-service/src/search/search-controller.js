@@ -25,6 +25,22 @@ const buildPaginationMeta = (page, limit, total) => ({
     hasPrevPage: page > 1,
 });
 
+const getRestaurantesConMesasDisponibles = async () => {
+    const tablesWithAvailability = await Table.findAll({
+        attributes: ['restaurant'],
+        where: {
+            availability: 'disponible',
+            isActive: true,
+        },
+        group: ['restaurant'],
+        raw: true,
+    });
+
+    return tablesWithAvailability
+        .map((table) => table.restaurant)
+        .filter(Boolean);
+};
+
 /* ─────────────────────────────────────────────────────────────────────────────
    GET /search?q=&minPrice=&maxPrice=&category=&minRating=&page=&limit=
    Búsqueda global sobre Restaurantes y Productos con $regex + filtros
@@ -115,6 +131,7 @@ export const globalSearch = async (req, res) => {
         return res.status(500).json({ success: false, message: error.message });
     }
 };
+
 /* ─────────────────────────────────────────────────────────────────────────────
    GET /search/restaurants?name=&category=&city=&minRating=&availability=&page=&limit=
    availability: true → solo restaurantes con al menos una mesa en estado "disponible"
@@ -125,37 +142,39 @@ export const searchRestaurants = async (req, res) => {
         const { page, limit, skip } = getPagination(req.query);
 
         const filter = { isActive: true };
+
         if (name) filter.name = { $regex: name, $options: 'i' };
         if (city) filter['address.city'] = { $regex: city, $options: 'i' };
         if (minRating) filter.rating = { $gte: parseFloat(minRating) };
+        if (category) filter.category = { $regex: category, $options: 'i' };
 
-        if (category) {
-            filter.category = { $regex: category, $options: 'i' };
-        }
+        const requiereDisponibilidad = availability === 'true' || availability === '1';
 
-        // filtro para disponibilidad, solo si hay mesas disponibles
-        if (availability === 'true' || availability === '1') {
-            const tablesWithAvailability = await Table.find({
-                availability: 'disponible',
-                isActive: true,
-            }).distinct('restaurant');
+        if (requiereDisponibilidad) {
+            const restaurantIds = await getRestaurantesConMesasDisponibles();
 
-            // Si no hay ninguna mesa disponible en ningún restaurante no devuleve nada
-            if (tablesWithAvailability.length === 0) {
+            if (restaurantIds.length === 0) {
                 return res.status(200).json({
                     success: true,
-                    filters: { availability: true },
+                    filters: {
+                        ...(name && { name }),
+                        ...(city && { city }),
+                        ...(minRating && { minRating: parseFloat(minRating) }),
+                        ...(category && { category }),
+                        availability: true,
+                    },
                     pagination: buildPaginationMeta(page, limit, 0),
                     restaurants: [],
                 });
             }
-            filter._id = { $in: tablesWithAvailability };
+
+            filter._id = { $in: restaurantIds };
         }
 
         const [total, restaurants] = await Promise.all([
             Restaurant.countDocuments(filter),
             Restaurant.find(filter)
-                .select('name description address rating category image')
+                .select('name description address rating category image photos')
                 .sort({ rating: -1 })
                 .skip(skip)
                 .limit(limit),
@@ -168,7 +187,7 @@ export const searchRestaurants = async (req, res) => {
                 ...(city && { city }),
                 ...(minRating && { minRating: parseFloat(minRating) }),
                 ...(category && { category }),
-                ...(availability !== undefined && { availability: availability === 'true' || availability === '1' }),
+                ...(availability !== undefined && { availability: requiereDisponibilidad }),
             },
             pagination: buildPaginationMeta(page, limit, total),
             restaurants,
@@ -189,6 +208,7 @@ export const searchProducts = async (req, res) => {
         const { page, limit, skip } = getPagination(req.query);
 
         const filter = { isActive: true, isAvailable: true };
+
         if (name) filter.name = { $regex: name, $options: 'i' };
         if (type) filter.type = type;
         if (category) filter.category = category;
