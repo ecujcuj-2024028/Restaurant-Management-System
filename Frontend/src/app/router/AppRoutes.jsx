@@ -14,6 +14,7 @@ import ReservationList from '../../features/reservations/components/ReservationL
 import MyReservations from '../../features/reservations/components/MyReservations'
 import ExternalOrderList from '../../features/external-orders/components/ExternalOrderList'
 import UserProfile from '../../features/users/components/UserProfile'
+import NotFound from '../../shared/components/ui/NotFound'
 import RoleRoute from '../../shared/components/RoleRoute'
 
 // Roles disponibles en el sistema
@@ -187,7 +188,7 @@ const AppRoutes = () => {
           />
         </Route>
 
-        <Route path="*" element={<Navigate to="/login" replace />} />
+        <Route path="*" element={<NotFound />} />
       </Routes>
     </BrowserRouter>
   )
