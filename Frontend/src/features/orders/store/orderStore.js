@@ -1,0 +1,78 @@
+import { create } from 'zustand'
+import {
+  getOrders,
+  getOrderHistory,
+  createOrder as createOrderApi,
+  updateOrderStatus as updateOrderStatusApi,
+  cancelOrder as cancelOrderApi,
+} from '../../../shared/api/orders'
+
+const useOrderStore = create((set) => ({
+  orders: [],
+  history: [],
+  loading: false,
+  error: null,
+
+  fetchOrders: async (restaurantId) => {
+  set({ loading: true, error: null })
+  try {
+    const response = await getOrders(restaurantId)
+    set({ orders: response.data?.orders || [], loading: false })
+  } catch (error) {
+    set({ loading: false, error: error?.response?.data?.message || error.message })
+  }
+},
+
+  fetchOrderHistory: async () => {
+    set({ loading: true, error: null })
+    try {
+      const response = await getOrderHistory()
+      set({ history: response.data?.orders || [], loading: false })
+    } catch (error) {
+      set({ loading: false, error: error?.response?.data?.message || error.message })
+    }
+  },
+
+  createOrder: async (data) => {
+    set({ loading: true, error: null })
+    try {
+      const response = await createOrderApi(data)
+      const newOrder = response.data?.order
+      set((state) => ({ orders: [newOrder, ...state.orders], loading: false }))
+      return newOrder
+    } catch (error) {
+      set({ loading: false, error: error?.response?.data?.message || error.message })
+      throw error
+    }
+  },
+
+  updateOrderStatus: async (id, status) => {
+    try {
+      const response = await updateOrderStatusApi(id, status)
+      const updatedOrder = response.data?.order
+      set((state) => ({
+        orders: state.orders.map((o) =>
+          (o._id || o.id) === id ? updatedOrder : o
+        ),
+      }))
+      return updatedOrder
+    } catch (error) {
+      throw error
+    }
+  },
+
+  cancelOrder: async (id) => {
+    try {
+      await cancelOrderApi(id)
+      set((state) => ({
+        orders: state.orders.map((o) =>
+          (o._id || o.id) === id ? { ...o, status: 'cancelado' } : o
+        ),
+      }))
+    } catch (error) {
+      throw error
+    }
+  },
+}))
+
+export default useOrderStore

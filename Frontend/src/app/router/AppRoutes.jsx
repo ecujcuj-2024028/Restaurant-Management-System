@@ -16,6 +16,7 @@ import ExternalOrderList from '../../features/external-orders/components/Externa
 import UserProfile from '../../features/users/components/UserProfile'
 import NotFound from '../../shared/components/ui/NotFound'
 import RoleRoute from '../../shared/components/RoleRoute'
+import OrderList from '../../features/orders/components/OrderList'
 
 // Roles disponibles en el sistema
 const ROLES = {
@@ -124,7 +125,7 @@ const AppRoutes = () => {
             path="orders"
             element={
               <RoleRoute roles={ADMIN_ROLES}>
-                <div className="text-white">Pedidos (próximamente)</div>
+                <OrderList />
               </RoleRoute>
             }
           />
