@@ -5,6 +5,8 @@ import {
     verifyEmail,
     handleRoleRequest,
     getRoleRequests,
+    approveRoleRequest,
+    rejectRoleRequest,
     requestRoleUpgrade,
     forgotPassword,
     resetPassword,
@@ -194,6 +196,20 @@ router.get(
     validateJWT,
     hasRole(ADMIN_SISTEMA),
     getRoleRequests
+);
+
+router.patch(
+    '/role-requests/:id/approve',
+    validateJWT,
+    hasRole(ADMIN_SISTEMA),
+    approveRoleRequest
+);
+
+router.patch(
+    '/role-requests/:id/reject',
+    validateJWT,
+    hasRole(ADMIN_SISTEMA),
+    rejectRoleRequest
 );
 
 /* ============================================================

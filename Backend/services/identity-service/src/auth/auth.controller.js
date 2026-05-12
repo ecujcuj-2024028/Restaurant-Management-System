@@ -250,9 +250,97 @@ export const resetPassword = async (req, res, next) => {
 /* =========================
    ROLE UPGRADE REQUESTS
    ========================= */
-/* =========================
-   ROLE UPGRADE REQUESTS
-   ========================= */
+
+const procesarSolicitudCambioRol = async ({ id, accion, reviewedBy }) => {
+    const isApproval = accion === 'APPROVED';
+    const t = await sequelize.transaction();
+
+    try {
+        const request = await RoleUpgradeRequest.findByPk(id, {
+            transaction: t,
+            lock: t.LOCK.UPDATE,
+        });
+
+        if (!request) {
+            await t.rollback();
+            return {
+                success: false,
+                status: 404,
+                message: 'Solicitud no encontrada'
+            };
+        }
+
+        if (request.Status !== 'PENDING') {
+            await t.rollback();
+            return {
+                success: false,
+                status: 409,
+                message: 'La solicitud ya fue procesada'
+            };
+        }
+
+        if (isApproval) {
+            const role = await Role.findOne({
+                where: { Name: request.RequestedRole },
+                transaction: t,
+            });
+
+            if (!role) {
+                await t.rollback();
+                return {
+                    success: false,
+                    status: 400,
+                    message: `El rol solicitado no existe: ${request.RequestedRole}`
+                };
+            }
+
+            await UserRole.destroy({
+                where: { UserId: request.UserId },
+                transaction: t,
+            });
+
+            await UserRole.create({
+                UserId: request.UserId,
+                RoleId: role.Id,
+            }, { transaction: t });
+        }
+
+        request.Status = accion;
+        request.ReviewedBy = reviewedBy || null;
+        await request.save({ transaction: t });
+
+        await t.commit();
+
+        const updatedRequest = await RoleUpgradeRequest.findByPk(id, {
+            include: [{
+                model: User,
+                attributes: ['Name', 'Surname', 'Email', 'Username']
+            }]
+        });
+
+        return {
+            success: true,
+            request: updatedRequest
+        };
+    } catch (error) {
+        await t.rollback();
+        throw error;
+    }
+};
+
+const notificarRespuestaSolicitudRol = async (request) => {
+    const requestingUser = request?.User || await User.findByPk(request.UserId);
+
+    if (!requestingUser) return;
+
+    await sendRoleUpgradeResponseEmail({
+        userEmail: requestingUser.Email,
+        userName: requestingUser.Name,
+        requestedRole: request.RequestedRole,
+        status: request.Status
+    });
+};
+
 export const getRoleRequests = async (req, res) => {
     try {
         const requests = await RoleUpgradeRequest.findAll({
@@ -388,5 +476,69 @@ export const handleRoleRequest = async (req, res) => {
         `);
     } catch (error) {
         return res.status(500).send(`Error interno: ${error.message}`);
+    }
+};
+
+export const approveRoleRequest = async (req, res) => {
+    try {
+        const resultado = await procesarSolicitudCambioRol({
+            id: req.params.id,
+            accion: 'APPROVED',
+            reviewedBy: req.userId,
+        });
+
+        if (!resultado.success) {
+            return res.status(resultado.status).json({
+                success: false,
+                message: resultado.message
+            });
+        }
+
+        notificarRespuestaSolicitudRol(resultado.request)
+            .catch(err => console.error('Error enviando respuesta al usuario:', err));
+
+        return res.status(200).json({
+            success: true,
+            message: 'Solicitud aprobada correctamente',
+            request: resultado.request
+        });
+    } catch (error) {
+        return res.status(500).json({
+            success: false,
+            message: 'Error al aprobar la solicitud',
+            error: process.env.NODE_ENV === 'development' ? error.message : undefined
+        });
+    }
+};
+
+export const rejectRoleRequest = async (req, res) => {
+    try {
+        const resultado = await procesarSolicitudCambioRol({
+            id: req.params.id,
+            accion: 'REJECTED',
+            reviewedBy: req.userId,
+        });
+
+        if (!resultado.success) {
+            return res.status(resultado.status).json({
+                success: false,
+                message: resultado.message
+            });
+        }
+
+        notificarRespuestaSolicitudRol(resultado.request)
+            .catch(err => console.error('Error enviando respuesta al usuario:', err));
+
+        return res.status(200).json({
+            success: true,
+            message: 'Solicitud rechazada correctamente',
+            request: resultado.request
+        });
+    } catch (error) {
+        return res.status(500).json({
+            success: false,
+            message: 'Error al rechazar la solicitud',
+            error: process.env.NODE_ENV === 'development' ? error.message : undefined
+        });
     }
 };
