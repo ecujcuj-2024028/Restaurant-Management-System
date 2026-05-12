@@ -6,6 +6,7 @@ import Restaurant from '../restaurants/restaurant.model.js';
 import { sendInvoiceEmail } from '../../helpers/email-service.js';
 import { ADMIN_RESTAURANTE, ADMIN_SISTEMA } from '../../helpers/role-constants.js';
 import { sequelize } from '../../configs/db-postgres.js';
+import { Op } from 'sequelize';
 
 export const createOrder = async (req, res) => {
   const t = await sequelize.transaction();
