@@ -155,7 +155,7 @@ export const getOrderHistory = async (req, res) => {
   try {
     const userId = req.userId;
     const page = parseInt(req.query.page) || 1;
-    const limit = parseInt(req.query.limit) || 5;
+    const limit = parseInt(req.query.limit) || 10;
     const skip = (page - 1) * limit;
 
     const orders = await Order.find({ userId })
@@ -163,16 +163,9 @@ export const getOrderHistory = async (req, res) => {
       .skip(skip)
       .limit(limit);
 
-    const reservations = await Reservation.findAll({
-      where: {
-        userId,
-        status: { [Op.ne]: 'cancelada' }
-      },
-      order: [['created_at', 'DESC']]
-    });
-
-    return res.json({ page, limit, orders, reservations });
+    return res.json({ page, limit, orders, reservations: [] });
   } catch (error) {
+    console.error('Error getOrderHistory:', error.message);
     return res.status(500).json({
       message: "Error al obtener historial",
       error: error.message

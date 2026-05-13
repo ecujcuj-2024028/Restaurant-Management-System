@@ -17,6 +17,8 @@ import { toast } from 'react-hot-toast'
 import useRestaurantStore from '../store/restaurantStore'
 import useProductStore from '../../product/store/productStore'
 import Skeleton from '../../../shared/components/ui/Skeleton'
+import CreateOrderForm from '../../orders/components/CreateOrderForm'
+import useAuthStore from '../../auth/store/authStore'
 
 const RestaurantDetail = () => {
   const { id } = useParams()
@@ -26,6 +28,9 @@ const RestaurantDetail = () => {
   
   const [restaurant, setRestaurant] = useState(null)
   const [selectedCategory, setSelectedCategory] = useState('Todos')
+  const [showOrderForm, setShowOrderForm] = useState(false)
+  const { user } = useAuthStore()
+  const isCliente = user?.roles?.includes('CLIENTE')
 
   useEffect(() => {
     if (restaurants.length === 0) {
@@ -182,16 +187,24 @@ const RestaurantDetail = () => {
         </div>
       </section>
 
-      {/* Floating Action Button (Cart) */}
-      <motion.button 
-        whileHover={{ scale: 1.05 }}
-        whileTap={{ scale: 0.95 }}
-        className="fixed bottom-8 right-8 bg-orange-500 text-white px-8 py-4 rounded-3xl font-black shadow-2xl shadow-orange-500/40 flex items-center gap-3 z-50"
-      >
-        <ShoppingCart size={20} />
-        <span>Ver Pedido</span>
-        <span className="bg-white/20 px-2 py-0.5 rounded-lg text-xs">0</span>
-      </motion.button>
+      {isCliente && (
+        <motion.button
+          whileHover={{ scale: 1.05 }}
+          whileTap={{ scale: 0.95 }}
+          onClick={() => setShowOrderForm(true)}
+          className="fixed bottom-8 right-8 bg-orange-500 text-white px-8 py-4 rounded-3xl font-black shadow-2xl shadow-orange-500/40 flex items-center gap-3 z-50"
+        >
+          <ShoppingCart size={20} />
+          <span>Hacer Pedido</span>
+        </motion.button>
+      )}
+
+      {showOrderForm && (
+        <CreateOrderForm
+          restaurantId={id}
+          onClose={() => setShowOrderForm(false)}
+        />
+      )}
     </motion.div>
   )
 }

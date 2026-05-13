@@ -18,6 +18,7 @@ import NotFound from "../../shared/components/ui/NotFound";
 import RoleRoute from "../../shared/components/RoleRoute";
 import OrderList from "../../features/orders/components/OrderList";
 import ReportsPage from "../../features/reports/components/ReportsPage";
+import MyOrders from '../../features/orders/components/MyOrders'
 
 // Roles disponibles en el sistema
 const ROLES = {
@@ -165,13 +166,13 @@ const AppRoutes = () => {
 
           {/* ── CLIENTE ── */}
           <Route
-            path="my-orders"
-            element={
-              <RoleRoute roles={ROLES.CLIENTE}>
-                <div className="text-white">Mis Pedidos (próximamente)</div>
-              </RoleRoute>
-            }
-          />
+              path="my-orders"
+              element={
+                <RoleRoute roles={ROLES.CLIENTE}>
+                  <MyOrders />
+                </RoleRoute>
+              }
+            />
           <Route
             path="my-reservations"
             element={
