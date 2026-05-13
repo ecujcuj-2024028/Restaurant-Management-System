@@ -39,10 +39,10 @@ app.use(helmet(helmetConfiguration));
 app.use(morgan('dev'));
 
 // Rutas
-app.use(`${BASE_PATH}/orders`,       orderRoutes);
+app.use(`${BASE_PATH}/orders`, orderRoutes);
 app.use(`${BASE_PATH}/reservations`, reservationRoutes);
 app.use(`${BASE_PATH}/external-orders`, externalOrderRoutes);
-app.use(`${BASE_PATH}/history`,      customerHistoryRoutes);
+app.use(`${BASE_PATH}/customer`, customerHistoryRoutes);
 
 // Health Check
 app.get(`${BASE_PATH}/health`, (req, res) => {
