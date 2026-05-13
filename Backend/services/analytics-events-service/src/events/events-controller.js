@@ -167,7 +167,6 @@ export const updateEvent = async (req, res) => {
         message: `Evento no encontrado con id ${req.params.id}`,
       });
 
-    const userRoles = req.user.UserRoles.map((ur) => ur.Role.Name);
     const isAdmin = usuarioEsAdminSistema(req);
     if (!isAdmin && event.restaurant.toString() !== req.body.restaurantId) {
       return res.status(403).json({
@@ -277,7 +276,6 @@ export const deleteEvent = async (req, res) => {
         message: `Evento no encontrado con id ${req.params.id}`,
       });
 
-    const userRoles = req.user.UserRoles.map((ur) => ur.Role.Name);
     const isAdmin = usuarioEsAdminSistema(req);
     if (!isAdmin && event.restaurant.toString() !== req.body.restaurantId) {
       return res.status(403).json({
@@ -313,7 +311,6 @@ export const addFeaturedProduct = async (req, res) => {
         message: `Evento no encontrado con id ${req.params.id}`,
       });
 
-    const userRoles = req.user.UserRoles.map((ur) => ur.Role.Name);
     const isAdmin = usuarioEsAdminSistema(req);
     if (!isAdmin && event.restaurant.toString() !== req.body.restaurantId) {
       return res.status(403).json({
@@ -372,7 +369,6 @@ export const removeFeaturedProduct = async (req, res) => {
         message: `Evento no encontrado con id ${req.params.id}`,
       });
 
-    const userRoles = req.user.UserRoles.map((ur) => ur.Role.Name);
     const isAdmin = usuarioEsAdminSistema(req);
     if (!isAdmin && event.restaurant.toString() !== req.body.restaurantId) {
       return res.status(403).json({
