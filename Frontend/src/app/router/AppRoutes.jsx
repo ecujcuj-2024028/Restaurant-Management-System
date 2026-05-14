@@ -19,6 +19,7 @@ import RoleRoute from "../../shared/components/RoleRoute";
 import OrderList from "../../features/orders/components/OrderList";
 import ReportsPage from "../../features/reports/components/ReportsPage";
 import MyOrders from '../../features/orders/components/MyOrders'
+import EventList from '../../features/events/components/EventList'
 
 // Roles disponibles en el sistema
 const ROLES = {
@@ -159,7 +160,7 @@ const AppRoutes = () => {
             path="events"
             element={
               <RoleRoute roles={ADMIN_ROLES}>
-                <div className="text-white">Eventos (próximamente)</div>
+                <EventList />
               </RoleRoute>
             }
           />
