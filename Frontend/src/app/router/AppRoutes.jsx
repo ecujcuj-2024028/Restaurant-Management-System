@@ -20,6 +20,7 @@ import OrderList from "../../features/orders/components/OrderList";
 import ReportsPage from "../../features/reports/components/ReportsPage";
 import MyOrders from '../../features/orders/components/MyOrders'
 import EventList from '../../features/events/components/EventList'
+import MenuList from '../../features/menu/components/MenuList';
 
 // Roles disponibles en el sistema
 const ROLES = {
@@ -120,7 +121,7 @@ const AppRoutes = () => {
             path="menus"
             element={
               <RoleRoute roles={ADMIN_ROLES}>
-                <div className="text-white">Menús (próximamente)</div>
+                <MenuList/>
               </RoleRoute>
             }
           />

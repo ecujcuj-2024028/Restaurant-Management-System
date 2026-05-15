@@ -1,6 +1,6 @@
 import api from './api'
 
-const EVENTS_ENDPOINT = '/Eventos'
+const EVENTS_ENDPOINT = '/events'
 
 export const getEvents = (params = {}) =>
   api.get(EVENTS_ENDPOINT, { params })
@@ -9,14 +9,10 @@ export const getEventById = (id) =>
   api.get(`${EVENTS_ENDPOINT}/${id}`)
 
 export const createEvent = (data) =>
-  api.post(EVENTS_ENDPOINT, data, {
-    headers: { 'Content-Type': 'multipart/form-data' },
-  })
+  api.post(EVENTS_ENDPOINT, data)
 
 export const updateEvent = (id, data) =>
-  api.put(`${EVENTS_ENDPOINT}/${id}`, data, {
-    headers: { 'Content-Type': 'multipart/form-data' },
-  })
+  api.put(`${EVENTS_ENDPOINT}/${id}`, data)
 
 export const deleteEvent = (id) =>
   api.delete(`${EVENTS_ENDPOINT}/${id}`)

@@ -82,39 +82,39 @@ const EventForm = ({ eventToEdit = null, onClose, onSuccess }) => {
   }, [imageFile])
 
   const onSubmit = async (data) => {
-    const toastId = toast.loading(
-      isEditing ? 'Actualizando evento...' : 'Creando evento...'
-    )
-    try {
-      const formData = new FormData()
-      formData.append('restaurantId', data.restaurantId)
-      formData.append('name', data.name.trim())
-      if (data.description) formData.append('description', data.description.trim())
-      formData.append('startDate', new Date(data.startDate).toISOString())
-      formData.append('endDate', new Date(data.endDate).toISOString())
-      if (data.capacity) formData.append('capacity', data.capacity)
-      if (data.price !== '' && data.price !== undefined)
-        formData.append('price', data.price)
-      if (data.image && data.image[0]) formData.append('image', data.image[0])
-
-      if (isEditing) {
-        await updateEvent(getEventId(eventToEdit), formData)
-        toast.success('Evento actualizado correctamente', { id: toastId })
-      } else {
-        await createEvent(formData)
-        toast.success('Evento creado correctamente', { id: toastId })
-      }
-
-      if (onSuccess) onSuccess()
-      onClose()
-    } catch (error) {
-      const message =
-        error?.response?.data?.message ||
-        error?.message ||
-        'Error al guardar el evento'
-      toast.error(message, { id: toastId })
+  const toastId = toast.loading(
+    isEditing ? 'Actualizando evento...' : 'Creando evento...'
+  )
+  try {
+    const payload = {
+      restaurantId: data.restaurantId,
+      name: data.name.trim(),
+      description: data.description?.trim() || '',
+      startDate: new Date(data.startDate).toISOString(),
+      endDate: new Date(data.endDate).toISOString(),
     }
+
+    if (data.capacity) payload.capacity = Number(data.capacity)
+    if (data.price !== '' && data.price !== undefined) payload.price = Number(data.price)
+
+    if (isEditing) {
+      await updateEvent(getEventId(eventToEdit), payload)
+      toast.success('Evento actualizado correctamente', { id: toastId })
+    } else {
+      await createEvent(payload)
+      toast.success('Evento creado correctamente', { id: toastId })
+    }
+
+    if (onSuccess) onSuccess()
+    onClose()
+  } catch (error) {
+    const message =
+      error?.response?.data?.message ||
+      error?.message ||
+      'Error al guardar el evento'
+    toast.error(message, { id: toastId })
   }
+}
 
   const inputCls =
     'w-full bg-zinc-800/50 border border-zinc-700/50 text-white rounded-2xl px-5 py-3 focus:outline-none focus:ring-2 focus:ring-orange-500/50 transition-all placeholder:text-zinc-600 disabled:opacity-50'
