@@ -8,7 +8,7 @@ const DashboardPage = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false)
 
   return (
-    <div className="flex min-h-screen bg-gray-950 overflow-x-hidden">
+    <div className="flex min-h-screen bg-zinc-950 overflow-x-hidden">
       {/* Overlay para móvil */}
       {isSidebarOpen && (
         <div 
