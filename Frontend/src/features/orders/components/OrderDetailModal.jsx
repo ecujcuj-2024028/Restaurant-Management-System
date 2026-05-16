@@ -21,21 +21,14 @@ const OrderDetailModal = ({ order, onClose, onStatusChange }) => {
   }
 
   const handleDownloadInvoice = async () => {
-    const toastId = toast.loading('Generando factura...')
-    try {
-      const response = await getInvoice(order._id || order.id)
-      const url = window.URL.createObjectURL(new Blob([response.data]))
-      const link = document.createElement('a')
-      link.href = url
-      link.setAttribute('download', `factura-${order._id || order.id}.pdf`)
-      document.body.appendChild(link)
-      link.click()
-      link.remove()
-      toast.success('Factura descargada', { id: toastId })
-    } catch {
-      toast.error('Error al generar la factura', { id: toastId })
-    }
+  const toastId = toast.loading('Generando factura...')
+  try {
+    const response = await getInvoice(order._id || order.id)
+    toast.success('Factura enviada a tu correo electrónico 📧', { id: toastId })
+  } catch {
+    toast.error('Error al generar la factura', { id: toastId })
   }
+}
 
   return (
     <Modal title={`Pedido #${(order._id || order.id)?.slice(-6).toUpperCase()}`} onClose={onClose}>
@@ -77,7 +70,7 @@ const OrderDetailModal = ({ order, onClose, onStatusChange }) => {
               onClick={handleDownloadInvoice}
               className="w-full bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-400 font-bold py-3 rounded-xl border border-emerald-500/30 transition-colors"
             >
-              📄 Descargar Factura
+              📧 Enviar factura al correo
             </button>
           )}
         </div>

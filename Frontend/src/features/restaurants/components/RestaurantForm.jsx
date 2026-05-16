@@ -67,7 +67,6 @@ const RestaurantForm = ({ onClose, restaurant }) => {
         await createRestaurant(formData)
         toast.success('Restaurante creado correctamente', { id: toastId })
       }
-      onSuccess?.()
       onClose()
     } catch (error) {
       const message = error?.response?.data?.message || `Error al ${isEditing ? 'actualizar' : 'crear'} el restaurante`

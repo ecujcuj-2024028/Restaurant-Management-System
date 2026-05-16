@@ -20,7 +20,7 @@ const CreateOrderForm = ({ restaurantId, onClose }) => {
       try {
         const [tablesRes, productsRes] = await Promise.all([
           api.get(`/tables?restaurantId=${restaurantId}`),
-          api.get(`/products?restaurantId=${restaurantId}`)
+          api.get(`/products?restaurant=${restaurantId}`)
         ])
         setTables(tablesRes.data?.tables || tablesRes.data || [])
         setProducts(productsRes.data?.products || productsRes.data || [])
