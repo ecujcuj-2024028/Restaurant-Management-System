@@ -136,7 +136,7 @@ export const createEvent = async (req, res) => {
     let status = "scheduled";
     const now = new Date();
     if (now >= new Date(data.startDate) && now <= new Date(data.endDate)) {
-      status = "active";
+      status = "ongoing";
     }
 
     const event = await Event.create({

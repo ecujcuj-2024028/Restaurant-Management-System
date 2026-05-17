@@ -4,6 +4,9 @@ import { Router } from 'express';
 import {
     crearReview,
     getReviewsPorPlato,
+    getReviewsPorRestaurante,
+    updateReview,
+    deleteReview,
     getPlatosMasVendidos,
     getStatsAdmin,
     getStatsByRestaurant,
@@ -67,6 +70,67 @@ router.post('/reviews', validateJWT, crearReview);
  *       200: { description: Lista de reseñas y promedio de rating }
  */
 router.get('/reviews/plato/:platoId', getReviewsPorPlato);
+
+/**
+ * @swagger
+ * /analytics/reviews/restaurant/{restauranteId}:
+ *   get:
+ *     summary: Obtener estadísticas de reseñas de un restaurante
+ *     tags: [Analytics]
+ *     parameters:
+ *       - in: path
+ *         name: restauranteId
+ *         required: true
+ *         schema: { type: string }
+ *     responses:
+ *       200: { description: Resumen de rating y total de reseñas }
+ */
+router.get('/reviews/restaurant/:restauranteId', getReviewsPorRestaurante);
+
+/**
+ * @swagger
+ * /analytics/reviews/{id}:
+ *   put:
+ *     summary: Editar una reseña propia
+ *     tags: [Analytics]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string }
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               rating: { type: number }
+ *               comentario: { type: string }
+ *     responses:
+ *       200: { description: Reseña actualizada }
+ */
+router.put('/reviews/:id', validateJWT, updateReview);
+
+/**
+ * @swagger
+ * /analytics/reviews/{id}:
+ *   delete:
+ *     summary: Eliminar una reseña (lógica)
+ *     tags: [Analytics]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string }
+ *     responses:
+ *       200: { description: Reseña eliminada }
+ */
+router.delete('/reviews/:id', validateJWT, deleteReview);
 
 // ─── RUTAS DE ESTADÍSTICAS ──────
 /**
