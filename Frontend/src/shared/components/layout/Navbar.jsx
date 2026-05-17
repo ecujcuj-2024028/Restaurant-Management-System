@@ -2,22 +2,36 @@ import { useEffect, useState, useRef } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import useAuthStore from '../../../features/auth/store/authStore'
 import useUserStore from '../../../features/users/store/userStore'
+import useNotificationStore from '../../../features/notifications/store/notificationStore'
 import { User as UserIcon, Bell, LogOut, Settings, ChevronDown, Menu } from 'lucide-react'
+import NotificationDropdown from '../../../features/notifications/components/NotificationDropdown'
 
 const Navbar = ({ onMenuClick }) => {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false)
+  const [isNotificationsOpen, setIsNotificationsOpen] = useState(false)
   const dropdownRef = useRef(null)
   const navigate = useNavigate()
   
   const logout = useAuthStore((state) => state.logout)
   const user = useAuthStore((state) => state.user)
   const { profile, fetchProfile } = useUserStore()
+  const { unreadCount, fetchNotifications } = useNotificationStore()
 
   useEffect(() => {
     if (!profile) {
       fetchProfile()
     }
-  }, [profile, fetchProfile])
+    
+    const rid = profile?.restaurantId || user?.restaurantId
+    fetchNotifications(rid)
+
+    // Polling de notificaciones cada 2 minutos
+    const interval = setInterval(() => {
+      fetchNotifications(rid)
+    }, 120000)
+
+    return () => clearInterval(interval)
+  }, [profile, fetchProfile, fetchNotifications, user?.restaurantId])
 
   // Cerrar dropdown al hacer click fuera
   useEffect(() => {
@@ -51,12 +65,26 @@ const Navbar = ({ onMenuClick }) => {
         </div>
       </div>
 
-      {/* Funcion para mostrar notificaciones (ejemplo) (futuro desarrollo de sistema de notificaciones en tiempo real) */}
       <div className="flex items-center gap-3 lg:gap-6">
-        <button className="p-2 text-zinc-500 hover:text-orange-500 transition-colors relative">
-          <Bell size={20} />
-          <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-orange-500 rounded-full border-2 border-zinc-950"></span>
-        </button>
+        {/* Notifications */}
+        <div className="relative">
+          <button 
+            onClick={() => setIsNotificationsOpen(!isNotificationsOpen)}
+            className={`p-2 transition-colors relative ${isNotificationsOpen ? 'text-orange-500' : 'text-zinc-500 hover:text-orange-500'}`}
+          >
+            <Bell size={20} />
+            {unreadCount > 0 && (
+              <span className="absolute top-1 right-1 min-w-[18px] h-4.5 bg-orange-500 text-white text-[9px] font-bold flex items-center justify-center rounded-full border-2 border-zinc-950 px-1 animate-in zoom-in duration-300">
+                {unreadCount > 9 ? '+9' : unreadCount}
+              </span>
+            )}
+          </button>
+          
+          <NotificationDropdown 
+            isOpen={isNotificationsOpen} 
+            onClose={() => setIsNotificationsOpen(false)} 
+          />
+        </div>
 
         <div className="h-8 w-px bg-zinc-800 hidden xs:block"></div>
 
