@@ -146,7 +146,7 @@ export const getProduct = async (req, res) => {
 export const updateProduct = async (req, res) => {
     try {
         const { id } = req.params;
-        const updateData = { ...req.body };
+        const { name, description, price, type, category, isAvailable, preparationTime } = req.body;
 
         const product = await Product.findById(id);
         if (!product) return res.status(404).json({ success: false, message: 'Producto no encontrado' });
@@ -157,8 +157,33 @@ export const updateProduct = async (req, res) => {
             return res.status(403).json({ success: false, message: 'No autorizado para modificar este producto' });
         }
 
-        if (updateData.ingredients !== undefined) {
-            updateData.ingredients = parseIngredients(updateData.ingredients);
+        // Si se intenta cambiar el nombre, verificar que no choque con otro producto del mismo restaurante
+        if (name && name !== product.name) {
+            const duplicate = await Product.findOne({ 
+                name, 
+                restaurant: product.restaurant, 
+                isActive: true,
+                _id: { $ne: id } 
+            });
+            if (duplicate) {
+                return res.status(400).json({ 
+                    success: false, 
+                    message: `Ya existe otro producto llamado "${name}" en este restaurante.` 
+                });
+            }
+            product.name = name;
+        }
+
+        // Actualizar campos básicos solo si vienen en el body
+        if (description !== undefined) product.description = description;
+        if (price !== undefined) product.price = Number(price);
+        if (type !== undefined) product.type = type;
+        if (category !== undefined) product.category = category;
+        if (isAvailable !== undefined) product.isAvailable = isAvailable === 'true' || isAvailable === true;
+        if (preparationTime !== undefined) product.preparationTime = preparationTime ? Number(preparationTime) : null;
+
+        if (req.body.ingredients !== undefined) {
+            product.ingredients = parseIngredients(req.body.ingredients);
         }
 
         if (req.file) {
@@ -166,10 +191,9 @@ export const updateProduct = async (req, res) => {
                 const publicId = extractPublicId(product.image);
                 if (publicId) await cloudinary.uploader.destroy(publicId);
             }
-            updateData.image = req.file.path;
+            product.image = req.file.path;
         }
 
-        Object.assign(product, updateData);
         await product.save();
 
         return res.status(200).json({ success: true, product });
