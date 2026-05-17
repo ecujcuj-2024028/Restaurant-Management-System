@@ -178,9 +178,12 @@ const Sidebar = ({ isOpen, onClose }) => {
       </div>
 
       {userRoles.length > 0 && (
-        <div className="px-6 py-3 border-b border-zinc-800">
-          <span className="text-xs font-medium px-2 py-1 rounded-full bg-zinc-800 text-zinc-400 uppercase tracking-wider">
+        <div className="px-6 py-3 border-b border-zinc-800 flex flex-col gap-1">
+          <span className="text-xs font-medium px-2 py-1 rounded-full bg-zinc-800 text-zinc-400 uppercase tracking-wider w-fit">
             {userRoles[0].replace("_", " ")}
+          </span>
+          <span className="text-zinc-600 text-[9px] font-mono opacity-80 ml-1 uppercase tracking-tighter">
+            ID: {user?.id || user?._id}
           </span>
         </div>
       )}

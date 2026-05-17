@@ -9,14 +9,25 @@ import { ADMIN_SISTEMA, ADMIN_RESTAURANTE } from '../../helpers/role-constants.j
    Helper: obtener IDs de restaurantes propios
 ─────────────────────────────────────────────── */
 const getOwnedRestaurantIds = async (req) => {
-    const isSystemAdmin = req.userRoles?.includes(ADMIN_SISTEMA);
-    const isRestauranteAdmin = req.userRoles?.includes(ADMIN_RESTAURANTE);
+    const roles = req.userRoles || [];
+    const isSystemAdmin = roles.includes(ADMIN_SISTEMA);
+    const isRestauranteAdmin = roles.includes(ADMIN_RESTAURANTE);
+
+    console.log(`[MenuService] getOwnedRestaurantIds - User: ${req.userId}, roles: [${roles.join(', ')}]`);
 
     if (isSystemAdmin) return null; // Acceso total
-    if (!isRestauranteAdmin) return []; // Otros roles ven solo lo suyo (si aplica)
+    
+    if (isRestauranteAdmin) {
+        const myRestaurants = await Restaurant.find({ ownerId: req.userId, isActive: true }, '_id');
+        const ids = myRestaurants.map(r => r._id);
+        console.log(`[MenuService] Found ${ids.length} owned restaurants for admin ${req.userId}`);
+        return ids;
+    }
 
-    const myRestaurants = await Restaurant.find({ ownerId: req.userId, isActive: true }, '_id');
-    return myRestaurants.map(r => r._id);
+    // Para CLIENTE u otros roles no administrativos, devolvemos null para que puedan ver 
+    // menús basándose en el parámetro restaurantId de la query o ver todos los públicos.
+    console.log(`[MenuService] Public/Client access (null restriction)`);
+    return null; 
 };
 
 const addExpirationFlag = (menu) => {
@@ -105,8 +116,7 @@ export const getMenu = async (req, res) => {
 
 export const createMenu = async (req, res) => {
     try {
-        const data = req.body;
-        const { restaurantId } = req.body;
+        const { restaurantId, price, ...data } = req.body;
 
         if (!restaurantId) {
             return res.status(400).json({
@@ -138,6 +148,7 @@ export const createMenu = async (req, res) => {
 
         const menu = await Menu.create({
             ...data,
+            price: price ? Number(price) : null,
             restaurant: restaurantId
         });
 
@@ -156,7 +167,10 @@ export const createMenu = async (req, res) => {
 
 export const updateMenu = async (req, res) => {
     try {
-        const menu = await Menu.findById(req.params.id);
+        const { id } = req.params;
+        const { price, ...updateData } = req.body;
+
+        const menu = await Menu.findById(id);
 
         if (!menu)
             return res.status(404).json({
@@ -173,9 +187,13 @@ export const updateMenu = async (req, res) => {
             });
         }
 
+        if (price !== undefined) {
+            updateData.price = price ? Number(price) : null;
+        }
+
         const updated = await Menu.findByIdAndUpdate(
             req.params.id,
-            req.body,
+            updateData,
             { new: true, runValidators: true }
         );
 

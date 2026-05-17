@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Edit3, Trash2, Plus, TableProperties } from 'lucide-react'
+import { Edit3, Trash2, Plus, TableProperties, Store } from 'lucide-react'
 import { toast } from 'react-hot-toast'
 import useTableStore from '../store/tableStore'
+import useRestaurantStore from '../../restaurants/store/restaurantStore'
 import TableForm from './TableForm'
 import Skeleton from '../../../shared/components/ui/Skeleton'
 import ConfirmDialog from '../../../shared/components/ui/ConfirmDialog'
@@ -25,15 +26,25 @@ const AVAILABILITY_CONFIG = {
 }
 
 const TableList = () => {
-    const { tables, loading, error, fetchTables, deleteTable } = useTableStore()
+    const { tables, loading, error, fetchTables, fetchTablesByRestaurant, deleteTable } = useTableStore()
+    const { restaurants, fetchRestaurants } = useRestaurantStore()
 
     const [showForm, setShowForm] = useState(false)
     const [tableToEdit, setTableToEdit] = useState(null)
     const [tableToDelete, setTableToDelete] = useState(null)
+    const [selectedRestaurant, setSelectedRestaurant] = useState('')
 
     useEffect(() => {
-        fetchTables()
-    }, [fetchTables])
+        fetchRestaurants()
+    }, [fetchRestaurants])
+
+    useEffect(() => {
+        if (selectedRestaurant) {
+            fetchTablesByRestaurant(selectedRestaurant)
+        } else {
+            fetchTables()
+        }
+    }, [selectedRestaurant, fetchTables, fetchTablesByRestaurant])
 
     const openCreateForm = () => {
         setTableToEdit(null)
@@ -72,7 +83,7 @@ const TableList = () => {
                 <TableForm
                     tableToEdit={tableToEdit}
                     onClose={closeForm}
-                    onSuccess={fetchTables}
+                    onSuccess={selectedRestaurant ? () => fetchTablesByRestaurant(selectedRestaurant) : fetchTables}
                 />
             )}
 
@@ -84,7 +95,7 @@ const TableList = () => {
                 />
             )}
 
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-8">
+            <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 mb-8">
                 <div>
                     <h1 className="text-3xl font-bold text-white">Mesas</h1>
                     <p className="text-zinc-500 text-sm mt-1">
@@ -92,13 +103,33 @@ const TableList = () => {
                     </p>
                 </div>
 
-                <button
-                    onClick={openCreateForm}
-                    className="w-full sm:w-auto bg-orange-500 hover:bg-orange-600 text-white px-6 py-3 rounded-2xl text-sm font-bold transition-all shadow-lg shadow-orange-500/20 flex items-center justify-center gap-2 active:scale-95"
-                >
-                    <Plus size={18} />
-                    Nueva Mesa
-                </button>
+                <div className="flex flex-col sm:flex-row items-center gap-3 w-full md:w-auto">
+                    <div className="relative w-full sm:w-64">
+                        <div className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500">
+                            <Store size={18} />
+                        </div>
+                        <select
+                            value={selectedRestaurant}
+                            onChange={(e) => setSelectedRestaurant(e.target.value)}
+                            className="w-full bg-zinc-900/50 border border-white/10 text-white pl-11 pr-4 py-3 rounded-2xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-orange-500/50 appearance-none transition-all"
+                        >
+                            <option value="">Todos los restaurantes</option>
+                            {restaurants.map((res) => (
+                                <option key={res.id || res._id} value={res.id || res._id}>
+                                    {res.name}
+                                </option>
+                            ))}
+                        </select>
+                    </div>
+
+                    <button
+                        onClick={openCreateForm}
+                        className="w-full sm:w-auto bg-orange-500 hover:bg-orange-600 text-white px-6 py-3 rounded-2xl text-sm font-bold transition-all shadow-lg shadow-orange-500/20 flex items-center justify-center gap-2 active:scale-95 whitespace-nowrap"
+                    >
+                        <Plus size={18} />
+                        Nueva Mesa
+                    </button>
+                </div>
             </div>
 
             {error && (

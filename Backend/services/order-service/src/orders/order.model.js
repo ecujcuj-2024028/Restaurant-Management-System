@@ -5,7 +5,16 @@ const orderItemSchema = new mongoose.Schema(
     productId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Product',
-      required: true
+      required: false // Puede ser nulo si es un Menú completo
+    },
+    menuId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Menu',
+      required: false
+    },
+    isMenu: {
+      type: Boolean,
+      default: false
     },
     name: String,
     quantity: Number,

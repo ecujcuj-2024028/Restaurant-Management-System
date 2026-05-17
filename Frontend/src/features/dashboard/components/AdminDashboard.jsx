@@ -201,12 +201,12 @@ const Dashboard = () => {
             </select>
           </div>
 
-          <div className="h-[260px] w-full">
+          <div className="h-[300px] w-full min-h-[300px]">
             {analyticsLoading ? (
               <Skeleton className="w-full h-full rounded-2xl" />
-            ) : chartData.length > 0 ? (
-              <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={chartData}>
+            ) : chartData && chartData.length > 0 ? (
+              <ResponsiveContainer width="100%" height="100%" minHeight={300}>
+                <AreaChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                   <defs>
                     <linearGradient id="colorMetric" x1="0" y1="0" x2="0" y2="1">
                       <stop offset="5%" stopColor="#f97316" stopOpacity={0.4} />
@@ -214,9 +214,18 @@ const Dashboard = () => {
                     </linearGradient>
                   </defs>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#27272a" />
-                  <XAxis dataKey="name" axisLine={false} tickLine={false}
-                    tick={{ fill: '#52525b', fontSize: 11, fontWeight: 700 }} dy={10} />
-                  <YAxis hide />
+                  <XAxis 
+                    dataKey="name" 
+                    axisLine={false} 
+                    tickLine={false}
+                    tick={{ fill: '#52525b', fontSize: 11, fontWeight: 700 }} 
+                    dy={10} 
+                  />
+                  <YAxis 
+                    axisLine={false} 
+                    tickLine={false}
+                    tick={{ fill: '#52525b', fontSize: 10 }}
+                  />
                   <Tooltip
                     contentStyle={{ backgroundColor: '#18181b', border: '1px solid #3f3f46', borderRadius: '16px', padding: '12px 16px' }}
                     itemStyle={{ color: '#f97316', fontWeight: 'bold', fontSize: 13 }}
@@ -232,9 +241,9 @@ const Dashboard = () => {
                 </AreaChart>
               </ResponsiveContainer>
             ) : (
-              <div className="w-full h-full flex flex-col items-center justify-center text-zinc-600 gap-3">
+              <div className="w-full h-full flex flex-col items-center justify-center text-zinc-600 gap-3 border-2 border-dashed border-zinc-800 rounded-2xl">
                 <BarChart3 size={48} className="opacity-20" />
-                <p className="text-sm font-medium">No hay datos suficientes aún.</p>
+                <p className="text-sm font-medium text-zinc-500">No hay datos suficientes aún.</p>
               </div>
             )}
           </div>

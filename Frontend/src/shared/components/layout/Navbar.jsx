@@ -98,10 +98,14 @@ const Navbar = ({ onMenuClick }) => {
               <span className="text-white text-sm font-bold group-hover:text-orange-500 transition-colors">
                 {userData?.username || 'Admin'}
               </span>
+              <span className="text-zinc-600 text-[9px] font-mono leading-none opacity-80 uppercase tracking-tighter mb-1">
+                ID: {userData?.id?.slice(0, 8)}...
+              </span>
               <span className="text-zinc-500 text-[10px] uppercase font-bold tracking-tighter flex items-center gap-1">
                 {userData?.roles?.[0] || 'Administrador'}
                 <ChevronDown size={10} className={`transition-transform duration-200 ${isDropdownOpen ? 'rotate-180' : ''}`} />
-              </span>            </div>
+              </span>
+            </div>
             
             <div className="relative">
               <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-orange-400 to-orange-600 p-0.5 shadow-lg shadow-orange-500/10 group-hover:shadow-orange-500/20 transition-all transform group-hover:scale-105">

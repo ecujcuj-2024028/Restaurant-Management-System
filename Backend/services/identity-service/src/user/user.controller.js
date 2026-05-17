@@ -40,9 +40,7 @@ const formatearUsuario = (user) => ({
     status: user.Status,
     phone: user.UserProfile?.Phone || null,
     profilePicture: user.UserProfile?.ProfilePicture || null,
-    roles: Array.isArray(user.UserRoles)
-        ? user.UserRoles.map((userRole) => userRole.Role?.Name).filter(Boolean)
-        : [],
+    roles: user.UserRole?.Role?.Name ? [user.UserRole.Role.Name] : [],
     createdAt: user.CreatedAt,
     updatedAt: user.UpdatedAt
 });
@@ -152,7 +150,7 @@ export const getProfile = async (req, res) => {
                 },
                 {
                     model: UserRole,
-                    as: 'UserRoles',
+                    as: 'UserRole',
                     include: [{ model: Role, as: 'Role', attributes: ['Name'] }],
                 },
             ],
@@ -173,7 +171,7 @@ export const getProfile = async (req, res) => {
                 status        : user.Status,
                 phone         : user.UserProfile?.Phone         || null,
                 profilePicture: user.UserProfile?.ProfilePicture || null,
-                roles         : user.UserRoles.map(ur => ur.Role.Name),
+                roles         : user.UserRole?.Role?.Name ? [user.UserRole.Role.Name] : [],
             },
         });
 
@@ -224,7 +222,7 @@ export const updateProfile = async (req, res) => {
                 },
                 {
                     model: UserRole,
-                    as: 'UserRoles',
+                    as: 'UserRole',
                     include: [{ model: Role, as: 'Role', attributes: ['Name'] }],
                 },
             ],
@@ -242,7 +240,7 @@ export const updateProfile = async (req, res) => {
                 status        : updated.Status,
                 phone         : updated.UserProfile?.Phone         || null,
                 profilePicture: updated.UserProfile?.ProfilePicture || null,
-                roles         : updated.UserRoles.map(ur => ur.Role.Name),
+                roles         : updated.UserRole?.Role?.Name ? [updated.UserRole.Role.Name] : [],
             },
         });
 
@@ -294,7 +292,7 @@ export const updateProfilePicture = async (req, res) => {
                 },
                 {
                     model: UserRole,
-                    as: 'UserRoles',
+                    as: 'UserRole',
                     include: [{ model: Role, as: 'Role', attributes: ['Name'] }],
                 },
             ],
@@ -312,7 +310,7 @@ export const updateProfilePicture = async (req, res) => {
                 status        : updated.Status,
                 phone         : updated.UserProfile?.Phone         || null,
                 profilePicture: updated.UserProfile?.ProfilePicture || null,
-                roles         : updated.UserRoles.map(ur => ur.Role.Name),
+                roles         : updated.UserRole?.Role?.Name ? [updated.UserRole.Role.Name] : [],
             },
         });
 

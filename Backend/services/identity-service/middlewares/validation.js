@@ -29,8 +29,8 @@ export const validateRegister = [
         .withMessage('El nombre es obligatorio')
         .isLength({ max: 25 })
         .withMessage('El nombre no puede tener más de 25 caracteres')
-        .matches(/^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$/)
-        .withMessage('El nombre solo puede contener letras y espacios'),
+        .matches(/^[a-zA-Z0-9áéíóúÁÉÍÓÚñÑ\s]+$/)
+        .withMessage('El nombre solo puede contener letras, números y espacios'),
 
     body('surname')
         .trim()
@@ -38,8 +38,8 @@ export const validateRegister = [
         .withMessage('El apellido es obligatorio')
         .isLength({ max: 25 })
         .withMessage('El apellido no puede tener más de 25 caracteres')
-        .matches(/^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$/)
-        .withMessage('El apellido solo puede contener letras y espacios'),
+        .matches(/^[a-zA-Z0-9áéíóúÁÉÍÓÚñÑ\s]+$/)
+        .withMessage('El apellido solo puede contener letras, números y espacios'),
 
     body('username')
         .trim()
@@ -66,8 +66,8 @@ export const validateRegister = [
     body('phone')
         .notEmpty()
         .withMessage('El número de teléfono es obligatorio')
-        .matches(/^\d{8}$/)
-        .withMessage('El número de teléfono debe tener exactamente 8 dígitos'),
+        .matches(/^[\d\s+-]{8,20}$/)
+        .withMessage('El número de teléfono no es válido (mín. 8 caracteres)'),
 
     handleValidationErrors,
 ];

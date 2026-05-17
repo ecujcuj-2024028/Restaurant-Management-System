@@ -13,11 +13,11 @@ const useMenuStore = create((set) => ({
   loading: false,
   error: null,
 
-  fetchMenus: async () => {
+  fetchMenus: async (params = {}) => {
     set({ loading: true, error: null })
 
     try {
-      const response = await getMenus()
+      const response = await getMenus(params)
 
       set({
         menus: response.data?.menus || [],

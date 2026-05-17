@@ -29,7 +29,7 @@ export const findUserByEmailOrUsername = async (emailOrUsername) => {
                 { model: UserPasswordReset, as: 'UserPasswordReset' },
                 {
                     model: UserRole,
-                    as: 'UserRoles',
+                    as: 'UserRole',
                     include: [{ model: Role, as: 'Role' }],
                 },
             ],
@@ -51,7 +51,7 @@ export const findUserById = async (userId) => {
                 { model: UserPasswordReset, as: 'UserPasswordReset' },
                 {
                     model: UserRole,
-                    as: 'UserRoles',
+                    as: 'UserRole',
                     include: [{ model: Role, as: 'Role' }],
                 },
             ],
@@ -251,7 +251,7 @@ export const findUserByEmail = async (email) => {
                 { model: UserPasswordReset, as: 'UserPasswordReset' },
                 {
                     model: UserRole,
-                    as: 'UserRoles',
+                    as: 'UserRole',
                     include: [{ model: Role, as: 'Role' }],
                 },
             ],
