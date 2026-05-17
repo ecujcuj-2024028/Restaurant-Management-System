@@ -10,33 +10,14 @@ import ProductReviews from '../../reviews/components/ProductReviews'
 import Skeleton from '../../../shared/components/ui/Skeleton'
 
 // ── Fila expandible con items reseñables ─────────────────────────────────────
-const OrderRow = ({ order }) => {
+const OrderRow = ({ order, onViewDetail, onOpenReview }) => {
   const [expanded, setExpanded] = useState(false)
-  const [selectedOrder, setSelectedOrder] = useState(null)
-  const [reviewTarget, setReviewTarget] = useState(null)
   const [viewingReviews, setViewingReviews] = useState(null)
 
   const isEntregado = order.status === 'entregado'
 
   return (
     <>
-      {selectedOrder && (
-        <OrderDetailModal
-          order={selectedOrder}
-          onClose={() => setSelectedOrder(null)}
-          onStatusChange={null}
-          isClient
-        />
-      )}
-
-      {reviewTarget && (
-        <ReviewModal
-          product={reviewTarget.product}
-          restauranteId={reviewTarget.restauranteId}
-          onClose={() => setReviewTarget(null)}
-        />
-      )}
-
       <motion.tr
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
@@ -55,7 +36,7 @@ const OrderRow = ({ order }) => {
         <td className="px-8 py-5">
           <div className="flex justify-end gap-2">
             <button
-              onClick={() => setSelectedOrder(order)}
+              onClick={onViewDetail}
               className="p-2 hover:bg-zinc-800 rounded-xl text-zinc-400 hover:text-white transition-all"
               title="Ver detalle"
             >
@@ -120,7 +101,7 @@ const OrderRow = ({ order }) => {
                           </button>
                           <button
                             onClick={() =>
-                              setReviewTarget({
+                              onOpenReview({
                                 product: {
                                   _id: platoId,
                                   name: item.name,
@@ -167,12 +148,35 @@ const OrderRow = ({ order }) => {
 const MyOrders = () => {
   const { history, loading, error, fetchOrderHistory } = useOrderStore()
 
+  // Estados para modales movidos fuera del loop de la tabla para evitar errores de DOM
+  const [selectedOrder, setSelectedOrder] = useState(null)
+  const [reviewTarget, setReviewTarget] = useState(null)
+
   useEffect(() => {
     fetchOrderHistory()
   }, [fetchOrderHistory])
 
   return (
     <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="pb-10">
+      
+      {/* MODALES FUERA DE LA TABLA */}
+      {selectedOrder && (
+        <OrderDetailModal
+          order={selectedOrder}
+          onClose={() => setSelectedOrder(null)}
+          onStatusChange={null}
+          isClient
+        />
+      )}
+
+      {reviewTarget && (
+        <ReviewModal
+          product={reviewTarget.product}
+          restauranteId={reviewTarget.restauranteId}
+          onClose={() => setReviewTarget(null)}
+        />
+      )}
+
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-white">Mis Pedidos</h1>
         <p className="text-zinc-500 text-sm mt-1">
@@ -219,7 +223,12 @@ const MyOrders = () => {
             ) : (
               <AnimatePresence>
                 {history.map((order) => (
-                  <OrderRow key={order._id || order.id} order={order} />
+                  <OrderRow 
+                    key={order._id || order.id} 
+                    order={order} 
+                    onViewDetail={() => setSelectedOrder(order)}
+                    onOpenReview={(target) => setReviewTarget(target)}
+                  />
                 ))}
               </AnimatePresence>
             )}

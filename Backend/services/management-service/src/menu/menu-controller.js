@@ -131,8 +131,15 @@ export const createMenu = async (req, res) => {
             return res.status(403).json({ success: false, message: 'No tienes permiso para crear menús en este restaurante' });
         }
 
+        let imageUrl = null;
+        if (req.file) {
+            imageUrl = req.file.path;
+        }
+
         if (data.items && data.items.length > 0) {
-            const ids   = data.items.map(i => i.product);
+            // Manejar si items viene como string (form-data)
+            const itemsList = typeof data.items === 'string' ? JSON.parse(data.items) : data.items;
+            const ids = itemsList.map(i => i.product);
             const found = await Product.find({
                 _id:        { $in: ids },
                 restaurant: restaurantId,
@@ -144,12 +151,15 @@ export const createMenu = async (req, res) => {
                     success: false,
                     message: 'Uno o más productos son inválidos o no pertenecen al restaurante indicado'
                 });
+            
+            data.items = itemsList;
         }
 
         const menu = await Menu.create({
             ...data,
             price: price ? Number(price) : null,
-            restaurant: restaurantId
+            restaurant: restaurantId,
+            image: imageUrl
         });
 
         return res.status(201).json({
@@ -189,6 +199,19 @@ export const updateMenu = async (req, res) => {
 
         if (price !== undefined) {
             updateData.price = price ? Number(price) : null;
+        }
+
+        if (updateData.items && typeof updateData.items === 'string') {
+            updateData.items = JSON.parse(updateData.items);
+        }
+
+        if (req.file) {
+            // Eliminar imagen anterior si existe
+            if (menu.image) {
+                const publicId = extractPublicId(menu.image);
+                if (publicId) await cloudinary.uploader.destroy(publicId);
+            }
+            updateData.image = req.file.path;
         }
 
         const updated = await Menu.findByIdAndUpdate(

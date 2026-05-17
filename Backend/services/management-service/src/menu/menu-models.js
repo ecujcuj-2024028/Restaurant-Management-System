@@ -64,6 +64,11 @@ const menuSchema = mongoose.Schema(
             default: null
         },
 
+        image: {
+            type: String,
+            default: null
+        },
+
         items: {
             type: [menuItemSchema],
             default: []
