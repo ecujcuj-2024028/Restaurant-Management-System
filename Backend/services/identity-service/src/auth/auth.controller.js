@@ -314,6 +314,7 @@ const procesarSolicitudCambioRol = async ({ id, accion, reviewedBy }) => {
         const updatedRequest = await RoleUpgradeRequest.findByPk(id, {
             include: [{
                 model: User,
+                as: 'User',
                 attributes: ['Name', 'Surname', 'Email', 'Username']
             }]
         });
@@ -346,9 +347,10 @@ export const getRoleRequests = async (req, res) => {
         const requests = await RoleUpgradeRequest.findAll({
             include: [{
                 model: User,
+                as: 'User',
                 attributes: ['Name', 'Surname', 'Email', 'Username']
             }],
-            order: [['createdAt', 'DESC']]
+            order: [['CreatedAt', 'DESC']]
         });
 
         return res.status(200).json({
