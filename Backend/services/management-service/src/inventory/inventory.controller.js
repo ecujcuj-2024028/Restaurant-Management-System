@@ -236,6 +236,77 @@ export const updateQuantity = async (req, res) => {
 };
 
 /* ─────────────────────────────────────────────────────────────────────────────
+   PUT /inventory-pg/:id
+   Actualiza un ítem de inventario completo
+───────────────────────────────────────────────────────────────────────────── */
+export const updateInventoryItem = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const {
+            name,
+            quantity,
+            unit,
+            costPerUnit,
+            minStock,
+            isActive
+        } = req.body;
+
+        const item = await InventoryItem.findByPk(id);
+
+        if (!item || !item.IsActive) {
+            return res.status(404).json({
+                success: false,
+                message: 'Ítem de inventario no encontrado.',
+            });
+        }
+
+        // SEGURIDAD: Validar propiedad
+        if (!(await checkOwnership(req, item.RestaurantId))) {
+            return res.status(403).json({ success: false, message: 'No tienes permiso para modificar este inventario' });
+        }
+
+        // Si se cambia el nombre, validar que no choque con otro en el mismo restaurante
+        if (name && name !== item.Name) {
+            const existing = await InventoryItem.findOne({
+                where: {
+                    RestaurantId: item.RestaurantId,
+                    Name: name,
+                    IsActive: true,
+                    Id: { [Op.ne]: id }
+                }
+            });
+            if (existing) {
+                return res.status(409).json({
+                    success: false,
+                    message: `Ya existe otro ítem con el nombre "${name}" en este restaurante.`
+                });
+            }
+        }
+
+        // Actualizar campos
+        if (name !== undefined) item.Name = name;
+        if (quantity !== undefined) item.Quantity = quantity;
+        if (unit !== undefined) item.Unit = unit;
+        if (costPerUnit !== undefined) item.CostPerUnit = costPerUnit;
+        if (minStock !== undefined) item.MinStock = minStock;
+        if (isActive !== undefined) item.IsActive = isActive;
+
+        await item.save();
+
+        // Notificar si el nuevo stock es bajo
+        await checkAndNotifyLowStock(item, item.RestaurantId);
+
+        return res.status(200).json({
+            success: true,
+            item,
+        });
+
+    } catch (error) {
+        return res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+/* ─────────────────────────────────────────────────────────────────────────────
    DELETE /inventory-pg/:id
    Desactiva un ítem de inventario
 ───────────────────────────────────────────────────────────────────────────── */

@@ -34,7 +34,9 @@ const checkOwnership = async (req, restaurantId) => {
 ───────────────────────────────────────────────────────────────────────────── */
 export const getTables = async (req, res) => {
     try {
-        const { restaurantId, availability } = req.query;
+        // Soporta tanto ?restaurantId=ID como /restaurant/ID
+        const restaurantId = req.query.restaurantId || req.params.restaurantId;
+        const { availability } = req.query;
         const where = { isActive: true };
 
         const roles = req.userRoles || [];
@@ -43,8 +45,13 @@ export const getTables = async (req, res) => {
 
         console.log(`[ManagementService] getTables - User: ${userId}, roles: [${roles.join(', ')}], isSystemAdmin: ${isSystemAdmin}`);
 
-        if (!isSystemAdmin) {
-            // Buscamos sus locales en Mongo para filtrar en Postgres
+        const isRestauranteAdmin = roles.includes(ADMIN_RESTAURANTE);
+
+        if (isSystemAdmin) {
+            // Admin sistema ve todo
+            if (restaurantId) where.restaurant = restaurantId;
+        } else if (isRestauranteAdmin) {
+            // Admin restaurante ve solo lo suyo
             const myRestaurants = await Restaurant.find({ ownerId: userId, isActive: true }, '_id');
             const myIds = myRestaurants.map(r => r._id.toString());
 
@@ -56,7 +63,11 @@ export const getTables = async (req, res) => {
             } else {
                 where.restaurant = myIds; 
             }
-        } else if (restaurantId) {
+        } else {
+            // CLIENTE u otros: DEBEN proporcionar un restaurantId para ver mesas
+            if (!restaurantId) {
+                return res.status(400).json({ success: false, message: 'Se requiere restaurantId para consultar mesas' });
+            }
             where.restaurant = restaurantId;
         }
 

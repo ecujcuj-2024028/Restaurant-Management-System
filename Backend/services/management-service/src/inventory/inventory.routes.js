@@ -5,6 +5,7 @@ import {
     createInventoryItemPg,
     getInventoryByRestaurant,
     updateQuantity,
+    updateInventoryItem,
     deleteInventoryItemPg,
 } from './inventory.controller.js';
 import { validateJWT } from '../../middlewares/validate-JWT.js';
@@ -109,6 +110,41 @@ router.patch(
     validateJWT,
     hasRole(ADMIN_RESTAURANTE, ADMIN_SISTEMA),
     updateQuantity
+);
+
+/**
+ * @swagger
+ * /inventory/{id}:
+ *   put:
+ *     summary: Actualizar un ítem de inventario completo
+ *     tags: [Inventory]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string }
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               name: { type: string }
+ *               quantity: { type: number }
+ *               unit: { type: string }
+ *               costPerUnit: { type: number }
+ *               minStock: { type: number }
+ *     responses:
+ *       200: { description: Ítem actualizado }
+ */
+router.put(
+    '/:id',
+    validateJWT,
+    hasRole(ADMIN_RESTAURANTE, ADMIN_SISTEMA),
+    updateInventoryItem
 );
 
 /**

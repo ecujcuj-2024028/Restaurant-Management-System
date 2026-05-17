@@ -14,6 +14,7 @@ import { hasRole } from '../../middlewares/hasRole.js';
 const router = Router();
 
 router.get('/', validateJWT, getTables);
+router.get('/restaurant/:restaurantId', validateJWT, getTables);
 router.get('/:id', validateJWT, getTable);
 router.post('/create', validateJWT, hasRole(ADMIN_RESTAURANTE, ADMIN_SISTEMA), createTable);
 router.put('/:id', validateJWT, hasRole(ADMIN_RESTAURANTE, ADMIN_SISTEMA), updateTable);

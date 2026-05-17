@@ -7,7 +7,7 @@ import { ADMIN_SISTEMA, ADMIN_RESTAURANTE } from '../../helpers/role-constants.j
 export const createRestaurant = async (req, res) => {
     try {
         // Obtenemos los campos principales
-        const { name, category, phone, description } = req.body;
+        const { name, category, phone, description, openingTime, closingTime } = req.body;
 
         // Manejamos la dirección si viene como objeto (JSON) o como campos planos (form-data)
         const street = req.body.street || (req.body.address && req.body.address.street);
@@ -19,6 +19,8 @@ export const createRestaurant = async (req, res) => {
             category,
             phone,
             description,
+            openingTime,
+            closingTime,
             ownerId: req.userId, // ID de Postgres
             address: {
                 street,
@@ -45,10 +47,17 @@ export const getRestaurants = async (req, res) => {
 
         console.log(`[ManagementService] getRestaurants - User: ${userId}, Roles: [${roles.join(', ')}], isSystemAdmin: ${isSystemAdmin}`);
 
-        // SEGURIDAD: Si NO es Admin de Sistema, FORZAR filtrado por su ID.
-        if (!isSystemAdmin) {
+        // SEGURIDAD: 
+        // 1. Admin Sistema: Ve todos.
+        // 2. Admin Restaurante: Ve solo los suyos.
+        // 3. Cliente / Otros: Ven todos los activos.
+        const isRestauranteAdmin = roles.includes(ADMIN_RESTAURANTE);
+
+        if (isRestauranteAdmin && !isSystemAdmin) {
             query.ownerId = userId;
-            console.log(`[ManagementService] Appending ownerId filter: ${userId}`);
+            console.log(`[ManagementService] Filter applied: ownerId=${userId} (ADMIN_RESTAURANTE)`);
+        } else {
+            console.log(`[ManagementService] No ownership filter applied (ADMIN_SISTEMA or CLIENTE)`);
         }
 
         const restaurants = await Restaurant.find(query);
@@ -112,8 +121,8 @@ export const updateRestaurant = async (req, res) => {
     try {
         const { id } = req.params;
 
-        // Definimos campos permitidos, incluyendo ownerId
-        const allowedFields = ['name', 'category', 'ownerId', 'phone', 'description'];
+        // Definimos campos permitidos, incluyendo ownerId y horario
+        const allowedFields = ['name', 'category', 'ownerId', 'phone', 'description', 'openingTime', 'closingTime'];
         const updateData = {};
         
         for (const field of allowedFields) {
