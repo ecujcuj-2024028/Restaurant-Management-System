@@ -1,5 +1,6 @@
 import { create } from 'zustand'
-import { createReview, getReviewsByProduct } from '../../../shared/api/reviews'
+import { createReview, getReviewsByProduct, updateReview, deleteReview } from '../../../shared/api/reviews'
+import api from '../../../shared/api/api'
 
 const getErrorMessage = (error) =>
   error?.response?.data?.message ||
@@ -9,8 +10,49 @@ const getErrorMessage = (error) =>
 const useReviewStore = create((set, get) => ({
   // Reviews por platoId cacheadas: { [platoId]: { reviews, promedioRating, totalReviews } }
   reviewsByProduct: {},
+  restaurantStats: {}, // Cache: { [restaurantId]: { promedioRating, totalReviews } }
   submitting: false,
   error: null,
+
+  fetchRestaurantStats: async (restaurantId) => {
+    try {
+      const response = await api.get(`/analytics/reviews/restaurant/${restaurantId}`)
+      const data = response.data?.data
+      
+      // 1. Actualizar estadísticas generales del restaurante
+      set((state) => ({
+        restaurantStats: {
+          ...state.restaurantStats,
+          [restaurantId]: {
+            promedioRating: data?.promedioRating || 0,
+            totalReviews: data?.totalReviews || 0,
+          }
+        }
+      }))
+
+      // 2. Poblar caché de productos para mostrar estrellas en las tarjetas inmediatamente
+      if (data?.products) {
+        const productUpdates = {}
+        data.products.forEach(p => {
+          productUpdates[p.platoId] = {
+            promedioRating: p.promedioRating,
+            totalReviews: p.totalReviews,
+            reviews: [] // Los comentarios se cargarán al abrir el modal
+          }
+        })
+
+        set((state) => ({
+          reviewsByProduct: {
+            ...state.reviewsByProduct,
+            ...productUpdates
+          }
+        }))
+      }
+
+    } catch (error) {
+      console.error('Error fetching restaurant stats:', error)
+    }
+  },
 
   fetchReviewsByProduct: async (platoId) => {
     try {
@@ -78,6 +120,80 @@ const useReviewStore = create((set, get) => ({
       })
 
       return nuevaReview
+    } catch (error) {
+      const message = getErrorMessage(error)
+      set({ submitting: false, error: message })
+      throw new Error(message)
+    }
+  },
+
+  updateReview: async (reviewId, data) => {
+    set({ submitting: true, error: null })
+    try {
+      const response = await updateReview(reviewId, data)
+      const updatedReview = response.data?.data
+      const platoId = updatedReview.platoId
+
+      set((state) => {
+        const existing = state.reviewsByProduct[platoId]
+        if (!existing) return { submitting: false }
+
+        const updatedReviews = existing.reviews.map(r => 
+          (r._id || r.id) === reviewId ? updatedReview : r
+        )
+        const total = updatedReviews.length
+        const avg = total > 0
+          ? updatedReviews.reduce((acc, r) => acc + r.rating, 0) / total
+          : 0
+
+        return {
+          submitting: false,
+          reviewsByProduct: {
+            ...state.reviewsByProduct,
+            [platoId]: {
+              ...existing,
+              reviews: updatedReviews,
+              promedioRating: parseFloat(avg.toFixed(2))
+            },
+          },
+        }
+      })
+      return updatedReview
+    } catch (error) {
+      const message = getErrorMessage(error)
+      set({ submitting: false, error: message })
+      throw new Error(message)
+    }
+  },
+
+  deleteReview: async (reviewId, platoId) => {
+    set({ submitting: true, error: null })
+    try {
+      await deleteReview(reviewId)
+
+      set((state) => {
+        const existing = state.reviewsByProduct[platoId]
+        if (!existing) return { submitting: false }
+
+        const updatedReviews = existing.reviews.filter(r => (r._id || r.id) !== reviewId)
+        const total = updatedReviews.length
+        const avg = total > 0
+          ? updatedReviews.reduce((acc, r) => acc + r.rating, 0) / total
+          : 0
+
+        return {
+          submitting: false,
+          reviewsByProduct: {
+            ...state.reviewsByProduct,
+            [platoId]: {
+              ...existing,
+              reviews: updatedReviews,
+              promedioRating: parseFloat(avg.toFixed(2)),
+              totalReviews: total
+            },
+          },
+        }
+      })
     } catch (error) {
       const message = getErrorMessage(error)
       set({ submitting: false, error: message })

@@ -47,11 +47,12 @@ const RATING_LABELS = {
 }
 
 // ── Modal principal de reseña ─────────────────────────────────────────────────
-const ReviewModal = ({ product, restauranteId, onClose, onSuccess }) => {
+const ReviewModal = ({ product, restauranteId, onClose, onSuccess, reviewToEdit }) => {
   const user = useAuthStore((state) => state.user)
-  const { submitting, submitReview } = useReviewStore()
+  const { submitting, submitReview, updateReview } = useReviewStore()
+  const isEditing = !!reviewToEdit
 
-  const [rating, setRating] = useState(0)
+  const [rating, setRating] = useState(reviewToEdit?.rating || 0)
   const [ratingError, setRatingError] = useState(false)
 
   const {
@@ -59,7 +60,7 @@ const ReviewModal = ({ product, restauranteId, onClose, onSuccess }) => {
     handleSubmit,
     watch,
     formState: { errors },
-  } = useForm({ defaultValues: { comentario: '' } })
+  } = useForm({ defaultValues: { comentario: reviewToEdit?.comentario || '' } })
 
   const comentario = watch('comentario', '')
 
@@ -70,25 +71,30 @@ const ReviewModal = ({ product, restauranteId, onClose, onSuccess }) => {
     }
     setRatingError(false)
 
-    const toastId = toast.loading('Publicando reseña...')
+    const toastId = toast.loading(isEditing ? 'Actualizando reseña...' : 'Publicando reseña...')
     try {
-      await submitReview({
-        usuarioId: user?._id || user?.id || user?.uid,
-        restauranteId,
-        platoId: product._id || product.id || product.productId,
-        rating,
-        comentario,
-      })
-      toast.success('¡Reseña publicada!', { id: toastId })
+      if (isEditing) {
+        await updateReview(reviewToEdit._id || reviewToEdit.id, { rating, comentario })
+        toast.success('¡Reseña actualizada!', { id: toastId })
+      } else {
+        await submitReview({
+          usuarioId: user?._id || user?.id || user?.uid,
+          restauranteId,
+          platoId: product._id || product.id || product.productId,
+          rating,
+          comentario,
+        })
+        toast.success('¡Reseña publicada!', { id: toastId })
+      }
       if (onSuccess) onSuccess()
       onClose()
     } catch (error) {
-      toast.error(error?.message || 'Error al publicar la reseña', { id: toastId })
+      toast.error(error?.message || 'Error al procesar la reseña', { id: toastId })
     }
   }
 
   return (
-    <Modal title="Escribir reseña" onClose={onClose}>
+    <Modal title={isEditing ? "Editar reseña" : "Escribir reseña"} onClose={onClose}>
       <div className="space-y-6">
 
         {/* Producto reseñado */}
@@ -107,7 +113,9 @@ const ReviewModal = ({ product, restauranteId, onClose, onSuccess }) => {
           <div>
             <p className="text-white font-bold text-sm">{product.name}</p>
             {product.category && (
-              <p className="text-zinc-500 text-xs mt-0.5">{product.category}</p>
+              <p className="text-zinc-500 text-xs mt-0.5">
+                {typeof product.category === 'object' ? product.category.name : product.category}
+              </p>
             )}
           </div>
         </div>

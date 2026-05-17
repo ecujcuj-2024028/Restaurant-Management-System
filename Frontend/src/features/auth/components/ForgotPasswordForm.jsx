@@ -14,7 +14,7 @@ const ForgotPasswordForm = ({ onBack }) => {
       setSent(true)
       reset()
     } catch (error) {
-      alert('Error al enviar el correo, verifica que el email sea correcto')
+      toast.error('Error al enviar el correo, verifica que el email sea correcto')
     }
   }
 

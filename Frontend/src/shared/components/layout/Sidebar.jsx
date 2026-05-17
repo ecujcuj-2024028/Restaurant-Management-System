@@ -50,19 +50,19 @@ const NAV_ITEMS = [
     label: "Categorías",
     path: "/categories",
     icon: Tag,
-    roles: [ROLES.ADMIN_SISTEMA],
+    roles: [ROLES.ADMIN_SISTEMA, ROLES.ADMIN_RESTAURANTE],
   },
   {
     label: "Productos",
     path: "/products",
     icon: ShoppingBag,
-    roles: [ROLES.ADMIN_SISTEMA],
+    roles: [ROLES.ADMIN_SISTEMA, ROLES.ADMIN_RESTAURANTE],
   },
   {
     label: "Mesas",
     path: "/tables",
     icon: Armchair,
-    roles: [ROLES.ADMIN_SISTEMA],
+    roles: [ROLES.ADMIN_SISTEMA, ROLES.ADMIN_RESTAURANTE],
   },
   {
     label: "Reportes",

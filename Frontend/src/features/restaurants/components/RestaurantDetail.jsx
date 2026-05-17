@@ -19,18 +19,60 @@ import useProductStore from '../../product/store/productStore'
 import Skeleton from '../../../shared/components/ui/Skeleton'
 import CreateOrderForm from '../../orders/components/CreateOrderForm'
 import useAuthStore from '../../auth/store/authStore'
+import ProductReviews from '../../reviews/components/ProductReviews'
+import ReviewModal from '../../reviews/components/ReviewModal'
+import Modal from '../../../shared/components/ui/Modal'
+import useReviewStore from '../../reviews/store/reviewStore'
+
+const StarDisplay = ({ value, size = 12 }) => (
+  <div className="flex gap-0.5">
+    {[1, 2, 3, 4, 5].map((star) => (
+      <Star
+        key={star}
+        size={size}
+        className={
+          star <= Math.round(value)
+            ? 'fill-orange-400 text-orange-400'
+            : 'fill-zinc-700 text-zinc-700'
+        }
+      />
+    ))}
+  </div>
+)
 
 const RestaurantDetail = () => {
   const { id } = useParams()
   const navigate = useNavigate()
   const { restaurants, fetchRestaurants } = useRestaurantStore()
   const { products, fetchProducts, loading: loadingProducts } = useProductStore()
+  const { reviewsByProduct, fetchReviewsByProduct, fetchRestaurantStats, restaurantStats } = useReviewStore()
   
   const [restaurant, setRestaurant] = useState(null)
   const [selectedCategory, setSelectedCategory] = useState('Todos')
   const [showOrderForm, setShowOrderForm] = useState(false)
+  const [initialOrderItems, setInitialOrderItems] = useState([])
+  const [selectedProductForReview, setSelectedProductForReview] = useState(null)
+  const [showWriteReview, setShowWriteReview] = useState(false)
+  const [reviewToEdit, setReviewToEdit] = useState(null)
+
+  const currentStats = restaurantStats[id] || { promedioRating: 0, totalReviews: 0 }
+
   const { user } = useAuthStore()
   const isCliente = user?.roles?.includes('CLIENTE')
+
+  const handleQuickAdd = (product) => {
+    if (!isCliente) {
+      return toast.error('Solo los clientes pueden realizar pedidos')
+    }
+
+    setInitialOrderItems([{
+      productId: product._id || product.id,
+      name: product.name,
+      price: product.price,
+      quantity: 1
+    }])
+    setShowOrderForm(true)
+  }
 
   useEffect(() => {
     if (restaurants.length === 0) {
@@ -42,10 +84,10 @@ const RestaurantDetail = () => {
   }, [id, restaurants, fetchRestaurants])
 
   useEffect(() => {
-    // Filtrar productos por restaurante si el API lo soporta, 
-    // sino filtramos localmente por ahora
+    // Cargar productos y estadísticas de reseñas
     fetchProducts({ restaurantId: id })
-  }, [id, fetchProducts])
+    fetchRestaurantStats(id)
+  }, [id, fetchProducts, fetchRestaurantStats])
 
   const restaurantProducts = products.filter(p => 
     (p.restaurantId === id || p.restaurant?._id === id || p.restaurant === id)
@@ -98,7 +140,10 @@ const RestaurantDetail = () => {
             </span>
             <div className="flex items-center gap-1 bg-white/10 backdrop-blur-md px-2 py-1 rounded-lg text-white">
               <Star size={12} className="text-yellow-400 fill-yellow-400" />
-              <span className="text-xs font-bold">4.8 (120+ reseñas)</span>
+              <span className="text-xs font-bold">
+                {currentStats.promedioRating > 0 ? currentStats.promedioRating : 'Nuevo'} 
+                ({currentStats.totalReviews} {currentStats.totalReviews === 1 ? 'reseña' : 'reseñas'})
+              </span>
             </div>
           </div>
           <h1 className="text-4xl md:text-5xl font-black text-white">{restaurant?.name}</h1>
@@ -108,9 +153,9 @@ const RestaurantDetail = () => {
       {/* Info Bar */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {[
-          { icon: MapPin, label: 'Ubicación', value: `${restaurant?.address?.city}, ${restaurant?.address?.street}` },
+          { icon: MapPin, label: 'Ubicación', value: `${restaurant?.address?.city || ''}, ${restaurant?.address?.street || ''}` },
           { icon: Phone, label: 'Contacto', value: restaurant?.phone || 'No disponible' },
-          { icon: Clock, label: 'Horario', value: 'Abierto • Cierra 22:00' },
+          { icon: Clock, label: 'Horario', value: `Abierto • ${restaurant?.openingTime || '08:00'} - ${restaurant?.closingTime || '22:00'}` },
         ].map((item, i) => (
           <div key={i} className="bg-zinc-900/50 border border-white/5 p-6 rounded-3xl flex items-center gap-4">
             <div className="p-3 bg-orange-500/10 rounded-2xl text-orange-500">
@@ -157,7 +202,10 @@ const RestaurantDetail = () => {
                 className="bg-zinc-900/40 border border-white/5 rounded-[2rem] p-6 hover:bg-zinc-900/60 transition-all group"
               >
                 <div className="flex gap-5">
-                  <div className="w-24 h-24 rounded-2xl overflow-hidden shrink-0">
+                  <div 
+                    className="w-24 h-24 rounded-2xl overflow-hidden shrink-0 cursor-pointer"
+                    onClick={() => setSelectedProductForReview(product)}
+                  >
                     <img 
                       src={product.image || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&q=80&w=200'} 
                       alt={product.name}
@@ -165,13 +213,27 @@ const RestaurantDetail = () => {
                     />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <h3 className="text-white font-bold mb-1 truncate">{product.name}</h3>
+                    <div 
+                      className="cursor-pointer"
+                      onClick={() => setSelectedProductForReview(product)}
+                    >
+                      <h3 className="text-white font-bold mb-1 truncate group-hover:text-orange-500 transition-colors">{product.name}</h3>
+                      <div className="flex items-center gap-2 mb-2">
+                        <StarDisplay value={reviewsByProduct[product._id || product.id]?.promedioRating || 0} />
+                        <span className="text-[10px] text-zinc-500 font-bold">
+                          ({reviewsByProduct[product._id || product.id]?.totalReviews || 0})
+                        </span>
+                      </div>
+                    </div>
                     <p className="text-zinc-500 text-[11px] line-clamp-2 mb-3 leading-relaxed">
                       {product.description || 'Preparado con los ingredientes más frescos del día.'}
                     </p>
                     <div className="flex items-center justify-between">
                       <span className="text-orange-500 font-black">Q {product.price}</span>
-                      <button className="p-2 bg-zinc-800 hover:bg-orange-500 rounded-xl text-white transition-all active:scale-90">
+                      <button 
+                        onClick={() => handleQuickAdd(product)}
+                        className="p-2 bg-zinc-800 hover:bg-orange-500 rounded-xl text-white transition-all active:scale-90"
+                      >
                         <Plus size={16} />
                       </button>
                     </div>
@@ -187,11 +249,69 @@ const RestaurantDetail = () => {
         </div>
       </section>
 
+      {/* Modal de Detalle de Producto / Reseñas */}
+      <AnimatePresence>
+        {selectedProductForReview && (
+          <Modal 
+            title={selectedProductForReview.name} 
+            onClose={() => setSelectedProductForReview(null)}
+          >
+            <div className="space-y-6">
+              <img 
+                src={selectedProductForReview.image || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&q=80&w=800'} 
+                className="w-full h-48 object-cover rounded-3xl"
+                alt=""
+              />
+              
+              <div className="flex items-center justify-between">
+                <h3 className="text-xl font-bold text-white">Reseñas de la comunidad</h3>
+                {isCliente && (
+                  <button 
+                    onClick={() => setShowWriteReview(true)}
+                    className="text-orange-500 text-sm font-bold flex items-center gap-1 hover:underline"
+                  >
+                    <Plus size={16} /> Escribir reseña
+                  </button>
+                )}
+              </div>
+
+              <ProductReviews 
+                platoId={selectedProductForReview._id || selectedProductForReview.id} 
+                onEdit={(review) => {
+                  setReviewToEdit(review)
+                  setShowWriteReview(true)
+                }}
+              />
+            </div>
+          </Modal>
+        )}
+
+        {showWriteReview && selectedProductForReview && (
+          <ReviewModal 
+            product={selectedProductForReview}
+            restauranteId={id}
+            reviewToEdit={reviewToEdit}
+            onClose={() => {
+              setShowWriteReview(false)
+              setReviewToEdit(null)
+            }}
+            onSuccess={() => {
+                // Refrescar tanto los comentarios del plato como el resumen del restaurante
+                fetchReviewsByProduct(selectedProductForReview._id || selectedProductForReview.id)
+                fetchRestaurantStats(id)
+            }}
+          />
+        )}
+      </AnimatePresence>
+
       {isCliente && (
         <motion.button
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
-          onClick={() => setShowOrderForm(true)}
+          onClick={() => {
+            setInitialOrderItems([])
+            setShowOrderForm(true)
+          }}
           className="fixed bottom-8 right-8 bg-orange-500 text-white px-8 py-4 rounded-3xl font-black shadow-2xl shadow-orange-500/40 flex items-center gap-3 z-50"
         >
           <ShoppingCart size={20} />
@@ -202,6 +322,7 @@ const RestaurantDetail = () => {
       {showOrderForm && (
         <CreateOrderForm
           restaurantId={id}
+          initialItems={initialOrderItems}
           onClose={() => setShowOrderForm(false)}
         />
       )}

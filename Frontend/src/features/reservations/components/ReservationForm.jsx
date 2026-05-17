@@ -30,7 +30,7 @@ const ReservationForm = ({ reservationToEdit = null, onClose, onSuccess }) => {
   const updateReservation = useReservationStore((state) => state.updateReservation)
 
   const { restaurants, fetchRestaurants } = useRestaurantStore()
-  const { tables, fetchTables } = useTableStore()
+  const { tables, fetchTablesByRestaurant } = useTableStore()
 
   const {
     register,
@@ -58,8 +58,14 @@ const ReservationForm = ({ reservationToEdit = null, onClose, onSuccess }) => {
 
   useEffect(() => {
     fetchRestaurants()
-    fetchTables()
-  }, [fetchRestaurants, fetchTables])
+  }, [fetchRestaurants])
+
+  // Cargar mesas cuando cambia el restaurante seleccionado
+  useEffect(() => {
+    if (selectedRestaurantId) {
+        fetchTablesByRestaurant(selectedRestaurantId)
+    }
+  }, [selectedRestaurantId, fetchTablesByRestaurant])
 
   useEffect(() => {
     if (!isEditing) {
@@ -72,6 +78,10 @@ const ReservationForm = ({ reservationToEdit = null, onClose, onSuccess }) => {
       const tableId = typeof reservationToEdit.table === 'object' ? getTableId(reservationToEdit.table) : reservationToEdit.tableId || ''
       const restaurantId = typeof reservationToEdit.restaurant === 'object' ? reservationToEdit.restaurant?._id || '' : reservationToEdit.restaurantId || ''
       
+      if (restaurantId) {
+          fetchTablesByRestaurant(restaurantId)
+      }
+
       reset({
         restaurantId,
         tableId,
@@ -85,7 +95,7 @@ const ReservationForm = ({ reservationToEdit = null, onClose, onSuccess }) => {
         status: reservationToEdit.status || 'pendiente',
       })
     }
-  }, [reservationToEdit, reset])
+  }, [reservationToEdit, reset, fetchTablesByRestaurant])
 
   const filteredTables = selectedRestaurantId
     ? tables.filter((t) => (t.restaurant?._id || t.restaurant || t.restaurantId) === selectedRestaurantId && t.isActive)

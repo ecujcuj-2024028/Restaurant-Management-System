@@ -6,11 +6,11 @@ import useOrderStore from '../store/orderStore'
 import api from '../../../shared/api/api'
 import Modal from '../../../shared/components/ui/Modal'
 
-const CreateOrderForm = ({ restaurantId, onClose }) => {
+const CreateOrderForm = ({ restaurantId, onClose, initialItems = [] }) => {
   const [tables, setTables] = useState([])
   const [products, setProducts] = useState([])
   const [selectedTable, setSelectedTable] = useState('')
-  const [items, setItems] = useState([])
+  const [items, setItems] = useState(initialItems)
   const [loading, setLoading] = useState(true)
   const { createOrder } = useOrderStore()
   const navigate = useNavigate()

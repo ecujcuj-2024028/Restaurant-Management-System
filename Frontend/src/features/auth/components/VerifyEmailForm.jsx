@@ -3,6 +3,7 @@ import useAuthStore from '../store/authStore'
 import { useState, useEffect } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { CheckCircle2, ArrowLeft } from 'lucide-react'
+import { toast } from 'react-hot-toast'
 
 const VerifyEmailForm = ({ onBack }) => {
   const { register, handleSubmit, setValue, formState: { errors, isSubmitting } } = useForm()
@@ -27,7 +28,7 @@ const VerifyEmailForm = ({ onBack }) => {
       await verifyEmail(data.token)
       setVerified(true)
     } catch (error) {
-      alert('Token inválido o expirado')
+      toast.error('Token inválido o expirado')
     }
   }
 

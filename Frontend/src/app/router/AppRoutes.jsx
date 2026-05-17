@@ -70,7 +70,7 @@ const AppRoutes = () => {
           <Route
             path="categories"
             element={
-              <RoleRoute roles={ROLES.ADMIN_SISTEMA}>
+              <RoleRoute roles={ADMIN_ROLES}>
                 <CategoryList />
               </RoleRoute>
             }
@@ -78,7 +78,7 @@ const AppRoutes = () => {
           <Route
             path="tables"
             element={
-              <RoleRoute roles={ROLES.ADMIN_SISTEMA}>
+              <RoleRoute roles={ADMIN_ROLES}>
                 <TableList />
               </RoleRoute>
             }
@@ -86,7 +86,7 @@ const AppRoutes = () => {
           <Route
             path="products"
             element={
-              <RoleRoute roles={ROLES.ADMIN_SISTEMA}>
+              <RoleRoute roles={ADMIN_ROLES}>
                 <ProductList />
               </RoleRoute>
             }

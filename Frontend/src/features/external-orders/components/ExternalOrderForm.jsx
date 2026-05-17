@@ -127,24 +127,57 @@ const ExternalOrderForm = ({ onClose, onSuccess }) => {
           {/* Datos del Cliente */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
-              <label className="text-zinc-500 text-[10px] font-black uppercase tracking-widest ml-2">Nombre del Cliente</label>
+              <label className="text-zinc-500 text-[10px] font-black uppercase tracking-widest ml-2">Teléfono de Contacto</label>
               <input 
                 {...register('deliveryAddress.phone', { required: 'Teléfono es obligatorio' })}
-                placeholder="Teléfono de contacto"
+                placeholder="Ej. 5555-4444"
+                className="w-full bg-zinc-800/50 border border-white/5 rounded-2xl py-4 px-4 text-white focus:ring-2 focus:ring-orange-500/50 outline-none"
+              />
+              {errors.deliveryAddress?.phone && <span className="text-red-500 text-[10px] ml-2">{errors.deliveryAddress.phone.message}</span>}
+            </div>
+            
+            <div className="space-y-2">
+              <label className="text-zinc-500 text-[10px] font-black uppercase tracking-widest ml-2">Nota del Pedido (Opcional)</label>
+              <input 
+                {...register('customerNote')}
+                placeholder="Ej. Sin cebolla, tocar el timbre..."
                 className="w-full bg-zinc-800/50 border border-white/5 rounded-2xl py-4 px-4 text-white focus:ring-2 focus:ring-orange-500/50 outline-none"
               />
             </div>
-            {currentOrderType === 'domicilio' && (
-              <div className="space-y-2">
-                <label className="text-zinc-500 text-[10px] font-black uppercase tracking-widest ml-2">Dirección exacta</label>
+          </div>
+
+          {currentOrderType === 'domicilio' && (
+            <motion.div 
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 border-t border-white/5"
+            >
+              <div className="space-y-2 md:col-span-2">
+                <label className="text-zinc-500 text-[10px] font-black uppercase tracking-widest ml-2">Dirección de Entrega</label>
                 <input 
-                  {...register('deliveryAddress.street', { required: currentOrderType === 'domicilio' })}
-                  placeholder="Calle, zona, casa..."
+                  {...register('deliveryAddress.street', { required: 'La dirección es obligatoria' })}
+                  placeholder="Calle, Avenida, Número de casa..."
                   className="w-full bg-zinc-800/50 border border-white/5 rounded-2xl py-4 px-4 text-white focus:ring-2 focus:ring-blue-500/50 outline-none"
                 />
               </div>
-            )}
-          </div>
+              <div className="space-y-2">
+                <label className="text-zinc-500 text-[10px] font-black uppercase tracking-widest ml-2">Ciudad / Municipio</label>
+                <input 
+                  {...register('deliveryAddress.city', { required: 'La ciudad es obligatoria' })}
+                  placeholder="Ej. Guatemala"
+                  className="w-full bg-zinc-800/50 border border-white/5 rounded-2xl py-4 px-4 text-white focus:ring-2 focus:ring-blue-500/50 outline-none"
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-zinc-500 text-[10px] font-black uppercase tracking-widest ml-2">Referencia</label>
+                <input 
+                  {...register('deliveryAddress.reference')}
+                  placeholder="Ej. Frente al parque"
+                  className="w-full bg-zinc-800/50 border border-white/5 rounded-2xl py-4 px-4 text-white focus:ring-2 focus:ring-blue-500/50 outline-none"
+                />
+              </div>
+            </motion.div>
+          )}
 
           {/* Selección de Productos */}
           <div className="space-y-4">
