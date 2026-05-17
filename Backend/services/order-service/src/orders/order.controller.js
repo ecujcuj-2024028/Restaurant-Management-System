@@ -220,7 +220,9 @@ export const getOrderHistory = async (req, res) => {
 
 // ─── GESTIÓN DE ESTADOS ────────────────────────────────────────────────────────
 
-const STATUS_TRANSITIONS = {
+const VALID_STATUSES = ['recibido', 'en_preparacion', 'listo', 'entregado', 'cancelado'];
+
+const STATUS_FLOW = {
   recibido: 'en_preparacion',
   en_preparacion: 'listo',
   listo: 'entregado',
@@ -231,41 +233,44 @@ export const updateOrderStatus = async (req, res) => {
     const { id } = req.params;
     const { status } = req.body;
 
-    if (!status) {
-      return res.status(400).json({ message: 'El campo status es requerido' });
+    if (!status || !VALID_STATUSES.includes(status)) {
+      return res.status(400).json({ 
+        success: false, 
+        message: `Estado inválido. Valores permitidos: ${VALID_STATUSES.join(', ')}` 
+      });
     }
 
     const order = await Order.findById(id);
     if (!order) {
-      return res.status(404).json({ message: 'Pedido no encontrado' });
+      return res.status(404).json({ success: false, message: 'Pedido no encontrado' });
     }
 
-    // SEGURIDAD: Validar propiedad
-    const ownedIds = await getOwnedRestaurantIds(req);
-    if (ownedIds && !ownedIds.some(oid => oid.toString() === order.restaurantId.toString())) {
-        return res.status(403).json({ success: false, message: 'No autorizado para este pedido' });
+    // SEGURIDAD: Validar propiedad (Admin Sistema pasa directo)
+    const isSystemAdmin = req.userRoles?.includes(ADMIN_SISTEMA);
+    if (!isSystemAdmin) {
+        const ownedIds = await getOwnedRestaurantIds(req);
+        const isRestaurantOwner = ownedIds && ownedIds.some(oid => oid.toString() === order.restaurantId.toString());
+        if (!isRestaurantOwner) {
+            return res.status(403).json({ success: false, message: 'No tienes permiso para gestionar este restaurante' });
+        }
     }
 
-    const validNext = STATUS_TRANSITIONS[order.status];
-
-    if (!validNext) {
-      return res.status(400).json({
-        message: `El pedido está en estado '${order.status}' y no puede avanzar`,
-      });
-    }
-
-    if (status !== validNext) {
-      return res.status(400).json({
-        message: `Transición inválida. De '${order.status}' solo se puede pasar a '${validNext}'`,
-      });
-    }
-
+    // Guardamos el estado anterior para logs o lógica futura
+    const previousStatus = order.status;
+    
+    // Actualizamos el estado
     order.status = status;
     await order.save();
 
-    return res.json({ message: 'Estado actualizado correctamente', order });
+    console.log(`[OrderService] Order ${id} updated from ${previousStatus} to ${status} by ${req.userId}`);
+
+    return res.json({ 
+      success: true, 
+      message: 'Estado actualizado correctamente', 
+      order 
+    });
   } catch (error) {
-    return res.status(500).json({ message: 'Error al actualizar estado', error: error.message });
+    return res.status(500).json({ success: false, message: 'Error al actualizar estado', error: error.message });
   }
 };
 

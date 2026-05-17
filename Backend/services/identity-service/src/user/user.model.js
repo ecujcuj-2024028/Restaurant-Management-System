@@ -125,16 +125,15 @@ export const UserProfile = sequelize.define(
             field: 'profile_picture',
         },
         Phone: {
-            type: DataTypes.STRING(8),
+            type: DataTypes.STRING(20),
             allowNull: false,
             field: 'phone',
             validate: {
                 notEmpty: { msg: 'El número de teléfono es obligatorio.' },
                 len: {
-                    args: [8, 8],
-                    msg: 'El número de teléfono debe tener exactamente 8 dígitos.',
+                    args: [8, 20],
+                    msg: 'El número de teléfono debe tener entre 8 y 20 caracteres.',
                 },
-                isNumeric: { msg: 'El teléfono solo debe contener números.' },
             },
         },
     },
