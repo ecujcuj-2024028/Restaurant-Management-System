@@ -14,6 +14,7 @@ import {
 
 import { validateJWT } from '../../middlewares/validate-JWT.js';
 import { hasRole } from '../../middlewares/hasRole.js';
+import { uploadEventImage } from '../../middlewares/restaurant-uploader.js';
 import { ADMIN_RESTAURANTE, ADMIN_SISTEMA } from '../../helpers/role-constants.js';
 
 const router = Router();
@@ -28,7 +29,7 @@ const router = Router();
 // públicos
 /**
  * @swagger
- * /Eventos:
+ * /restaurantManagement/v1/events:
  *   get:
  *     summary: Obtener lista de todos los eventos activos
  *     tags: [Events]
@@ -39,7 +40,7 @@ router.get('/', getEvents);
 
 /**
  * @swagger
- * /Eventos/{id}:
+ * /restaurantManagement/v1/events/{id}:
  *   get:
  *     summary: Obtener detalles de un evento por ID
  *     tags: [Events]
@@ -56,7 +57,7 @@ router.get('/:id', getEvent);
 
 /**
  * @swagger
- * /Eventos:
+ * /restaurantManagement/v1/events:
  *   post:
  *     summary: Crear un nuevo evento (Admin)
  *     tags: [Events]
@@ -65,23 +66,25 @@ router.get('/:id', getEvent);
  *     requestBody:
  *       required: true
  *       content:
- *         application/json:
+ *         multipart/form-data:
  *           schema:
  *             type: object
- *             required: [title, description, date, restaurant]
+ *             required: [name, startDate, endDate, restaurantId, image]
  *             properties:
- *               title: { type: string }
+ *               name: { type: string }
  *               description: { type: string }
- *               date: { type: string, format: date-time }
- *               restaurant: { type: string }
+ *               startDate: { type: string, format: date-time }
+ *               endDate: { type: string, format: date-time }
+ *               restaurantId: { type: string }
+ *               image: { type: string, format: binary }
  *     responses:
  *       201: { description: Evento creado }
  */
-router.post('/', validateJWT, hasRole(ADMIN_RESTAURANTE, ADMIN_SISTEMA), createEvent);
+router.post('/', validateJWT, hasRole(ADMIN_RESTAURANTE, ADMIN_SISTEMA), uploadEventImage.single('image'), createEvent);
 
 /**
  * @swagger
- * /Eventos/{id}:
+ * /restaurantManagement/v1/events/{id}:
  *   put:
  *     summary: Actualizar un evento existente
  *     tags: [Events]
@@ -95,17 +98,20 @@ router.post('/', validateJWT, hasRole(ADMIN_RESTAURANTE, ADMIN_SISTEMA), createE
  *     requestBody:
  *       required: true
  *       content:
- *         application/json:
+ *         multipart/form-data:
  *           schema:
  *             type: object
  *             properties:
- *               title: { type: string }
+ *               name: { type: string }
  *               description: { type: string }
- *               date: { type: string, format: date-time }
+ *               startDate: { type: string, format: date-time }
+ *               endDate: { type: string, format: date-time }
+ *               image: { type: string, format: binary }
  *     responses:
  *       200: { description: Evento actualizado }
  */
-router.put('/:id', validateJWT, hasRole(ADMIN_RESTAURANTE, ADMIN_SISTEMA), updateEvent);
+router.put('/:id', validateJWT, hasRole(ADMIN_RESTAURANTE, ADMIN_SISTEMA), uploadEventImage.single('image'), updateEvent);
+
 
 /**
  * @swagger

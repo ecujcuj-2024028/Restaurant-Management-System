@@ -2,8 +2,10 @@
 
 import Event from "./events-model.js";
 import Table from "../tables/table.model.js";
+import TablePostgres from "../tables/table-postgres.model.js";
 import Product from "../product/products-model.js";
 import Restaurant from "../restaurants/restaurant.model.js";
+import { cloudinary, extractPublicId } from "../../middlewares/restaurant-uploader.js";
 import {
   checkAndUpdateEventStatus,
   checkAndUpdateMultipleEventStatuses,
@@ -75,24 +77,34 @@ export const getEvent = async (req, res) => {
 export const createEvent = async (req, res) => {
   try {
     const data = req.body;
-
-    const { restaurantId } = req.body;
+    const restaurantId = req.body.restaurantId || req.body.restaurant;
 
     if (!restaurantId) {
       return res.status(400).json({
         success: false,
-        message: "El campo restaurantId es obligatorio.",
+        message: "El campo restaurant o restaurantId es obligatorio.",
       });
     }
 
     if (data.capacity) {
-      const tables = await Table.find({
-        restaurant: restaurantId,
-        isActive: true,
+      // Intentamos primero en PostgreSQL (donde están las mesas reales)
+      let tables = await TablePostgres.findAll({
+        where: {
+          restaurant: restaurantId,
+          isActive: true
+        }
       });
 
+      // Si no hay en SQL, revisamos Mongo (como fallback o legacy)
+      if (!tables || tables.length === 0) {
+        tables = await Table.find({
+          restaurant: restaurantId,
+          isActive: true,
+        });
+      }
+
       const totalCapacity = tables.reduce(
-        (sum, table) => sum + table.capacity,
+        (sum, table) => sum + (table.capacity || 0),
         0,
       );
 
@@ -138,6 +150,7 @@ export const createEvent = async (req, res) => {
     const event = await Event.create({
       ...data,
       restaurant: restaurantId,
+      image: req.file ? req.file.path : (data.image || null),
       status,
     });
 
@@ -168,7 +181,9 @@ export const updateEvent = async (req, res) => {
       });
 
     const isAdmin = usuarioEsAdminSistema(req);
-    if (!isAdmin && event.restaurant.toString() !== req.body.restaurantId) {
+    const restaurantIdFromBody = req.body.restaurantId || req.body.restaurant;
+
+    if (!isAdmin && restaurantIdFromBody && event.restaurant.toString() !== restaurantIdFromBody) {
       return res.status(403).json({
         success: false,
         message: "No autorizado para actualizar este evento",
@@ -176,13 +191,24 @@ export const updateEvent = async (req, res) => {
     }
 
     if (req.body.capacity) {
-      const tables = await Table.find({
-        restaurant: event.restaurant,
-        isActive: true,
+      // Intentamos primero en PostgreSQL (donde están las mesas reales)
+      let tables = await TablePostgres.findAll({
+        where: {
+          restaurant: event.restaurant.toString(),
+          isActive: true
+        }
       });
 
+      // Si no hay en SQL, revisamos Mongo (como fallback o legacy)
+      if (!tables || tables.length === 0) {
+        tables = await Table.find({
+          restaurant: event.restaurant,
+          isActive: true,
+        });
+      }
+
       const totalCapacity = tables.reduce(
-        (sum, table) => sum + table.capacity,
+        (sum, table) => sum + (table.capacity || 0),
         0,
       );
 
@@ -211,10 +237,37 @@ export const updateEvent = async (req, res) => {
       }
     }
 
-    const updated = await Event.findByIdAndUpdate(req.params.id, req.body, {
-      new: true,
-      runValidators: true,
-    })
+    if (req.file) {
+      if (event.image) {
+        const publicId = extractPublicId(event.image);
+        if (publicId) await cloudinary.uploader.destroy(publicId);
+      }
+      event.image = req.file.path;
+    }
+
+    // Actualizar campos manualmente para disparar validadores con contexto completo
+    const updateData = { ...req.body };
+    delete updateData.image; // Evitar sobreescribir si vino como string en body
+    Object.assign(event, updateData);
+    
+    // Recalcular estado si las fechas cambiaron
+    const now = new Date();
+    if (req.body.startDate || req.body.endDate) {
+      const start = new Date(event.startDate);
+      const end = new Date(event.endDate);
+
+      if (now >= start && now <= end) {
+        event.status = "ongoing";
+      } else if (now > end) {
+        event.status = "completed";
+      } else {
+        event.status = "scheduled";
+      }
+    }
+
+    await event.save();
+
+    const updated = await Event.findById(req.params.id)
       .populate("restaurant", "name")
       .populate("featuredProducts", "name price image");
 
