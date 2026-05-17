@@ -14,6 +14,7 @@ import {
 import { validateJWT }    from '../../middlewares/validate-JWT.js';
 import { hasRole }        from '../../middlewares/hasRole.js';
 import { ADMIN_RESTAURANTE, ADMIN_SISTEMA } from '../../helpers/role-constants.js';
+import { uploadRestaurantImage } from '../../middlewares/restaurant-uploader.js';
 
 const router = Router({ mergeParams: true });
 
@@ -72,7 +73,7 @@ router.get('/:id', getMenu);
  *     responses:
  *       201: { description: Menú creado }
  */
-router.post('/',    [validateJWT, hasRole(ADMIN_RESTAURANTE, ADMIN_SISTEMA)], createMenu);
+router.post('/',    [validateJWT, hasRole(ADMIN_RESTAURANTE, ADMIN_SISTEMA), uploadRestaurantImage.single('image')], createMenu);
 
 /**
  * @swagger
@@ -90,7 +91,7 @@ router.post('/',    [validateJWT, hasRole(ADMIN_RESTAURANTE, ADMIN_SISTEMA)], cr
  *     responses:
  *       200: { description: Menú actualizado }
  */
-router.put('/:id',  [validateJWT, hasRole(ADMIN_RESTAURANTE, ADMIN_SISTEMA)], updateMenu);
+router.put('/:id',  [validateJWT, hasRole(ADMIN_RESTAURANTE, ADMIN_SISTEMA), uploadRestaurantImage.single('image')], updateMenu);
 
 /**
  * @swagger

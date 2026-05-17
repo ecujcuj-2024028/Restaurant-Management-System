@@ -1,8 +1,7 @@
-// src/features/menu/components/MenuForm.jsx
 import { useEffect, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { toast } from 'react-hot-toast'
-import { Check, X, Search } from 'lucide-react'
+import { Check, X, Search, ImagePlus, UploadCloud } from 'lucide-react'
 import useMenuStore from '../store/menuStore'
 import useRestaurantStore from '../../restaurants/store/restaurantStore'
 import useProductStore from '../../product/store/productStore'
@@ -16,6 +15,8 @@ const MenuForm = ({ menuToEdit = null, onClose, onSuccess }) => {
 
     const [selectedProducts, setSelectedProducts] = useState([])
     const [searchTerm, setSearchSearchTerm] = useState('')
+    const [imagePreview, setImagePreview] = useState(menuToEdit?.image || null)
+    const [imageFile, setImageFile] = useState(null)
 
     const {
         register,
@@ -25,12 +26,13 @@ const MenuForm = ({ menuToEdit = null, onClose, onSuccess }) => {
         formState: { errors, isSubmitting }
     } = useForm({
         defaultValues: {
-            name: '',
-            description: '',
-            restaurant: '',
-            menuType: 'all_day',
-            validFrom: '',
-            validTo: ''
+            name: menuToEdit?.name || '',
+            description: menuToEdit?.description || '',
+            restaurant: menuToEdit?.restaurant?._id || menuToEdit?.restaurant || '',
+            menuType: menuToEdit?.menuType || 'all_day',
+            validFrom: menuToEdit?.validFrom ? menuToEdit.validFrom.split('T')[0] : '',
+            validTo: menuToEdit?.validTo ? menuToEdit.validTo.split('T')[0] : '',
+            price: menuToEdit?.price || ''
         }
     })
 
@@ -48,19 +50,21 @@ const MenuForm = ({ menuToEdit = null, onClose, onSuccess }) => {
 
     useEffect(() => {
         if (menuToEdit) {
-            reset({
-                name: menuToEdit.name || '',
-                description: menuToEdit.description || '',
-                restaurant: menuToEdit.restaurant?._id || menuToEdit.restaurant || '',
-                menuType: menuToEdit.menuType || 'all_day',
-                validFrom: menuToEdit.validFrom ? menuToEdit.validFrom.split('T')[0] : '',
-                validTo: menuToEdit.validTo ? menuToEdit.validTo.split('T')[0] : ''
-            })
-            // Extraer IDs de productos si ya tiene items
             const initialIds = menuToEdit.items?.map(i => i.product?._id || i.product) || []
             setSelectedProducts(initialIds)
+            setImagePreview(menuToEdit.image || null)
         }
-    }, [menuToEdit, reset])
+    }, [menuToEdit])
+
+    const handleImageChange = (e) => {
+        const file = e.target.files[0]
+        if (file) {
+            setImageFile(file)
+            const reader = new FileReader()
+            reader.onloadend = () => setImagePreview(reader.result)
+            reader.readAsDataURL(file)
+        }
+    }
 
     const toggleProduct = (productId) => {
         setSelectedProducts(prev => 
@@ -82,18 +86,26 @@ const MenuForm = ({ menuToEdit = null, onClose, onSuccess }) => {
         const toastId = toast.loading(isEditing ? 'Actualizando menú...' : 'Creando menú...')
 
         try {
-            const payload = {
-                ...data,
-                price: data.price ? Number(data.price) : null,
-                restaurantId: data.restaurant,
-                items: selectedProducts.map(id => ({ product: id }))
+            const formData = new FormData()
+            formData.append('name', data.name)
+            formData.append('description', data.description || '')
+            formData.append('restaurantId', data.restaurant)
+            formData.append('menuType', data.menuType)
+            if (data.price) formData.append('price', data.price)
+            if (data.validFrom) formData.append('validFrom', new Date(data.validFrom).toISOString())
+            if (data.validTo) formData.append('validTo', new Date(data.validTo).toISOString())
+            
+            formData.append('items', JSON.stringify(selectedProducts.map(id => ({ product: id }))))
+            
+            if (imageFile) {
+                formData.append('image', imageFile)
             }
 
             if (isEditing) {
-                await updateMenu(menuToEdit._id || menuToEdit.id, payload)
+                await updateMenu(menuToEdit._id || menuToEdit.id, formData)
                 toast.success('Menú actualizado correctamente', { id: toastId })
             } else {
-                await createMenu(payload)
+                await createMenu(formData)
                 toast.success('Menú creado correctamente', { id: toastId })
             }
 
@@ -116,6 +128,35 @@ const MenuForm = ({ menuToEdit = null, onClose, onSuccess }) => {
     return (
         <Modal title={isEditing ? 'Editar Menú' : 'Nuevo Menú'} onClose={onClose}>
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-6 max-h-[80vh] overflow-y-auto pr-2 custom-scrollbar">
+
+                {/* IMAGEN DEL MENÚ */}
+                <div className="flex flex-col items-center justify-center">
+                    <label className="text-zinc-400 text-[10px] font-black uppercase tracking-widest mb-3 self-start">Foto del Menú</label>
+                    <div className="relative group w-full h-40 rounded-[2.5rem] overflow-hidden bg-zinc-900 border-2 border-dashed border-white/5 hover:border-orange-500/50 transition-all">
+                        {imagePreview ? (
+                            <>
+                                <img src={imagePreview} className="w-full h-full object-cover" alt="Preview" />
+                                <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-3">
+                                    <label className="p-3 bg-white text-black rounded-2xl cursor-pointer hover:scale-110 transition-transform">
+                                        <UploadCloud size={20} />
+                                        <input type="file" className="hidden" accept="image/*" onChange={handleImageChange} />
+                                    </label>
+                                    <button type="button" onClick={() => { setImagePreview(null); setImageFile(null); }} className="p-3 bg-red-500 text-white rounded-2xl hover:scale-110 transition-transform">
+                                        <X size={20} />
+                                    </button>
+                                </div>
+                            </>
+                        ) : (
+                            <label className="absolute inset-0 flex flex-col items-center justify-center gap-2 cursor-pointer">
+                                <div className="p-4 bg-orange-500/10 rounded-2xl text-orange-500">
+                                    <ImagePlus size={24} />
+                                </div>
+                                <span className="text-[10px] font-black text-zinc-500 uppercase tracking-tighter">Subir imagen de oferta</span>
+                                <input type="file" className="hidden" accept="image/*" onChange={handleImageChange} />
+                            </label>
+                        )}
+                    </div>
+                </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="md:col-span-2">
