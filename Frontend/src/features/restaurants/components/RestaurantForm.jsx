@@ -87,7 +87,7 @@ const RestaurantForm = ({ onClose, restaurant }) => {
             <input
               {...register('name', { required: 'El nombre es requerido' })}
               className="w-full bg-zinc-800/50 border border-white/5 text-white rounded-2xl px-5 py-4 focus:ring-2 focus:ring-orange-500/50 transition-all outline-none"
-              placeholder="Ej. La Parrilla de Edvin"
+              placeholder="Ej. La Parrilla"
             />
           </div>
 

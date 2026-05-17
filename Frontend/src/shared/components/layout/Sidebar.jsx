@@ -68,7 +68,7 @@ const NAV_ITEMS = [
     label: "Reportes",
     path: "/reports",
     icon: BarChart3,
-    roles: [ROLES.ADMIN_SISTEMA],
+    roles: [ROLES.ADMIN_SISTEMA, ROLES.ADMIN_RESTAURANTE],
   },
 
   // ── Todos pueden ver el catálogo ──
@@ -132,7 +132,7 @@ const NAV_ITEMS = [
     label: "Mi Perfil",
     path: "/profile",
     icon: User,
-    roles: [ROLES.CLIENTE],
+    roles: [],
   },
 ];
 

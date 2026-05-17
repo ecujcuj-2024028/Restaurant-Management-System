@@ -13,7 +13,7 @@ import TableList from "../../features/tables/components/TableList";
 import ReservationList from "../../features/reservations/components/ReservationList";
 import MyReservations from "../../features/reservations/components/MyReservations";
 import ExternalOrderList from "../../features/external-orders/components/ExternalOrderList";
-import UserProfile from "../../features/users/components/UserProfile";
+import ProfilePage from "../../features/users/components/ProfilePage";
 import NotFound from "../../shared/components/ui/NotFound";
 import RoleRoute from "../../shared/components/RoleRoute";
 import OrderList from "../../features/orders/components/OrderList";
@@ -187,7 +187,7 @@ const AppRoutes = () => {
             path="profile"
             element={
               <RoleRoute roles={Object.values(ROLES)}>
-                <UserProfile />
+                <ProfilePage />
               </RoleRoute>
             }
           />
