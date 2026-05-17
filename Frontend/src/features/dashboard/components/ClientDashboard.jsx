@@ -58,7 +58,7 @@ const ClientDashboard = () => {
   
   const { restaurants, fetchRestaurants, loading: loadingRestaurants } = useRestaurantStore()
   const { products, fetchProducts, loading: loadingProducts } = useProductStore()
-  const { reviewsByProduct, fetchReviewsByProduct } = useReviewStore()
+  const { reviewsByProduct, fetchReviewsByProduct, fetchRestaurantStats } = useReviewStore()
   
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedCategory, setSelectedCategory] = useState('Todos')
@@ -69,6 +69,15 @@ const ClientDashboard = () => {
     fetchRestaurants()
     fetchProducts()
   }, [fetchRestaurants, fetchProducts])
+
+  // Cargar estadísticas de reseñas para cada restaurante una vez cargados
+  useEffect(() => {
+    if (restaurants.length > 0) {
+      restaurants.forEach(res => {
+        fetchRestaurantStats(res._id || res.id)
+      })
+    }
+  }, [restaurants, fetchRestaurantStats])
 
   // Filtrado inteligente de restaurantes
   const filteredRestaurants = useMemo(() => {
