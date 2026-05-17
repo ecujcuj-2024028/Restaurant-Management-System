@@ -121,7 +121,7 @@ export const login = async (req, res) => {
         const isMatch = await verifyPassword(user.Password, password);
         if (!isMatch) return res.status(401).json({ success: false, message: 'Credenciales inválidas.' });
 
-        const roles = user.UserRoles.map(ur => ur.Role.Name);
+        const roles = user.UserRole ? [user.UserRole.Role.Name] : [];
         const token = await generateJWT(user.Id, {
             roles,
             name: user.Name,
@@ -374,8 +374,8 @@ export const requestRoleUpgrade = async (req, res) => {
         
         const { requestedRole } = req.body;
 
-        const currentRoleName = req.user.UserRoles && req.user.UserRoles.length > 0
-            ? req.user.UserRoles[0].Role.Name
+        const currentRoleName = req.user.UserRole
+            ? req.user.UserRole.Role.Name
             : 'Sin Rol';
 
         if (currentRoleName === requestedRole) {

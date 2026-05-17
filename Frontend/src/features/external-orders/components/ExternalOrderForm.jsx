@@ -51,7 +51,7 @@ const ExternalOrderForm = ({ onClose, onSuccess }) => {
     try {
       const payload = {
         ...data,
-        deliveryFee: data.orderType === 'domicilio' ? 15 : 0 
+        deliveryFee: data.orderType === 'domicilio' ? 15 : 0
       }
 
       const newOrder = await createOrder(payload)
@@ -65,12 +65,12 @@ const ExternalOrderForm = ({ onClose, onSuccess }) => {
 
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 overflow-y-auto">
-      <motion.div 
+      <motion.div
         initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
         onClick={onClose}
         className="fixed inset-0 bg-black/80 backdrop-blur-sm"
       />
-      
+
       <motion.div
         initial={{ opacity: 0, scale: 0.9, y: 20 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -92,7 +92,7 @@ const ExternalOrderForm = ({ onClose, onSuccess }) => {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-2">
               <label className="text-zinc-500 text-[10px] font-black uppercase tracking-widest ml-2">Restaurante de Origen</label>
-              <select 
+              <select
                 {...register('restaurantId', { required: 'Selecciona un restaurante' })}
                 className="w-full bg-zinc-800/50 border border-white/5 rounded-2xl py-4 px-4 text-white focus:ring-2 focus:ring-orange-500/50 outline-none appearance-none cursor-pointer"
               >
@@ -106,14 +106,14 @@ const ExternalOrderForm = ({ onClose, onSuccess }) => {
             <div className="space-y-2">
               <label className="text-zinc-500 text-[10px] font-black uppercase tracking-widest ml-2">Tipo de Servicio</label>
               <div className="flex gap-2 p-1 bg-zinc-800/50 rounded-2xl border border-white/5">
-                <button 
+                <button
                   type="button"
                   onClick={() => setValue('orderType', 'para_llevar')}
                   className={`flex-1 py-3 rounded-xl text-[10px] font-black uppercase transition-all flex items-center justify-center gap-2 ${currentOrderType === 'para_llevar' ? 'bg-orange-500 text-white' : 'text-zinc-500 hover:text-white'}`}
                 >
                   <ShoppingBag size={14} /> Para Llevar
                 </button>
-                <button 
+                <button
                   type="button"
                   onClick={() => setValue('orderType', 'domicilio')}
                   className={`flex-1 py-3 rounded-xl text-[10px] font-black uppercase transition-all flex items-center justify-center gap-2 ${currentOrderType === 'domicilio' ? 'bg-blue-500 text-white' : 'text-zinc-500 hover:text-white'}`}
@@ -128,17 +128,30 @@ const ExternalOrderForm = ({ onClose, onSuccess }) => {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
               <label className="text-zinc-500 text-[10px] font-black uppercase tracking-widest ml-2">Teléfono de Contacto</label>
-              <input 
-                {...register('deliveryAddress.phone', { required: 'Teléfono es obligatorio' })}
-                placeholder="Ej. 5555-4444"
+              <input
+                {...register('deliveryAddress.phone', {
+                  required: 'Teléfono es obligatorio',
+                  pattern: {
+                    value: /^[0-9]{8}$/,
+                    message: 'El teléfono debe tener exactamente 8 dígitos'
+                  }
+                })}
+                onKeyDown={(e) => {
+                  const allowed = ['Backspace', 'Delete', 'Tab', 'ArrowLeft', 'ArrowRight']
+                  if (!allowed.includes(e.key) && !/^\d$/.test(e.key)) {
+                    e.preventDefault()
+                  }
+                }}
+                maxLength={8}
+                placeholder="Ej. 55554444"
                 className="w-full bg-zinc-800/50 border border-white/5 rounded-2xl py-4 px-4 text-white focus:ring-2 focus:ring-orange-500/50 outline-none"
               />
               {errors.deliveryAddress?.phone && <span className="text-red-500 text-[10px] ml-2">{errors.deliveryAddress.phone.message}</span>}
             </div>
-            
+
             <div className="space-y-2">
               <label className="text-zinc-500 text-[10px] font-black uppercase tracking-widest ml-2">Nota del Pedido (Opcional)</label>
-              <input 
+              <input
                 {...register('customerNote')}
                 placeholder="Ej. Sin cebolla, tocar el timbre..."
                 className="w-full bg-zinc-800/50 border border-white/5 rounded-2xl py-4 px-4 text-white focus:ring-2 focus:ring-orange-500/50 outline-none"
@@ -147,14 +160,14 @@ const ExternalOrderForm = ({ onClose, onSuccess }) => {
           </div>
 
           {currentOrderType === 'domicilio' && (
-            <motion.div 
+            <motion.div
               initial={{ opacity: 0, height: 0 }}
               animate={{ opacity: 1, height: 'auto' }}
               className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 border-t border-white/5"
             >
               <div className="space-y-2 md:col-span-2">
                 <label className="text-zinc-500 text-[10px] font-black uppercase tracking-widest ml-2">Dirección de Entrega</label>
-                <input 
+                <input
                   {...register('deliveryAddress.street', { required: 'La dirección es obligatoria' })}
                   placeholder="Calle, Avenida, Número de casa..."
                   className="w-full bg-zinc-800/50 border border-white/5 rounded-2xl py-4 px-4 text-white focus:ring-2 focus:ring-blue-500/50 outline-none"
@@ -162,7 +175,7 @@ const ExternalOrderForm = ({ onClose, onSuccess }) => {
               </div>
               <div className="space-y-2">
                 <label className="text-zinc-500 text-[10px] font-black uppercase tracking-widest ml-2">Ciudad / Municipio</label>
-                <input 
+                <input
                   {...register('deliveryAddress.city', { required: 'La ciudad es obligatoria' })}
                   placeholder="Ej. Guatemala"
                   className="w-full bg-zinc-800/50 border border-white/5 rounded-2xl py-4 px-4 text-white focus:ring-2 focus:ring-blue-500/50 outline-none"
@@ -170,7 +183,7 @@ const ExternalOrderForm = ({ onClose, onSuccess }) => {
               </div>
               <div className="space-y-2">
                 <label className="text-zinc-500 text-[10px] font-black uppercase tracking-widest ml-2">Referencia</label>
-                <input 
+                <input
                   {...register('deliveryAddress.reference')}
                   placeholder="Ej. Frente al parque"
                   className="w-full bg-zinc-800/50 border border-white/5 rounded-2xl py-4 px-4 text-white focus:ring-2 focus:ring-blue-500/50 outline-none"
@@ -183,7 +196,7 @@ const ExternalOrderForm = ({ onClose, onSuccess }) => {
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <label className="text-zinc-500 text-[10px] font-black uppercase tracking-widest ml-2">Productos del Pedido</label>
-              <button 
+              <button
                 type="button" onClick={() => append({ productId: '', quantity: 1 })}
                 className="text-orange-500 text-[10px] font-black uppercase flex items-center gap-1 hover:bg-orange-500/10 px-3 py-1 rounded-lg transition-all"
               >
@@ -195,7 +208,7 @@ const ExternalOrderForm = ({ onClose, onSuccess }) => {
               {fields.map((field, index) => (
                 <div key={field.id} className="flex gap-3 items-end">
                   <div className="flex-1 space-y-1">
-                    <select 
+                    <select
                       {...register(`items.${index}.productId`, { required: true })}
                       className="w-full bg-zinc-800/30 border border-white/5 rounded-xl py-3 px-3 text-sm text-white focus:ring-2 focus:ring-orange-500/50 outline-none appearance-none"
                     >
@@ -206,14 +219,14 @@ const ExternalOrderForm = ({ onClose, onSuccess }) => {
                     </select>
                   </div>
                   <div className="w-24 space-y-1">
-                    <input 
+                    <input
                       type="number" min="1"
                       {...register(`items.${index}.quantity`, { required: true, min: 1 })}
                       className="w-full bg-zinc-800/30 border border-white/5 rounded-xl py-3 px-3 text-sm text-white text-center"
                     />
                   </div>
                   {fields.length > 1 && (
-                    <button 
+                    <button
                       type="button" onClick={() => remove(index)}
                       className="p-3 bg-red-500/10 text-red-500 rounded-xl hover:bg-red-500 hover:text-white transition-all"
                     >

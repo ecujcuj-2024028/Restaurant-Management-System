@@ -9,14 +9,22 @@ import { ADMIN_SISTEMA, ADMIN_RESTAURANTE } from '../../helpers/role-constants.j
    Helper: obtener IDs de restaurantes propios
 ─────────────────────────────────────────────── */
 const getOwnedRestaurantIds = async (req) => {
-    const isSystemAdmin = req.userRoles?.includes(ADMIN_SISTEMA);
-    const isRestauranteAdmin = req.userRoles?.includes(ADMIN_RESTAURANTE);
+    const roles = req.userRoles || [];
+    const isSystemAdmin = roles.includes(ADMIN_SISTEMA);
+    const isRestauranteAdmin = roles.includes(ADMIN_RESTAURANTE);
+
+    console.log(`[MenuService] getOwnedRestaurantIds - User: ${req.userId}, roles: [${roles.join(', ')}]`);
 
     if (isSystemAdmin) return null; // Acceso total
-    if (!isRestauranteAdmin) return []; // Otros roles ven solo lo suyo (si aplica)
+    if (!isRestauranteAdmin) {
+        console.log(`[MenuService] User is not Admin Restaurante, returning empty owned restaurants`);
+        return []; 
+    }
 
     const myRestaurants = await Restaurant.find({ ownerId: req.userId, isActive: true }, '_id');
-    return myRestaurants.map(r => r._id);
+    const ids = myRestaurants.map(r => r._id);
+    console.log(`[MenuService] Found ${ids.length} owned restaurants for user ${req.userId}: [${ids.join(', ')}]`);
+    return ids;
 };
 
 const addExpirationFlag = (menu) => {

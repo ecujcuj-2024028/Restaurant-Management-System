@@ -49,15 +49,19 @@ export const getRestaurants = async (req, res) => {
 
         // SEGURIDAD: 
         // 1. Admin Sistema: Ve todos.
-        // 2. Admin Restaurante: Ve solo los suyos.
+        // 2. Admin Restaurante: SOLO ve los suyos (OBLIGATORIO).
         // 3. Cliente / Otros: Ven todos los activos.
         const isRestauranteAdmin = roles.includes(ADMIN_RESTAURANTE);
 
+        console.log(`[ManagementService] Roles detected: systemAdmin=${isSystemAdmin}, restauranteAdmin=${isRestauranteAdmin}`);
+
         if (isRestauranteAdmin && !isSystemAdmin) {
             query.ownerId = userId;
-            console.log(`[ManagementService] Filter applied: ownerId=${userId} (ADMIN_RESTAURANTE)`);
+            console.log(`[ManagementService] Applying OWNERSHIP filter for user ${userId}`);
+        } else if (isSystemAdmin) {
+            console.log(`[ManagementService] System Admin access - no ownership filter`);
         } else {
-            console.log(`[ManagementService] No ownership filter applied (ADMIN_SISTEMA or CLIENTE)`);
+            console.log(`[ManagementService] Public/Client access - viewing all active`);
         }
 
         const restaurants = await Restaurant.find(query);
@@ -85,21 +89,24 @@ export const getRestaurantById = async (req, res) => {
 
         const restaurant = await Restaurant.findById(id);
 
-        if (!restaurant) {
+        if (!restaurant || !restaurant.isActive) {
             return res.status(404).json({
                 success: false,
                 message: 'Restaurant not found'
             });
         }
 
-        // Seguridad: Un admin de restaurante no puede ver otros restaurantes
-        const isSystemAdmin = req.userRoles?.includes(ADMIN_SISTEMA);
+        // Seguridad: 
+        // - Admin Sistema ve todo.
+        // - Clientes ven todo (catálogo).
+        // - Admin Restaurante SOLO ve el suyo.
         const isRestauranteAdmin = req.userRoles?.includes(ADMIN_RESTAURANTE);
+        const isSystemAdmin = req.userRoles?.includes(ADMIN_SISTEMA);
 
-        if (isRestauranteAdmin && !isSystemAdmin && restaurant.ownerId !== req.userId) {
+        if (isRestauranteAdmin && !isSystemAdmin && restaurant.ownerId.toString() !== req.userId) {
             return res.status(403).json({
                 success: false,
-                message: 'No tienes permiso para ver este restaurante'
+                message: 'No tienes permiso para gestionar este restaurante.'
             });
         }
 

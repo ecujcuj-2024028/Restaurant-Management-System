@@ -1,5 +1,6 @@
 'use strict';
 
+import { Op } from 'sequelize';
 import Table from './table.model.js';
 import Restaurant from '../restaurants/restaurant.model.js';
 import { ADMIN_SISTEMA, ADMIN_RESTAURANTE } from '../../helpers/role-constants.js';
@@ -41,11 +42,10 @@ export const getTables = async (req, res) => {
 
         const roles = req.userRoles || [];
         const isSystemAdmin = roles.includes(ADMIN_SISTEMA);
+        const isRestauranteAdmin = roles.includes(ADMIN_RESTAURANTE);
         const userId = req.userId;
 
-        console.log(`[ManagementService] getTables - User: ${userId}, roles: [${roles.join(', ')}], isSystemAdmin: ${isSystemAdmin}`);
-
-        const isRestauranteAdmin = roles.includes(ADMIN_RESTAURANTE);
+        console.log(`[ManagementService] getTables - User: ${userId}, roles: [${roles.join(', ')}], isSystemAdmin: ${isSystemAdmin}, isRestauranteAdmin: ${isRestauranteAdmin}`);
 
         if (isSystemAdmin) {
             // Admin sistema ve todo
@@ -57,11 +57,11 @@ export const getTables = async (req, res) => {
 
             if (restaurantId) {
                 if (!myIds.includes(restaurantId)) {
-                    return res.status(403).json({ success: false, message: 'No tienes permiso para ver mesas de este restaurante' });
+                    return res.status(403).json({ success: false, message: `No tienes permiso para ver mesas del restaurante ${restaurantId}` });
                 }
                 where.restaurant = restaurantId;
             } else {
-                where.restaurant = myIds; 
+                where.restaurant = { [Op.in]: myIds }; 
             }
         } else {
             // CLIENTE u otros: DEBEN proporcionar un restaurantId para ver mesas

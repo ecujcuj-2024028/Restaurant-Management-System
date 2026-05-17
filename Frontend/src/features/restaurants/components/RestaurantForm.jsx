@@ -10,8 +10,8 @@ const RestaurantForm = ({ onClose, restaurant }) => {
   const isEditing = !!restaurant
   const [preview, setPreview] = useState(null)
   const user = useAuthStore((state) => state.user)
-  
-  const isAdmin = user?.roles?.some(role => 
+
+  const isAdmin = user?.roles?.some(role =>
     role === 'ADMIN_SISTEMA' || role === 'ADMIN_RESTAURANTE'
   )
 
@@ -42,7 +42,7 @@ const RestaurantForm = ({ onClose, restaurant }) => {
       return () => URL.revokeObjectURL(url)
     }
   }, [selectedImage])
-  
+
   const createRestaurant = useRestaurantStore((state) => state.createRestaurant)
   const updateRestaurant = useRestaurantStore((state) => state.updateRestaurant)
 
@@ -58,7 +58,7 @@ const RestaurantForm = ({ onClose, restaurant }) => {
       formData.append('category', data.category)
       formData.append('openingTime', data.openingTime)
       formData.append('closingTime', data.closingTime)
-      
+
       // Enviamos el ownerId si es edición y el usuario es admin
       if (isAdmin && data.ownerId) {
         formData.append('ownerId', data.ownerId)
@@ -66,7 +66,7 @@ const RestaurantForm = ({ onClose, restaurant }) => {
 
       if (data.description) formData.append('description', data.description)
       if (data.image && data.image[0]) formData.append('image', data.image[0])
-      
+
       if (isEditing) {
         await updateRestaurant(restaurant.id || restaurant._id, formData)
         toast.success('Restaurante actualizado correctamente', { id: toastId })
@@ -82,8 +82,8 @@ const RestaurantForm = ({ onClose, restaurant }) => {
   }
 
   return (
-    <Modal 
-      title={isEditing ? 'Configuración de Restaurante' : 'Nuevo Restaurante'} 
+    <Modal
+      title={isEditing ? 'Configuración de Restaurante' : 'Nuevo Restaurante'}
       onClose={onClose}
     >
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-6 p-1">
@@ -102,8 +102,20 @@ const RestaurantForm = ({ onClose, restaurant }) => {
             <div>
               <label className="text-zinc-500 text-[10px] font-black uppercase tracking-widest ml-1 mb-2 block">Teléfono</label>
               <input
-                {...register('phone', { required: true })}
-                className="w-full bg-zinc-800/50 border border-white/5 text-white rounded-2xl px-5 py-4 focus:ring-2 focus:ring-orange-500/50 outline-none"
+                {...register('phone', {
+                  required: 'El teléfono es requerido',
+                  pattern: {
+                    value: /^[0-9+\s\-()]+$/,
+                    message: 'Solo se permiten números'
+                  }
+                })}
+                onKeyDown={(e) => {
+                  const allowed = ['Backspace', 'Delete', 'Tab', 'ArrowLeft', 'ArrowRight', '+', '-', '(', ')', ' ']
+                  if (!allowed.includes(e.key) && !/^\d$/.test(e.key)) {
+                    e.preventDefault()
+                  }
+                }}
+                className="w-full bg-zinc-800/50 border border-zinc-700/50 text-white rounded-2xl px-5 py-3.5 focus:outline-none focus:ring-2 focus:ring-orange-500/50 transition-all placeholder:text-zinc-600"
                 placeholder="12345678"
               />
             </div>

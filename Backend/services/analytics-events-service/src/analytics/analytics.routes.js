@@ -149,7 +149,7 @@ router.delete('/reviews/:id', validateJWT, deleteReview);
  *     responses:
  *       200: { description: Lista de platos destacados }
  */
-router.get('/platos/mas-vendidos', getPlatosMasVendidos);
+router.get('/platos/mas-vendidos', validateJWT, hasRole(ADMIN_RESTAURANTE, ADMIN_SISTEMA), getPlatosMasVendidos);
 
 /**
  * @swagger
@@ -167,7 +167,7 @@ router.get('/platos/mas-vendidos', getPlatosMasVendidos);
  *       200: { description: Datos de ingresos, ocupación y satisfacción }
  *       403: { description: Acceso denegado - Se requiere rol ADMIN_SISTEMA }
  */
-router.get('/stats', validateJWT, hasRole(ADMIN_SISTEMA), getStatsAdmin);
+router.get('/stats', validateJWT, hasRole(ADMIN_RESTAURANTE, ADMIN_SISTEMA), getStatsAdmin);
 
 /**
  * @swagger

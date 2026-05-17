@@ -29,18 +29,20 @@ export const validateJWT = async (req, res, next) => {
         const userId = decoded.sub || decoded.uid || decoded.id || decoded.userId;
         
         // Extraer roles (probar 'roles' o 'role')
-        const roles = decoded.roles || (decoded.role ? [decoded.role] : []);
+        const rawRoles = decoded.roles || (decoded.role ? [decoded.role] : []);
+        const userRoles = Array.isArray(rawRoles) ? rawRoles : [rawRoles];
 
         // Configurar el request
         req.userId = String(userId);
-        req.userRoles = Array.isArray(roles) ? roles : [roles];
+        req.userRoles = userRoles;
         
         req.user = {
             Id: req.userId,
             Name: decoded.name || 'User',
             Surname: decoded.surname || '',
             Email: decoded.email || '',
-            Status: true
+            Status: true,
+            UserRoles: userRoles.map(name => ({ Role: { Name: name } })) // Simular estructura para compatibilidad con hasRole
         };
 
         console.log(`[validateJWT] Authenticated User: ${req.userId} with roles: [${req.userRoles.join(', ')}]`);

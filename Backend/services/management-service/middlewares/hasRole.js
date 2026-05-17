@@ -22,6 +22,8 @@ export const hasRole = (...roles) => {
             userRoles = req.user.UserRoles.map(ur => ur.Role.Name);
         }
 
+        console.log(`[hasRole] Required: [${roles.join(', ')}], User has: [${userRoles.join(', ')}]`);
+
         // Verificar si el usuario tiene al menos uno de los roles requeridos
         const hasPermission = roles.some(role => userRoles.includes(role));
 

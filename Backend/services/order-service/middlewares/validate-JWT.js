@@ -31,6 +31,10 @@ export const validateJWT = async (req, res, next) => {
             });
         }
 
+        // Extraer roles (probar 'roles' o 'role')
+        const rawRoles = decoded.roles || (decoded.role ? [decoded.role] : []);
+        const userRoles = Array.isArray(rawRoles) ? rawRoles : [rawRoles];
+
         req.user = {
             Id     : String(userId),
             id     : String(userId),
@@ -38,9 +42,10 @@ export const validateJWT = async (req, res, next) => {
             Surname: decoded.surname,
             Email  : decoded.email,
             Status : true,
+            UserRoles: userRoles.map(name => ({ Role: { Name: name } }))
         };
         req.userId    = String(userId);
-        req.userRoles = decoded.roles || [];
+        req.userRoles = userRoles;
 
         next();
     } catch (error) {

@@ -12,11 +12,15 @@ const getOwnedRestaurantIds = async (req) => {
     const isSystemAdmin = roles.includes(ADMIN_SISTEMA);
     const isRestauranteAdmin = roles.includes(ADMIN_RESTAURANTE);
 
+    console.log(`[OrderService:External] getOwnedRestaurantIds - User: ${req.userId}, Roles: [${roles.join(', ')}]`);
+
     if (isSystemAdmin) return null; // Acceso total
     if (!isRestauranteAdmin) return []; // Otros roles
 
     const myRestaurants = await Restaurant.find({ ownerId: req.userId, isActive: true }, '_id');
-    return myRestaurants.map(r => r._id);
+    const ids = myRestaurants.map(r => r._id.toString());
+    console.log(`[OrderService:External] Found ${ids.length} owned restaurants: [${ids.join(', ')}]`);
+    return ids;
 };
 
 export const createExternalOrder = async (req, res) => {
