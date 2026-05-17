@@ -116,7 +116,8 @@ const ProfilePage = () => {
           </div>
 
           <div className="text-center md:text-left flex-1">
-            <h1 className="text-3xl font-black text-white mb-2">{profile?.name} {profile?.surname}</h1>
+            <h1 className="text-3xl font-black text-white mb-1">{profile?.name} {profile?.surname}</h1>
+            <p className="text-zinc-600 text-[10px] font-mono mb-4 uppercase tracking-widest opacity-70">ID: {profile?.id || profile?._id}</p>
             <div className="flex flex-wrap justify-center md:justify-start gap-3">
               <span className="bg-orange-500/10 text-orange-500 text-[11px] font-black uppercase tracking-widest px-4 py-1.5 rounded-full border border-orange-500/20 flex items-center gap-2">
                 <Shield size={12} />

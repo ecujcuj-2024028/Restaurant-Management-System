@@ -70,6 +70,7 @@ const UserProfile = () => {
               
               <h2 className="text-xl font-bold text-white truncate">{user?.name} {user?.surname}</h2>
               <p className="text-zinc-500 text-sm font-medium">@{user?.username}</p>
+              <p className="text-zinc-600 text-[10px] font-mono mt-1 uppercase tracking-wider opacity-60">ID: {user?.id || user?._id}</p>
               
               <div className="mt-6 flex flex-wrap justify-center gap-2">
                 {user?.roles?.map(role => (
