@@ -37,13 +37,15 @@ export const getTables = async (req, res) => {
         const { restaurantId, availability } = req.query;
         const where = { isActive: true };
 
-        // SEGURIDAD: Filtrar por propiedad
         const roles = req.userRoles || [];
         const isSystemAdmin = roles.includes(ADMIN_SISTEMA);
+        const userId = req.userId;
+
+        console.log(`[ManagementService] getTables - User: ${userId}, roles: [${roles.join(', ')}], isSystemAdmin: ${isSystemAdmin}`);
 
         if (!isSystemAdmin) {
-            // Buscamos sus locales en Mongo
-            const myRestaurants = await Restaurant.find({ ownerId: req.userId, isActive: true }, '_id');
+            // Buscamos sus locales en Mongo para filtrar en Postgres
+            const myRestaurants = await Restaurant.find({ ownerId: userId, isActive: true }, '_id');
             const myIds = myRestaurants.map(r => r._id.toString());
 
             if (restaurantId) {
@@ -52,7 +54,7 @@ export const getTables = async (req, res) => {
                 }
                 where.restaurant = restaurantId;
             } else {
-                where.restaurant = myIds; // Sequelize soporta arrays en el matching
+                where.restaurant = myIds; 
             }
         } else if (restaurantId) {
             where.restaurant = restaurantId;

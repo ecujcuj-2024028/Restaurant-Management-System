@@ -3,6 +3,7 @@ import {
     createTable,
     deleteTable,
     getTables,
+    getTable,
     updateTable,
     updateTableStatus
 } from './table.controller.js';
@@ -12,86 +13,11 @@ import { hasRole } from '../../middlewares/hasRole.js';
 
 const router = Router();
 
-/**
- * @swagger
- * tags:
- *   name: Tables
- *   description: Gestión de mesas y su disponibilidad en los restaurantes
- */
-
-/**
- * @swagger
- * /tables/create:
- *   post:
- *     summary: Crear una nueva mesa
- *     tags: [Tables]
- *     security:
- *       - bearerAuth: []
- */
-router.post(
-    '/create',
-    validateJWT,
-    hasRole(ADMIN_RESTAURANTE, ADMIN_SISTEMA),
-    createTable
-);
-
-/**
- * @swagger
- * /tables:
- *   get:
- *     summary: Obtener todas las mesas del sistema
- *     tags: [Tables]
- *     security:
- *       - bearerAuth: []
- */
 router.get('/', validateJWT, getTables);
-
-/**
- * @swagger
- * /tables/{tableId}:
- *   put:
- *     summary: Actualizar una mesa
- *     tags: [Tables]
- *     security:
- *       - bearerAuth: []
- */
-router.put(
-    '/:tableId',
-    validateJWT,
-    hasRole(ADMIN_RESTAURANTE, ADMIN_SISTEMA),
-    updateTable
-);
-
-/**
- * @swagger
- * /tables/{tableId}:
- *   delete:
- *     summary: Eliminar una mesa
- *     tags: [Tables]
- *     security:
- *       - bearerAuth: []
- */
-router.delete(
-    '/:tableId',
-    validateJWT,
-    hasRole(ADMIN_RESTAURANTE, ADMIN_SISTEMA),
-    deleteTable
-);
-
-/**
- * @swagger
- * /tables/{tableId}/status:
- *   patch:
- *     summary: Actualizar el estado/disponibilidad de una mesa
- *     tags: [Tables]
- *     security:
- *       - bearerAuth: []
- */
-router.patch(
-    '/:tableId/status',
-    validateJWT,
-    hasRole(ADMIN_RESTAURANTE, ADMIN_SISTEMA),
-    updateTableStatus
-);
+router.get('/:id', validateJWT, getTable);
+router.post('/create', validateJWT, hasRole(ADMIN_RESTAURANTE, ADMIN_SISTEMA), createTable);
+router.put('/:id', validateJWT, hasRole(ADMIN_RESTAURANTE, ADMIN_SISTEMA), updateTable);
+router.delete('/:id', validateJWT, hasRole(ADMIN_RESTAURANTE, ADMIN_SISTEMA), deleteTable);
+router.patch('/:id/status', validateJWT, hasRole(ADMIN_RESTAURANTE, ADMIN_SISTEMA), updateTableStatus);
 
 export default router;

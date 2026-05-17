@@ -26,23 +26,23 @@ const router = Router();
  *   description: Gestión de eventos especiales y promociones en los restaurantes
  */
 
-// públicos
+// Públicos pero con detección de rol para Admins
 /**
  * @swagger
  * /restaurantManagement/v1/events:
  *   get:
- *     summary: Obtener lista de todos los eventos activos
+ *     summary: Obtener lista de todos los eventos activos (Filtrado por rol)
  *     tags: [Events]
  *     responses:
  *       200: { description: Lista de eventos obtenida }
  */
-router.get('/', getEvents);
+router.get('/', validateJWT, getEvents);
 
 /**
  * @swagger
  * /restaurantManagement/v1/events/{id}:
  *   get:
- *     summary: Obtener detalles de un evento por ID
+ *     summary: Obtener detalles de un evento por ID (Filtrado por rol)
  *     tags: [Events]
  *     parameters:
  *       - in: path
@@ -53,7 +53,7 @@ router.get('/', getEvents);
  *       200: { description: Detalles del evento }
  *       404: { description: Evento no encontrado }
  */
-router.get('/:id', getEvent);
+router.get('/:id', validateJWT, getEvent);
 
 /**
  * @swagger

@@ -41,16 +41,18 @@ export const getRestaurants = async (req, res) => {
 
         const roles = req.userRoles || [];
         const isSystemAdmin = roles.includes(ADMIN_SISTEMA);
-        const userIdStr = req.userId?.toString();
+        const userId = req.userId;
 
-        // SEGURIDAD EXTREMA: Si NO es Admin de Sistema, FORZAR filtrado por su ID.
+        console.log(`[ManagementService] getRestaurants - User: ${userId}, Roles: [${roles.join(', ')}], isSystemAdmin: ${isSystemAdmin}`);
+
+        // SEGURIDAD: Si NO es Admin de Sistema, FORZAR filtrado por su ID.
         if (!isSystemAdmin) {
-            query.ownerId = userIdStr;
-            console.log(`[ManagementService] Strict filtering active for owner (String): "${userIdStr}"`);
+            query.ownerId = userId;
+            console.log(`[ManagementService] Appending ownerId filter: ${userId}`);
         }
 
         const restaurants = await Restaurant.find(query);
-        console.log(`[ManagementService] Restaurants found: ${restaurants.length}`);
+        console.log(`[ManagementService] Found ${restaurants.length} restaurants`);
 
         return res.status(200).json({
             success: true,

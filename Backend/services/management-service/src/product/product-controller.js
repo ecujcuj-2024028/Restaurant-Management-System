@@ -11,7 +11,6 @@ import { ADMIN_SISTEMA, ADMIN_RESTAURANTE } from '../../helpers/role-constants.j
 const getOwnedRestaurantIds = async (req) => {
     const roles = req.userRoles || [];
     const isSystemAdmin = roles.includes(ADMIN_SISTEMA);
-    const isRestauranteAdmin = roles.includes(ADMIN_RESTAURANTE);
 
     if (isSystemAdmin) return null; // Acceso total
     

@@ -28,12 +28,12 @@ const router = Router();
  * @swagger
  * /product:
  *   get:
- *     summary: Obtener lista de todos los productos
+ *     summary: Obtener lista de todos los productos (Filtrado por rol)
  *     tags: [Products]
  *     responses:
  *       200: { description: Lista de productos obtenida }
  */
-router.get('/', getProducts);
+router.get('/', validateJWT, getProducts);
 
 // Estadísticas de productos por restaurante — solo ADMIN_RESTAURANTE y ADMIN_SISTEMA
 /**
