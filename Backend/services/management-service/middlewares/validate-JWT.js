@@ -21,17 +21,22 @@ export const validateJWT = async (req, res, next) => {
 
         // Verificar el token
         const decoded = await verifyJWT(token);
+        
+        console.log("=== DEBUG JWT DECODED ===");
+        console.log(JSON.stringify(decoded, null, 2));
 
         // En microservicios que no son Identity, confiamos en el payload del JWT
         req.user = {
-            Id: decoded.sub,
+            Id: decoded.sub || decoded.uid || decoded.id,
             Name: decoded.name,
             Surname: decoded.surname,
             Email: decoded.email,
             Status: true
         };
-        req.userId = decoded.sub;
-        req.userRoles = decoded.roles;
+        req.userId = decoded.sub || decoded.uid || decoded.id;
+        req.userRoles = decoded.roles || [];
+        
+        console.log("req.userId assigned as:", req.userId);
         
         next();
     } catch (error) {

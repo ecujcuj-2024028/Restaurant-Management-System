@@ -4,6 +4,7 @@ import { Op } from 'sequelize';
 import { User, UserProfile } from './user.model.js';
 import { UserRole, Role } from '../auth/role.model.js';
 import { cloudinary, extractPublicId } from '../../middlewares/restaurant-uploader.js';
+import { hashPassword, verifyPassword } from '../../utils/password-utils.js';
 
 const getPagination = (query) => {
     const page = Math.max(1, parseInt(query.page, 10) || 1);
@@ -317,6 +318,32 @@ export const updateProfilePicture = async (req, res) => {
 
     } catch (error) {
         console.error('[UserController] updateProfilePicture:', error);
+        return res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+/* =========================
+   PATCH /users/profile/password
+   Cambia la contraseña del usuario validando la actual
+   ========================= */
+export const changePassword = async (req, res) => {
+    try {
+        const { currentPassword, newPassword } = req.body;
+        const userId = req.user.Id;
+
+        const user = await User.findByPk(userId);
+        if (!user) return res.status(404).json({ success: false, message: 'Usuario no encontrado' });
+
+        const isMatch = await verifyPassword(user.Password, currentPassword);
+        if (!isMatch) return res.status(400).json({ success: false, message: 'La contraseña actual es incorrecta' });
+
+        const hashedPassword = await hashPassword(newPassword);
+        user.Password = hashedPassword;
+        await user.save();
+
+        return res.status(200).json({ success: true, message: 'Contraseña actualizada correctamente' });
+    } catch (error) {
+        console.error('[UserController] changePassword:', error);
         return res.status(500).json({ success: false, message: error.message });
     }
 };

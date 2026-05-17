@@ -1,7 +1,28 @@
 import { Review } from './review.model.js';
 import Order from '../orders/order.model.js';
 import ExternalOrder from '../orders/external-order.model.js';
+import Restaurant from '../restaurants/restaurant.model.js';
 import mongoose from 'mongoose';
+import { ADMIN_SISTEMA, ADMIN_RESTAURANTE } from '../../helpers/role-constants.js';
+
+/* ─────────────────────────────────────────────
+   Helper: obtener IDs de restaurantes propios
+   Si es Admin Sistema: retorna null (acceso total)
+   Si es Admin Restaurante: retorna array de IDs
+   Si es Cliente: retorna array de IDs (si fuera dueño de alguno, aunque sea raro) o vacío
+─────────────────────────────────────────────── */
+const getOwnedRestaurantIds = async (req) => {
+    const roles = req.userRoles || [];
+    const isSystemAdmin = roles.includes(ADMIN_SISTEMA);
+    const isRestauranteAdmin = roles.includes(ADMIN_RESTAURANTE);
+
+    if (isSystemAdmin) return null; // Sin restricción
+    
+    // Si no es admin de sistema pero sí de restaurante, buscamos sus locales
+    // Si es cliente, también devolvemos sus locales (probablemente ninguno)
+    const myRestaurants = await Restaurant.find({ ownerId: req.userId, isActive: true }, '_id');
+    return myRestaurants.map(r => r._id);
+};
 
 /* ─────────────────────────────────────────────
    POST /analytics/reviews — Publicar reseña
@@ -89,7 +110,19 @@ export const getPlatosMasVendidos = async (req, res) => {
         const { restauranteId } = req.query;
 
         const matchStage = { status: { $ne: 'cancelado' } };
-        if (restauranteId && mongoose.Types.ObjectId.isValid(restauranteId)) {
+        
+        // SEGURIDAD: Filtrar por propiedad
+        const ownedIds = await getOwnedRestaurantIds(req);
+        if (ownedIds !== null) { // Si hay restricción (es Admin de Restaurante o Cliente)
+            if (restauranteId) {
+                if (!ownedIds.some(id => id.toString() === restauranteId)) {
+                    return res.status(403).json({ success: false, message: 'No tienes permiso para ver este restaurante' });
+                }
+                matchStage.restaurantId = new mongoose.Types.ObjectId(restauranteId);
+            } else {
+                matchStage.restaurantId = { $in: ownedIds };
+            }
+        } else if (restauranteId && mongoose.Types.ObjectId.isValid(restauranteId)) {
             matchStage.restaurantId = new mongoose.Types.ObjectId(restauranteId);
         }
 
@@ -132,7 +165,7 @@ export const getPlatosMasVendidos = async (req, res) => {
 
         return res.status(200).json({
             success: true,
-            message: `Top ${limite} platos con ventas locales y externas`,
+            message: `Top ${limite} platos filtrados por propiedad`,
             data: resultado
         });
 
@@ -146,8 +179,16 @@ export const getPlatosMasVendidos = async (req, res) => {
 ─────────────────────────────────────────────── */
 export const getStatsAdmin = async (req, res) => {
     try {
+        const matchStage = { status: { $ne: 'cancelado' } };
+
+        // SEGURIDAD: Solo ver mis restaurantes
+        const ownedIds = await getOwnedRestaurantIds(req);
+        if (ownedIds !== null) {
+            matchStage.restaurantId = { $in: ownedIds };
+        }
+
         const pipeline = [
-            { $match: { status: { $ne: 'cancelado' } } },
+            { $match: matchStage },
             {
                 $group: {
                     _id: null,
@@ -157,9 +198,10 @@ export const getStatsAdmin = async (req, res) => {
             }
         ];
 
-        const [statsLocales, statsExternas] = await Promise.all([
+        const [statsLocales, statsExternas, countRestaurants] = await Promise.all([
             Order.aggregate(pipeline),
-            ExternalOrder.aggregate(pipeline)
+            ExternalOrder.aggregate(pipeline),
+            Restaurant.countDocuments(ownedIds !== null ? { _id: { $in: ownedIds }, isActive: true } : { isActive: true })
         ]);
 
         const local = statsLocales[0] || { totalIngresos: 0, totalPedidos: 0 };
@@ -171,11 +213,12 @@ export const getStatsAdmin = async (req, res) => {
 
         return res.status(200).json({
             success: true,
-            message: 'Estadísticas globales (Locales + Externas)',
+            message: 'Estadísticas globales filtradas por propiedad',
             data: {
                 ingresosTotales: totalIngresos,
                 pedidosTotales: totalPedidos,
-                ticketPromedio: parseFloat(ticketPromedio.toFixed(2))
+                ticketPromedio: parseFloat(ticketPromedio.toFixed(2)),
+                restaurantesTotales: countRestaurants
             }
         });
 
@@ -196,6 +239,12 @@ export const getStatsByRestaurant = async (req, res) => {
                 success: false,
                 message: 'ID de restaurante inválido'
             });
+        }
+
+        // SEGURIDAD: Validar propiedad
+        const ownedIds = await getOwnedRestaurantIds(req);
+        if (ownedIds !== null && !ownedIds.some(id => id.toString() === restaurantId)) {
+            return res.status(403).json({ success: false, message: 'No tienes permiso para ver este restaurante' });
         }
 
         const matchStage = {
@@ -294,7 +343,18 @@ export const getSalesChartData = async (req, res) => {
             status: { $ne: 'cancelado' } 
         };
 
-        if (restauranteId && mongoose.Types.ObjectId.isValid(restauranteId)) {
+        // SEGURIDAD: Filtrar por propiedad
+        const ownedIds = await getOwnedRestaurantIds(req);
+        if (ownedIds !== null) {
+            if (restauranteId) {
+                if (!ownedIds.some(id => id.toString() === restauranteId)) {
+                    return res.status(403).json({ success: false, message: 'No tienes permiso para ver este restaurante' });
+                }
+                matchStage.restaurantId = new mongoose.Types.ObjectId(restauranteId);
+            } else {
+                matchStage.restaurantId = { $in: ownedIds };
+            }
+        } else if (restauranteId && mongoose.Types.ObjectId.isValid(restauranteId)) {
             matchStage.restaurantId = new mongoose.Types.ObjectId(restauranteId);
         }
 
@@ -342,7 +402,7 @@ export const getSalesChartData = async (req, res) => {
 
         return res.status(200).json({
             success: true,
-            message: `Datos combinados de ventas de los últimos ${days} días`,
+            message: `Datos combinados de ventas filtrados por propiedad`,
             data
         });
 

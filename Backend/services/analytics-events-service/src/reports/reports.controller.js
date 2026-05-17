@@ -6,8 +6,10 @@ import Order from '../orders/order.model.js';
 import ExternalOrder from '../orders/external-order.model.js';
 import { Review } from '../analytics/review.model.js';
 import { InventoryItem } from '../inventory/inventory.model.js';
+import Restaurant from '../restaurants/restaurant.model.js';
 import mongoose from 'mongoose';
 import { Op } from 'sequelize';
+import { ADMIN_SISTEMA, ADMIN_RESTAURANTE } from '../../helpers/role-constants.js';
 
 /* ─────────────────────────────────────────────────────────
    Helper: obtener datos de reporte
@@ -162,7 +164,25 @@ const getReportData = async (restaurantId, startDate, endDate) => {
 ───────────────────────────────────────────────────────── */
 export const exportPDF = async (req, res) => {
     try {
-        const { restaurantId, startDate, endDate } = req.query;
+        let { restaurantId, startDate, endDate } = req.query;
+
+        // SEGURIDAD: Validar propiedad
+        const isSystemAdmin = req.userRoles?.includes(ADMIN_SISTEMA);
+        const isRestauranteAdmin = req.userRoles?.includes(ADMIN_RESTAURANTE);
+
+        if (isRestauranteAdmin && !isSystemAdmin) {
+            // Si no envió ID, buscamos su restaurante
+            if (!restaurantId) {
+                const myRest = await Restaurant.findOne({ ownerId: req.userId, isActive: true });
+                if (!myRest) return res.status(403).json({ success: false, message: 'No tienes restaurantes asignados' });
+                restaurantId = myRest._id.toString();
+            } else {
+                // Si envió ID, validar que sea el suyo
+                const myRest = await Restaurant.findOne({ _id: restaurantId, ownerId: req.userId });
+                if (!myRest) return res.status(403).json({ success: false, message: 'No tienes permiso para ver reportes de este restaurante' });
+            }
+        }
+
         const data = await getReportData(restaurantId, startDate, endDate);
         const doc = new PDFDocument({ margin: 50, size: 'A4', bufferPages: true });
         const buffers = [];
@@ -316,7 +336,23 @@ export const exportPDF = async (req, res) => {
 ───────────────────────────────────────────────────────── */
 export const exportExcel = async (req, res) => {
     try {
-        const { restaurantId, startDate, endDate } = req.query;
+        let { restaurantId, startDate, endDate } = req.query;
+
+        // SEGURIDAD: Validar propiedad
+        const isSystemAdmin = req.userRoles?.includes(ADMIN_SISTEMA);
+        const isRestauranteAdmin = req.userRoles?.includes(ADMIN_RESTAURANTE);
+
+        if (isRestauranteAdmin && !isSystemAdmin) {
+            if (!restaurantId) {
+                const myRest = await Restaurant.findOne({ ownerId: req.userId, isActive: true });
+                if (!myRest) return res.status(403).json({ success: false, message: 'No tienes restaurantes asignados' });
+                restaurantId = myRest._id.toString();
+            } else {
+                const myRest = await Restaurant.findOne({ _id: restaurantId, ownerId: req.userId });
+                if (!myRest) return res.status(403).json({ success: false, message: 'No tienes permiso para ver reportes de este restaurante' });
+            }
+        }
+
         const data = await getReportData(restaurantId, startDate, endDate);
 
         const workbook = new ExcelJS.Workbook();
@@ -488,7 +524,23 @@ export const exportExcel = async (req, res) => {
 ───────────────────────────────────────────────────────── */
 export const getChartData = async (req, res) => {
     try {
-        const { restaurantId, startDate, endDate } = req.query;
+        let { restaurantId, startDate, endDate } = req.query;
+
+        // SEGURIDAD: Validar propiedad
+        const isSystemAdmin = req.userRoles?.includes(ADMIN_SISTEMA);
+        const isRestauranteAdmin = req.userRoles?.includes(ADMIN_RESTAURANTE);
+
+        if (isRestauranteAdmin && !isSystemAdmin) {
+            if (!restaurantId) {
+                const myRest = await Restaurant.findOne({ ownerId: req.userId, isActive: true });
+                if (!myRest) return res.status(403).json({ success: false, message: 'No tienes restaurantes asignados' });
+                restaurantId = myRest._id.toString();
+            } else {
+                const myRest = await Restaurant.findOne({ _id: restaurantId, ownerId: req.userId });
+                if (!myRest) return res.status(403).json({ success: false, message: 'No tienes permiso para ver reportes de este restaurante' });
+            }
+        }
+
         const data = await getReportData(restaurantId, startDate, endDate);
 
         return res.status(200).json({

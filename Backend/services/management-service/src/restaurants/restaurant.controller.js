@@ -37,12 +37,27 @@ export const createRestaurant = async (req, res) => {
 /* Listar restaurantes */
 export const getRestaurants = async (req, res) => {
     try {
-        const restaurants = await Restaurant.find({ isActive: true });
+        const query = { isActive: true };
+
+        const roles = req.userRoles || [];
+        const isSystemAdmin = roles.includes(ADMIN_SISTEMA);
+        const userIdStr = req.userId?.toString();
+
+        // SEGURIDAD EXTREMA: Si NO es Admin de Sistema, FORZAR filtrado por su ID.
+        if (!isSystemAdmin) {
+            query.ownerId = userIdStr;
+            console.log(`[ManagementService] Strict filtering active for owner (String): "${userIdStr}"`);
+        }
+
+        const restaurants = await Restaurant.find(query);
+        console.log(`[ManagementService] Restaurants found: ${restaurants.length}`);
 
         return res.status(200).json({
             success: true,
+            count: restaurants.length,
             restaurants
         });
+
 
     } catch (error) {
         return res.status(500).json({
@@ -63,6 +78,17 @@ export const getRestaurantById = async (req, res) => {
             return res.status(404).json({
                 success: false,
                 message: 'Restaurant not found'
+            });
+        }
+
+        // Seguridad: Un admin de restaurante no puede ver otros restaurantes
+        const isSystemAdmin = req.userRoles?.includes(ADMIN_SISTEMA);
+        const isRestauranteAdmin = req.userRoles?.includes(ADMIN_RESTAURANTE);
+
+        if (isRestauranteAdmin && !isSystemAdmin && restaurant.ownerId !== req.userId) {
+            return res.status(403).json({
+                success: false,
+                message: 'No tienes permiso para ver este restaurante'
             });
         }
 

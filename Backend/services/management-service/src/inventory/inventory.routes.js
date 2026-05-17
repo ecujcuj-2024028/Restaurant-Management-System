@@ -5,8 +5,7 @@ import {
     createInventoryItemPg,
     getInventoryByRestaurant,
     updateQuantity,
-    updateInventoryItem,
-    deleteInventoryItem,
+    deleteInventoryItemPg,
 } from './inventory.controller.js';
 import { validateJWT } from '../../middlewares/validate-JWT.js';
 import { hasRole } from '../../middlewares/hasRole.js';
@@ -115,39 +114,6 @@ router.patch(
 /**
  * @swagger
  * /inventory/{id}:
- *   put:
- *     summary: Actualizar detalles de un ítem de inventario
- *     tags: [Inventory]
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema: { type: string }
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             properties:
- *               name: { type: string }
- *               cost: { type: number }
- *               minStock: { type: number }
- *     responses:
- *       200: { description: Ítem actualizado }
- */
-router.put(
-    '/:id',
-    validateJWT,
-    hasRole(ADMIN_RESTAURANTE, ADMIN_SISTEMA),
-    updateInventoryItem
-);
-
-/**
- * @swagger
- * /inventory/{id}:
  *   delete:
  *     summary: Eliminar (lógicamente) un ítem del inventario
  *     tags: [Inventory]
@@ -165,7 +131,7 @@ router.delete(
     '/:id',
     validateJWT,
     hasRole(ADMIN_RESTAURANTE, ADMIN_SISTEMA),
-    deleteInventoryItem
+    deleteInventoryItemPg
 );
 
 export default router;

@@ -368,6 +368,10 @@ export const getRoleRequests = async (req, res) => {
 
 export const requestRoleUpgrade = async (req, res) => {
     try {
+        console.log("=== DEBUG ROLE UPGRADE REQUEST ===");
+        console.log("User:", req.userId);
+        console.log("Requested Role:", req.body.requestedRole);
+        
         const { requestedRole } = req.body;
 
         const currentRoleName = req.user.UserRoles && req.user.UserRoles.length > 0

@@ -132,6 +132,8 @@ export const globalSearch = async (req, res) => {
     }
 };
 
+import { ADMIN_SISTEMA, ADMIN_RESTAURANTE } from '../../helpers/role-constants.js';
+
 /* ─────────────────────────────────────────────────────────────────────────────
    GET /search/restaurants?name=&category=&city=&minRating=&availability=&page=&limit=
    availability: true → solo restaurantes con al menos una mesa en estado "disponible"
@@ -142,6 +144,16 @@ export const searchRestaurants = async (req, res) => {
         const { page, limit, skip } = getPagination(req.query);
 
         const filter = { isActive: true };
+
+        // SEGURIDAD: Si es Admin de Restaurante, forzar filtrado por propiedad
+        const roles = req.userRoles || [];
+        const isSystemAdmin = roles.includes(ADMIN_SISTEMA);
+        const isRestauranteAdmin = roles.includes(ADMIN_RESTAURANTE);
+
+        if (isRestauranteAdmin && !isSystemAdmin) {
+            filter.ownerId = req.userId;
+            console.log(`[SearchService] Filtering search for owner: ${req.userId}`);
+        }
 
         if (name) filter.name = { $regex: name, $options: 'i' };
         if (city) filter['address.city'] = { $regex: city, $options: 'i' };

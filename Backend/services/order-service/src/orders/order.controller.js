@@ -7,6 +7,21 @@ import { sendInvoiceEmail } from '../../helpers/email-service.js';
 import { ADMIN_RESTAURANTE, ADMIN_SISTEMA } from '../../helpers/role-constants.js';
 import { sequelize } from '../../configs/db-postgres.js';
 import { Op } from 'sequelize';
+import mongoose from 'mongoose';
+
+/* ─────────────────────────────────────────────
+   Helper: obtener IDs de restaurantes propios
+─────────────────────────────────────────────── */
+const getOwnedRestaurantIds = async (req) => {
+    const isSystemAdmin = req.userRoles?.includes(ADMIN_SISTEMA);
+    const isRestauranteAdmin = req.userRoles?.includes(ADMIN_RESTAURANTE);
+
+    if (isSystemAdmin) return null; // Acceso total
+    if (!isRestauranteAdmin) return []; // Otros roles no ven nada o solo lo suyo
+
+    const myRestaurants = await Restaurant.find({ ownerId: req.userId, isActive: true }, '_id');
+    return myRestaurants.map(r => r._id);
+};
 
 export const createOrder = async (req, res) => {
   const t = await sequelize.transaction();
@@ -195,6 +210,12 @@ export const updateOrderStatus = async (req, res) => {
       return res.status(404).json({ message: 'Pedido no encontrado' });
     }
 
+    // SEGURIDAD: Validar propiedad
+    const ownedIds = await getOwnedRestaurantIds(req);
+    if (ownedIds && !ownedIds.some(oid => oid.toString() === order.restaurantId.toString())) {
+        return res.status(403).json({ success: false, message: 'No autorizado para este pedido' });
+    }
+
     const validNext = STATUS_TRANSITIONS[order.status];
 
     if (!validNext) {
@@ -221,12 +242,23 @@ export const updateOrderStatus = async (req, res) => {
 export const getRestaurantOrders = async (req, res) => {
   try {
     const { restaurantId, status } = req.query;
+    const filter = {};
 
-    if (!restaurantId) {
-      return res.status(400).json({ message: 'restaurantId es requerido' });
+    // SEGURIDAD: Filtrar por propiedad
+    const ownedIds = await getOwnedRestaurantIds(req);
+    if (ownedIds) {
+        if (restaurantId) {
+            if (!ownedIds.some(id => id.toString() === restaurantId)) {
+                return res.status(403).json({ success: false, message: 'No tienes permiso para ver este restaurante' });
+            }
+            filter.restaurantId = restaurantId;
+        } else {
+            filter.restaurantId = { $in: ownedIds };
+        }
+    } else if (restaurantId) {
+        filter.restaurantId = restaurantId;
     }
 
-    const filter = { restaurantId };
     if (status) filter.status = status;
 
     const orders = await Order.find(filter).sort({ createdAt: -1 });
@@ -241,36 +273,28 @@ export const getRestaurantOrders = async (req, res) => {
 export const getInvoice = async (req, res) => {
     try {
         const { id } = req.params;
-
-        // 1. Extraer datos del usuario (Estructura Sequelize o Mock desde JWT)
         const authenticatedUserId = req.userId;
-        const userRoles = req.userRoles || [];
 
-        const isAdmin = userRoles.some(role => [ADMIN_RESTAURANTE, ADMIN_SISTEMA].includes(role));
-
-        // 2. Buscar el pedido
         const order = await Order.findById(id);
         if (!order) return res.status(404).json({ success: false, message: 'Pedido no encontrado' });
 
-        // 3. Seguridad
-        const isOwner = order.userId?.toString() === authenticatedUserId?.toString();
-        if (!isAdmin && !isOwner) {
+        // SEGURIDAD: Validar propiedad o autoría
+        const ownedIds = await getOwnedRestaurantIds(req);
+        const isOwnerOfRestaurant = ownedIds && ownedIds.some(oid => oid.toString() === order.restaurantId.toString());
+        const isSystemAdmin = req.userRoles?.includes(ADMIN_SISTEMA);
+        const isCustomerOwner = order.userId?.toString() === authenticatedUserId?.toString();
+
+        if (!isSystemAdmin && !isOwnerOfRestaurant && !isCustomerOwner) {
             return res.status(403).json({ success: false, message: 'No tienes permiso.' });
         }
 
-        // 4. Estado
         if (order.status !== 'entregado') {
             return res.status(400).json({ success: false, message: 'Pedido no entregado.' });
         }
 
-        // 5. Búsqueda del restaurante
         const restaurant = await Restaurant.findById(order.restaurantId);
-        
-        // En microservicios, la info del cliente debería venir del Identity Service.
-        // Si el usuario es el dueño, usamos sus datos del token.
-        const customer = isOwner ? req.user : { Name: 'Cliente', Surname: 'Registrado', Email: null };
+        const customer = isCustomerOwner ? req.user : { Name: 'Cliente', Surname: 'Registrado', Email: null };
 
-        // 6. Preparar datos para la función de correo
         const invoiceParams = {
             customerEmail: customer?.Email,
             customerName: customer ? `${customer.Name} ${customer.Surname}` : 'Cliente',
@@ -287,20 +311,17 @@ export const getInvoice = async (req, res) => {
             total: Number(order.total)
         };
 
-        // 7. Actualizar estado en DB
         if (!order.invoiceGenerated) {
             order.invoiceGenerated = true;
             await order.save();
         }
 
-        // 8. Enviar Correo
         if (invoiceParams.customerEmail) {
             sendInvoiceEmail(invoiceParams).catch(err => 
                 console.error('Error enviando correo:', err)
             );
         }
 
-        // 9. Respuesta al cliente 
         return res.status(200).json({
             success: true,
             message: 'Factura generada y enviada',

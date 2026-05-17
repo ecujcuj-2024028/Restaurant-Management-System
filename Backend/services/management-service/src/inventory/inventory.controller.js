@@ -4,7 +4,21 @@ import { Op } from 'sequelize';
 import { InventoryItem } from './inventory.model.js';
 import { sendLowStockEmail } from '../../helpers/email-service.js';
 import Restaurant from '../restaurants/restaurant.model.js';
-import { ADMIN_SISTEMA } from '../../helpers/role-constants.js';
+import { ADMIN_SISTEMA, ADMIN_RESTAURANTE } from '../../helpers/role-constants.js';
+
+/* ─────────────────────────────────────────────
+   Helper: obtener IDs de restaurantes propios
+─────────────────────────────────────────────── */
+const getOwnedRestaurantIds = async (req) => {
+    const isSystemAdmin = req.userRoles?.includes(ADMIN_SISTEMA);
+    const isRestauranteAdmin = req.userRoles?.includes(ADMIN_RESTAURANTE);
+
+    if (isSystemAdmin) return null; // Acceso total
+    if (!isRestauranteAdmin) return []; // Otros roles
+
+    const myRestaurants = await Restaurant.find({ ownerId: req.userId, isActive: true }, '_id');
+    return myRestaurants.map(r => r._id);
+};
 
 /* ─────────────────────────────────────────────────────────────────────────────
    Helper: verificar propiedad del restaurante
@@ -12,8 +26,10 @@ import { ADMIN_SISTEMA } from '../../helpers/role-constants.js';
 const checkOwnership = async (req, restaurantId) => {
     const isAdmin = req.userRoles?.includes(ADMIN_SISTEMA);
     if (isAdmin) return true;
-    const restaurant = await Restaurant.findById(restaurantId);
-    return restaurant && restaurant.ownerId.toString() === req.userId?.toString();
+    
+    // Si no es admin sistema, validamos que sea dueño
+    const restaurant = await Restaurant.findOne({ _id: restaurantId, ownerId: req.userId });
+    return !!restaurant;
 };
 
 /* ─────────────────────────────────────────────────────────────────────────────
@@ -66,7 +82,7 @@ export const createInventoryItemPg = async (req, res) => {
         }
 
         if (!(await checkOwnership(req, restaurantId))) {
-            return res.status(403).json({ success: false, message: 'Acceso denegado al restaurante' });
+            return res.status(403).json({ success: false, message: 'No tienes permiso para gestionar inventario en este restaurante' });
         }
 
         // Verificar duplicado (nombre único por restaurante)
@@ -117,13 +133,19 @@ export const createInventoryItemPg = async (req, res) => {
 export const getInventoryByRestaurant = async (req, res) => {
     try {
         const { restaurantId } = req.params;
-        const { lowStock }     = req.query;   // ?lowStock=true  → solo los que están bajos
+        const { lowStock, basicsOnly } = req.query;
 
+        // SEGURIDAD: Validar propiedad
         if (!(await checkOwnership(req, restaurantId))) {
-            return res.status(403).json({ success: false, message: 'Acceso denegado al restaurante' });
+            return res.status(403).json({ success: false, message: 'No tienes permiso para ver el inventario de este restaurante' });
         }
 
         const where = { RestaurantId: restaurantId, IsActive: true };
+        
+        // FILTRADO SOLICITADO: Solo insumos básicos (carne, tomate, etc)
+        if (basicsOnly === 'true') {
+            where.MongoProductId = { [Op.is]: null };
+        }
 
         const items = await InventoryItem.findAll({ where, order: [['Name', 'ASC']] });
 
@@ -158,7 +180,6 @@ export const updateQuantity = async (req, res) => {
     try {
         const { id }       = req.params;
         const { quantity, operation } = req.body;
-        // operation: 'set' | 'add' | 'subtract'  (default: 'set')
 
         if (quantity === undefined || quantity === null) {
             return res.status(400).json({
@@ -176,8 +197,9 @@ export const updateQuantity = async (req, res) => {
             });
         }
 
+        // SEGURIDAD: Validar propiedad
         if (!(await checkOwnership(req, item.RestaurantId))) {
-            return res.status(403).json({ success: false, message: 'Acceso denegado al restaurante' });
+            return res.status(403).json({ success: false, message: 'No tienes permiso para modificar este inventario' });
         }
 
         let newQty;
@@ -201,56 +223,12 @@ export const updateQuantity = async (req, res) => {
         item.Quantity = newQty;
         await item.save();
 
-        // Verificar stock bajo después de actualizar
         await checkAndNotifyLowStock(item, item.RestaurantId);
 
         return res.status(200).json({
-            success : true,
-            item    : {
-                ...item.toJSON(),
-                isLowStock: parseFloat(item.Quantity) <= parseFloat(item.MinStock),
-                totalCost : (parseFloat(item.Quantity) * parseFloat(item.CostPerUnit)).toFixed(2),
-            },
+            success: true,
+            item,
         });
-
-    } catch (error) {
-        return res.status(500).json({ success: false, message: error.message });
-    }
-};
-
-/* ─────────────────────────────────────────────────────────────────────────────
-   PUT /inventory-pg/:id
-   Actualiza todos los campos de un ítem (incluido costPerUnit y minStock)
-───────────────────────────────────────────────────────────────────────────── */
-export const updateInventoryItem = async (req, res) => {
-    try {
-        const { id }  = req.params;
-        const allowed = ['Name', 'Quantity', 'Unit', 'CostPerUnit', 'MinStock'];
-
-        const item = await InventoryItem.findByPk(id);
-
-        if (!item || !item.IsActive) {
-            return res.status(404).json({
-                success: false,
-                message: 'Ítem de inventario no encontrado.',
-            });
-        }
-
-        if (!(await checkOwnership(req, item.RestaurantId))) {
-            return res.status(403).json({ success: false, message: 'Acceso denegado al restaurante' });
-        }
-
-        // Solo actualizar campos permitidos
-        allowed.forEach(field => {
-            if (req.body[field.charAt(0).toLowerCase() + field.slice(1)] !== undefined) {
-                item[field] = req.body[field.charAt(0).toLowerCase() + field.slice(1)];
-            }
-        });
-
-        await item.save();
-        await checkAndNotifyLowStock(item, item.RestaurantId);
-
-        return res.status(200).json({ success: true, item });
 
     } catch (error) {
         return res.status(500).json({ success: false, message: error.message });
@@ -259,23 +237,24 @@ export const updateInventoryItem = async (req, res) => {
 
 /* ─────────────────────────────────────────────────────────────────────────────
    DELETE /inventory-pg/:id
-   Eliminación lógica
+   Desactiva un ítem de inventario
 ───────────────────────────────────────────────────────────────────────────── */
-export const deleteInventoryItem = async (req, res) => {
+export const deleteInventoryItemPg = async (req, res) => {
     try {
         const { id } = req.params;
 
         const item = await InventoryItem.findByPk(id);
 
-        if (!item || !item.IsActive) {
+        if (!item) {
             return res.status(404).json({
                 success: false,
-                message: 'Ítem de inventario no encontrado.',
+                message: 'Ítem no encontrado.',
             });
         }
 
+        // SEGURIDAD: Validar propiedad
         if (!(await checkOwnership(req, item.RestaurantId))) {
-            return res.status(403).json({ success: false, message: 'Acceso denegado al restaurante' });
+            return res.status(403).json({ success: false, message: 'No tienes permiso para eliminar este inventario' });
         }
 
         item.IsActive = false;
@@ -283,7 +262,7 @@ export const deleteInventoryItem = async (req, res) => {
 
         return res.status(200).json({
             success: true,
-            message: 'Ítem eliminado del inventario.',
+            message: 'Ítem desactivado correctamente.',
         });
 
     } catch (error) {

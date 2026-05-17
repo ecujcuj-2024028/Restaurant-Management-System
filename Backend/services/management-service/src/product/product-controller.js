@@ -3,7 +3,21 @@
 import Product from './products-model.js';
 import Restaurant from '../restaurants/restaurant.model.js';
 import { cloudinary, extractPublicId } from '../../middlewares/restaurant-uploader.js';
-import { InventoryItem } from '../inventory/inventory.model.js';
+import { ADMIN_SISTEMA, ADMIN_RESTAURANTE } from '../../helpers/role-constants.js';
+
+/* ─────────────────────────────────────────────
+   Helper: obtener IDs de restaurantes propios
+─────────────────────────────────────────────── */
+const getOwnedRestaurantIds = async (req) => {
+    const roles = req.userRoles || [];
+    const isSystemAdmin = roles.includes(ADMIN_SISTEMA);
+    const isRestauranteAdmin = roles.includes(ADMIN_RESTAURANTE);
+
+    if (isSystemAdmin) return null; // Acceso total
+    
+    const myRestaurants = await Restaurant.find({ ownerId: req.userId, isActive: true }, '_id');
+    return myRestaurants.map(r => r._id);
+};
 
 /* ─────────────────────────────────────────────────────────────────────────────
    Helper: Parsear Ingredientes de forma segura
@@ -23,7 +37,6 @@ const parseIngredients = (ingredients) => {
         parsed = ingredients;
     }
 
-    // Asegurar que sea un array y limpiar campos vacíos o nulos
     if (!Array.isArray(parsed)) return [];
     
     return parsed.filter(i => i && typeof i === 'object' && i.name);
@@ -35,6 +48,12 @@ const parseIngredients = (ingredients) => {
 export const createProduct = async (req, res) => {
     try {
         const { name, description, price, type, category, restaurant, preparationTime } = req.body;
+
+        // SEGURIDAD: Validar propiedad del restaurante
+        const ownedIds = await getOwnedRestaurantIds(req);
+        if (ownedIds !== null && !ownedIds.some(id => id.toString() === restaurant)) {
+            return res.status(403).json({ success: false, message: 'No tienes permiso para crear productos en este restaurante' });
+        }
 
         const ingredients = parseIngredients(req.body.ingredients);
 
@@ -65,9 +84,23 @@ export const getProducts = async (req, res) => {
         const { type, category, isAvailable, restaurant } = req.query;
         const filter = { isActive: true };
 
+        // SEGURIDAD: Filtrar por propiedad
+        const ownedIds = await getOwnedRestaurantIds(req);
+        if (ownedIds !== null) {
+            if (restaurant) {
+                if (!ownedIds.some(id => id.toString() === restaurant)) {
+                    return res.status(403).json({ success: false, message: 'No tienes permiso para ver productos de este restaurante' });
+                }
+                filter.restaurant = restaurant;
+            } else {
+                filter.restaurant = { $in: ownedIds };
+            }
+        } else if (restaurant) {
+            filter.restaurant = restaurant;
+        }
+
         if (type) filter.type = type;
         if (category) filter.category = category;
-        if (restaurant) filter.restaurant = restaurant;
         if (isAvailable !== undefined)
             filter.isAvailable = isAvailable === 'true';
 
@@ -94,6 +127,12 @@ export const getProduct = async (req, res) => {
         if (!product)
             return res.status(404).json({ success: false, message: 'Producto no encontrado' });
 
+        // SEGURIDAD: Validar propiedad
+        const ownedIds = await getOwnedRestaurantIds(req);
+        if (ownedIds !== null && !ownedIds.some(id => id.toString() === product.restaurant._id.toString())) {
+            return res.status(403).json({ success: false, message: 'No tienes permiso para ver este producto' });
+        }
+
         return res.status(200).json({ success: true, product });
     } catch (error) {
         return res.status(500).json({ success: false, message: error.message });
@@ -108,23 +147,26 @@ export const updateProduct = async (req, res) => {
         const { id } = req.params;
         const updateData = { ...req.body };
 
-        // Parseo forzado de ingredientes
+        const product = await Product.findById(id);
+        if (!product) return res.status(404).json({ success: false, message: 'Producto no encontrado' });
+
+        // SEGURIDAD: Validar propiedad
+        const ownedIds = await getOwnedRestaurantIds(req);
+        if (ownedIds !== null && !ownedIds.some(oid => oid.toString() === product.restaurant.toString())) {
+            return res.status(403).json({ success: false, message: 'No autorizado para modificar este producto' });
+        }
+
         if (updateData.ingredients !== undefined) {
             updateData.ingredients = parseIngredients(updateData.ingredients);
         }
 
         if (req.file) {
-            const existing = await Product.findById(id, 'image');
-            if (existing?.image) {
-                const publicId = extractPublicId(existing.image);
+            if (product.image) {
+                const publicId = extractPublicId(product.image);
                 if (publicId) await cloudinary.uploader.destroy(publicId);
             }
             updateData.image = req.file.path;
         }
-
-        // Usamos findById y save() en lugar de findByIdAndUpdate para disparar middleware y validaciones limpiamente
-        const product = await Product.findById(id);
-        if (!product) return res.status(404).json({ success: false, message: 'Producto no encontrado' });
 
         Object.assign(product, updateData);
         await product.save();
@@ -142,7 +184,19 @@ export const updateProduct = async (req, res) => {
 export const deleteProduct = async (req, res) => {
     try {
         const { id } = req.params;
-        await Product.findByIdAndUpdate(id, { isActive: false });
+        
+        const product = await Product.findById(id);
+        if (!product) return res.status(404).json({ success: false, message: 'Producto no encontrado' });
+
+        // SEGURIDAD: Validar propiedad
+        const ownedIds = await getOwnedRestaurantIds(req);
+        if (ownedIds !== null && !ownedIds.some(oid => oid.toString() === product.restaurant.toString())) {
+            return res.status(403).json({ success: false, message: 'No tienes permiso para eliminar este producto' });
+        }
+
+        product.isActive = false;
+        await product.save();
+        
         return res.status(200).json({ success: true, message: 'Producto desactivado' });
     } catch (error) {
         return res.status(500).json({ success: false, message: error.message });
@@ -155,8 +209,12 @@ export const deleteProduct = async (req, res) => {
 export const getProductStats = async (req, res) => {
     try {
         const { restaurantId } = req.params;
-        const restaurant = await Restaurant.findById(restaurantId);
-        if (!restaurant) return res.status(404).json({ success: false, message: 'Restaurante no encontrado.' });
+
+        // SEGURIDAD: Validar propiedad
+        const ownedIds = await getOwnedRestaurantIds(req);
+        if (ownedIds !== null && !ownedIds.some(id => id.toString() === restaurantId)) {
+            return res.status(403).json({ success: false, message: 'No tienes permiso para ver estadísticas de este restaurante' });
+        }
 
         const products = await Product.find({ restaurant: restaurantId }).populate('category', 'name');
 

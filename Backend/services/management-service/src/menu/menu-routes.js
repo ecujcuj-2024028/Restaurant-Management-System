@@ -8,9 +8,7 @@ import {
     updateMenu,
     addMenuItem,
     removeMenuItem,
-    deleteMenu,
-    toggleMenuStatus,
-    activateCategory
+    deleteMenu
 } from '../menu/menu-controller.js';
 
 import { validateJWT }    from '../../middlewares/validate-JWT.js';
@@ -30,12 +28,12 @@ const router = Router({ mergeParams: true });
  * @swagger
  * /menu:
  *   get:
- *     summary: Obtener todos los menús
+ *     summary: Obtener todos los menús (Filtrado por rol)
  *     tags: [Menu]
  *     responses:
  *       200: { description: Lista de menús }
  */
-router.get('/',    getMenus);
+router.get('/', validateJWT, getMenus);
 
 /**
  * @swagger
@@ -159,49 +157,5 @@ router.post('/:id/items',              [validateJWT, hasRole(ADMIN_RESTAURANTE, 
  *       200: { description: Plato removido }
  */
 router.delete('/:id/items/:productId', [validateJWT, hasRole(ADMIN_RESTAURANTE, ADMIN_SISTEMA)], removeMenuItem);
-
-/**
- * @swagger
- * /menu/{id}/toggle-status:
- *   patch:
- *     summary: Activar/Desactivar disponibilidad del menú
- *     tags: [Menu]
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema: { type: string }
- *     responses:
- *       200: { description: Estado cambiado }
- */
-router.patch('/:id/toggle-status',    [validateJWT, hasRole(ADMIN_RESTAURANTE, ADMIN_SISTEMA)], toggleMenuStatus);
-
-/**
- * @swagger
- * /menu/{id}/activate-category:
- *   patch:
- *     summary: Activar una categoría dentro del menú
- *     tags: [Menu]
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema: { type: string }
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             properties:
- *               categoryId: { type: string }
- *     responses:
- *       200: { description: Categoría activada }
- */
-router.patch('/:id/activate-category', [validateJWT, hasRole(ADMIN_RESTAURANTE, ADMIN_SISTEMA)], activateCategory);
 
 export default router;

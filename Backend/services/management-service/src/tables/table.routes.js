@@ -3,7 +3,6 @@ import {
     createTable,
     deleteTable,
     getTables,
-    getTablesByRestaurant,
     updateTable,
     updateTableStatus
 } from './table.controller.js';
@@ -46,17 +45,6 @@ router.post(
  *       - bearerAuth: []
  */
 router.get('/', validateJWT, getTables);
-
-/**
- * @swagger
- * /tables/restaurant/{restaurantId}:
- *   get:
- *     summary: Obtener las mesas de un restaurante específico
- *     tags: [Tables]
- *     security:
- *       - bearerAuth: []
- */
-router.get('/restaurant/:restaurantId', validateJWT, getTablesByRestaurant);
 
 /**
  * @swagger

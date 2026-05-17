@@ -122,12 +122,12 @@ router.delete(
  * @swagger
  * /restaurants:
  *   get:
- *     summary: Obtener lista de todos los restaurantes
+ *     summary: Obtener lista de todos los restaurantes (Filtrado por rol)
  *     tags: [Restaurants]
  *     responses:
  *       200: { description: Lista de restaurantes }
  */
-router.get('/', getRestaurants);
+router.get('/', validateJWT, getRestaurants);
 
 /**
  * @swagger
