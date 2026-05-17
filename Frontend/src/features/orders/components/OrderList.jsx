@@ -72,7 +72,7 @@ const OrderList = () => {
         </div>
         <button
           onClick={() => restaurantId && fetchOrders(restaurantId)}
-          className="bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 px-4 py-2 rounded-xl text-zinc-300 text-sm transition-colors"
+          className="bg-orange-500 hover:bg-orange-600 border border-orange-500 px-4 py-2 rounded-xl text-white text-sm transition-colors"
         >
           Actualizar
         </button>

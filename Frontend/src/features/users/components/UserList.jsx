@@ -266,7 +266,6 @@ const UserList = () => {
       {/* Encabezado */}
       <header className="mb-8">
         <h1 className="text-3xl font-bold text-white flex items-center gap-3">
-          <Users size={28} className="text-orange-500" />
           Gestión de Usuarios
         </h1>
         <p className="text-zinc-500 mt-1">
