@@ -21,8 +21,23 @@ const getOwnedRestaurantIds = async (req) => {
 
 export const createExternalOrder = async (req, res) => {
     try {
-        const { restaurantId, items, customerName, address, phone } = req.body;
+        const { 
+            restaurantId, 
+            items, 
+            orderType, 
+            deliveryAddress, 
+            customerNote, 
+            deliveryFee 
+        } = req.body;
+        
         const userId = req.userId;
+
+        if (!restaurantId || !items || !orderType) {
+            return res.status(400).json({ 
+                success: false, 
+                message: 'Los campos restaurantId, items y orderType son obligatorios.' 
+            });
+        }
 
         let total = 0;
         const processedItems = [];
@@ -30,7 +45,7 @@ export const createExternalOrder = async (req, res) => {
         for (const item of items) {
             const product = await Product.findById(item.productId);
             if (!product || !product.isActive || !product.isAvailable) {
-                return res.status(400).json({ message: "Producto no disponible" });
+                return res.status(400).json({ message: `Producto ${item.productId} no disponible` });
             }
 
             const subtotal = product.price * item.quantity;
@@ -48,11 +63,12 @@ export const createExternalOrder = async (req, res) => {
         const newOrder = new ExternalOrder({
             restaurantId,
             userId,
-            customerName,
-            address,
-            phone,
+            orderType,
+            deliveryAddress: deliveryAddress || {},
+            customerNote: customerNote || '',
             items: processedItems,
-            total
+            deliveryFee: deliveryFee || 0,
+            total: total + (deliveryFee || 0)
         });
 
         await newOrder.save();

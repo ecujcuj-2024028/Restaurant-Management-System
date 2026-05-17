@@ -26,13 +26,43 @@ const getOwnedRestaurantIds = async (req) => {
 export const createOrder = async (req, res) => {
   const t = await sequelize.transaction();
   try {
-    const { tableNumber, items, restaurantId } = req.body;
+    const { tableId, tableNumber, items, restaurantId } = req.body;
     const userId = req.userId;
+    const userRoles = req.userRoles || [];
+    const isClient = !userRoles.some(r => r === ADMIN_SISTEMA || r === ADMIN_RESTAURANTE);
 
     if (!items || items.length === 0) {
       await t.rollback();
       return res.status(400).json({ message: "Debe enviar al menos un producto" });
     }
+
+    // ── VALIDACIÓN DE RESERVA PARA CLIENTES ──────────────────────────────────
+    if (isClient) {
+      const restaurant = await Restaurant.findById(restaurantId);
+      const restaurantPhone = restaurant?.phone || 'el establecimiento';
+
+      const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+      
+      const activeReservation = await Reservation.findOne({
+        where: {
+          userId,
+          restaurantId,
+          tableId,
+          date: today,
+          status: 'confirmada'
+        },
+        transaction: t
+      });
+
+      if (!activeReservation) {
+        await t.rollback();
+        return res.status(403).json({
+          success: false,
+          message: `Primero debes tener una reservación confirmada en esta mesa para hoy. Si deseas pedir a domicilio, contacta al restaurante al: ${restaurantPhone}`
+        });
+      }
+    }
+    // ────────────────────────────────────────────────────────────────────────
 
     let total = 0;
     const processedItems = [];

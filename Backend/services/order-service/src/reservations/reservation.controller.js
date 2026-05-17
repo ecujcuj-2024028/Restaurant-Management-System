@@ -18,11 +18,12 @@ const getOwnedRestaurantIds = async (req) => {
     if (isSystemAdmin) return null; // Acceso total
     if (!isRestauranteAdmin) return []; // Otros roles
 
-    const myRestaurants = await Restaurant.findAll({ 
-        where: { ownerId: req.userId, isActive: true },
-        attributes: ['id']
-    });
-    return myRestaurants.map(r => r.id);
+    const myRestaurants = await Restaurant.find({ 
+        ownerId: req.userId, 
+        isActive: true 
+    }, '_id');
+    
+    return myRestaurants.map(r => r._id.toString());
 };
 
 const getUserIdFromRequest = (req) => {
