@@ -2,8 +2,8 @@ import api from './api'
 
 const MENU_ENDPOINT = '/menus'
 
-export const getMenus = () =>
-  api.get(MENU_ENDPOINT)
+export const getMenus = (params = {}) =>
+  api.get(MENU_ENDPOINT, { params })
 
 export const getMenuById = (id) =>
   api.get(`${MENU_ENDPOINT}/${id}`)

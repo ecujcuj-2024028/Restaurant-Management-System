@@ -58,6 +58,12 @@ const menuSchema = mongoose.Schema(
             default: "all_day"
         },
 
+        price: {
+            type: Number,
+            min: [0, "El precio no puede ser negativo"],
+            default: null
+        },
+
         items: {
             type: [menuItemSchema],
             default: []

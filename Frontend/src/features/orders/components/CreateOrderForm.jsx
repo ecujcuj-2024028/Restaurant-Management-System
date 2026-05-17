@@ -78,7 +78,8 @@ const handleSubmit = async () => {
                    tables.find(t => (t._id || t.id) === selectedTable)?.tableNumber,
       items: items.map((i) => ({ 
         productId: i.productId,
-        quantity: i.quantity 
+        quantity: i.quantity,
+        isMenu: i.isMenu || false
       }))
     })
     toast.success('¡Pedido creado exitosamente!', { id: toastId })

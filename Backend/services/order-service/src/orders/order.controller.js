@@ -1,5 +1,6 @@
 import Order from './order.model.js';
 import Product from '../product/products-model.js';
+import Menu from '../menu/menu.model.js';
 import { InventoryItem } from '../inventory/inventory.model.js';
 import Reservation from '../reservations/reservation.model.js';
 import Restaurant from '../restaurants/restaurant.model.js';
@@ -33,24 +34,17 @@ export const createOrder = async (req, res) => {
 
     if (!items || items.length === 0) {
       await t.rollback();
-      return res.status(400).json({ message: "Debe enviar al menos un producto" });
+      return res.status(400).json({ message: "Debe enviar al menos un producto o menú" });
     }
 
     // ── VALIDACIÓN DE RESERVA PARA CLIENTES ──────────────────────────────────
     if (isClient) {
       const restaurant = await Restaurant.findById(restaurantId);
       const restaurantPhone = restaurant?.phone || 'el establecimiento';
-
-      const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+      const today = new Date().toISOString().split('T')[0]; 
       
       const activeReservation = await Reservation.findOne({
-        where: {
-          userId,
-          restaurantId,
-          tableId,
-          date: today,
-          status: 'confirmada'
-        },
+        where: { userId, restaurantId, tableId, date: today, status: 'confirmada' },
         transaction: t
       });
 
@@ -58,65 +52,67 @@ export const createOrder = async (req, res) => {
         await t.rollback();
         return res.status(403).json({
           success: false,
-          message: `Primero debes tener una reservación confirmada en esta mesa para hoy. Si deseas pedir a domicilio, contacta al restaurante al: ${restaurantPhone}`
+          message: `Primero debes tener una reservación confirmada en esta mesa para hoy.`
         });
       }
     }
-    // ────────────────────────────────────────────────────────────────────────
 
     let total = 0;
     const processedItems = [];
 
     for (const item of items) {
-      const product = await Product.findById(item.productId);
+      if (item.isMenu || item.menuId) {
+        // PROCESAR COMO MENÚ (COMBO/OFERTA)
+        const menuId = item.menuId || item.productId; // Soporta ambos por compatibilidad
+        const menu = await Menu.findById(menuId).populate('items.product');
 
-      if (!product || !product.isActive || !product.isAvailable) {
-        await t.rollback();
-        return res.status(400).json({ message: `Producto inválido o no disponible` });
-      }
+        if (!menu || !menu.isActive) {
+          await t.rollback();
+          return res.status(400).json({ message: `El menú ${menuId} no está disponible` });
+        }
 
-      const subtotal = product.price * item.quantity;
-      total += subtotal;
+        // Usar precio del menú si existe, sino sumar productos
+        const menuPrice = menu.price || menu.items.reduce((sum, i) => sum + (i.product?.price || 0), 0);
+        const subtotal = menuPrice * item.quantity;
+        total += subtotal;
 
-      processedItems.push({
-        productId: product._id,
-        name: product.name,
-        quantity: item.quantity,
-        price: product.price,
-        subtotal
-      });
-
-      for (const ingredient of product.ingredients) {
-        const inventoryItem = await InventoryItem.findOne({
-          where: {
-            RestaurantId: restaurantId,
-            Name: ingredient.name
-          },
-          transaction: t
+        processedItems.push({
+          menuId: menu._id,
+          isMenu: true,
+          name: menu.name,
+          quantity: item.quantity,
+          price: menuPrice,
+          subtotal
         });
 
-        if (!inventoryItem) {
+        // Descontar stock de cada producto dentro del menú
+        for (const menuItem of menu.items) {
+          const product = menuItem.product;
+          if (product && product.ingredients) {
+            await processStockDeduction(product, item.quantity, restaurantId, t);
+          }
+        }
+      } else {
+        // PROCESAR COMO PRODUCTO INDIVIDUAL
+        const product = await Product.findById(item.productId);
+
+        if (!product || !product.isActive || !product.isAvailable) {
           await t.rollback();
-          return res.status(400).json({
-            message: `No existe inventario para el insumo: ${ingredient.name}`
-          });
+          return res.status(400).json({ message: `Producto ${item.productId} no disponible` });
         }
 
-        const ingredientQty = parseFloat(ingredient.quantity) || 1;
+        const subtotal = product.price * item.quantity;
+        total += subtotal;
 
-        if (parseFloat(inventoryItem.Quantity) < ingredientQty * item.quantity) {
-          await t.rollback();
-          return res.status(400).json({
-            message: `Stock insuficiente para ${ingredient.name}. Disponible: ${inventoryItem.Quantity}`
-          });
-        }
+        processedItems.push({
+          productId: product._id,
+          name: product.name,
+          quantity: item.quantity,
+          price: product.price,
+          subtotal
+        });
 
-        inventoryItem.Quantity = parseFloat(inventoryItem.Quantity) - (ingredientQty * item.quantity);
-        await inventoryItem.save({ transaction: t });
-
-        if (parseFloat(inventoryItem.Quantity) <= parseFloat(inventoryItem.MinStock)) {
-          console.log(`ALERTA: Stock crítico de ${inventoryItem.Name}. Nivel actual: ${inventoryItem.Quantity}`);
-        }
+        await processStockDeduction(product, item.quantity, restaurantId, t);
       }
     }
 
@@ -131,19 +127,36 @@ export const createOrder = async (req, res) => {
     await newOrder.save();
     await t.commit();
 
-    return res.status(201).json({
-      message: "Pedido creado correctamente",
-      order: newOrder
-    });
+    return res.status(201).json({ success: true, message: "Pedido creado correctamente", order: newOrder });
 
   } catch (error) {
     await t.rollback();
-    return res.status(500).json({
-      message: "Error al crear el pedido",
-      error: error.message
-    });
+    return res.status(500).json({ success: false, message: error.message });
   }
 };
+
+/* Helper para descontar stock */
+async function processStockDeduction(product, orderQuantity, restaurantId, transaction) {
+    for (const ingredient of product.ingredients) {
+      const inventoryItem = await InventoryItem.findOne({
+        where: { RestaurantId: restaurantId, Name: ingredient.name },
+        transaction
+      });
+
+      if (!inventoryItem) {
+        throw new Error(`No hay stock registrado para: ${ingredient.name}`);
+      }
+
+      const ingredientQtyNeeded = (parseFloat(ingredient.quantity) || 1) * orderQuantity;
+
+      if (parseFloat(inventoryItem.Quantity) < ingredientQtyNeeded) {
+        throw new Error(`Stock insuficiente para ${ingredient.name}. Disponible: ${inventoryItem.Quantity}`);
+      }
+
+      inventoryItem.Quantity = parseFloat(inventoryItem.Quantity) - ingredientQtyNeeded;
+      await inventoryItem.save({ transaction });
+    }
+}
 
 export const cancelOrder = async (req, res) => {
   const t = await sequelize.transaction();
