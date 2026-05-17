@@ -17,7 +17,7 @@ const LoginForm = ({ onForgotPassword, onVerifyEmail, onRegister }) => {
     try {
       const user = await login(data.email, data.password)
       const role = user?.roles?.[0]
-      toast.success(`¡Bienvenido, ${user.username || ''}! 🍽️`, { id: toastId })
+      toast.success(`¡Bienvenido, ${user.username || ''}!`, { id: toastId })
       if (role === 'ADMIN_SISTEMA') navigate('/dashboard')
       else if (role === 'ADMIN_RESTAURANTE') navigate('/restaurants')
       else navigate('/dashboard')
