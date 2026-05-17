@@ -126,7 +126,6 @@ const InventoryList = () => {
         <div>
           <div className="flex flex-wrap items-center gap-3">
             <h1 className="text-3xl font-bold text-white flex items-center gap-3">
-              <Package size={30} className="text-orange-500" />
               Inventario
             </h1>
 

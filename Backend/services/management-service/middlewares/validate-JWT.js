@@ -21,17 +21,29 @@ export const validateJWT = async (req, res, next) => {
 
         // Verificar el token
         const decoded = await verifyJWT(token);
+        
+        console.log("=== [DEBUG] JWT Decoded Payload ===");
+        console.log(JSON.stringify(decoded, null, 2));
 
-        // En microservicios que no son Identity, confiamos en el payload del JWT
+        // Extraer ID de usuario (probar varios nombres comunes)
+        const userId = decoded.sub || decoded.uid || decoded.id || decoded.userId;
+        
+        // Extraer roles (probar 'roles' o 'role')
+        const roles = decoded.roles || (decoded.role ? [decoded.role] : []);
+
+        // Configurar el request
+        req.userId = String(userId);
+        req.userRoles = Array.isArray(roles) ? roles : [roles];
+        
         req.user = {
-            Id: decoded.sub,
-            Name: decoded.name,
-            Surname: decoded.surname,
-            Email: decoded.email,
+            Id: req.userId,
+            Name: decoded.name || 'User',
+            Surname: decoded.surname || '',
+            Email: decoded.email || '',
             Status: true
         };
-        req.userId = decoded.sub;
-        req.userRoles = decoded.roles;
+
+        console.log(`[validateJWT] Authenticated User: ${req.userId} with roles: [${req.userRoles.join(', ')}]`);
         
         next();
     } catch (error) {

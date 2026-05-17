@@ -16,10 +16,12 @@ import { errorHandler } from './middlewares/server-genericError-handler.js';
 
 // Rutas
 import analyticsRoutes from './src/analytics/analytics.routes.js';
-import eventsRoutes    from './src/events/events-routes.js';
-import reportsRoutes   from './src/reports/reports.routes.js';
+import eventsRoutes from './src/events/events-routes.js';
+import reportsRoutes from './src/reports/reports.routes.js';
+import notificationRoutes from './src/notifications/notification-routes.js';
 
 dotenv.config();
+
 
 const app = express();
 const PORT = process.env.ANALYTICS_SERVICE_PORT || 3004;
@@ -38,6 +40,7 @@ app.use(morgan('dev'));
 app.use(`${BASE_PATH}/analytics`, analyticsRoutes);
 app.use(`${BASE_PATH}/events`,    eventsRoutes);
 app.use(`${BASE_PATH}/reports`,   reportsRoutes);
+app.use(`${BASE_PATH}/notifications`, notificationRoutes);
 
 // Health Check
 app.get(`${BASE_PATH}/health`, (req, res) => {

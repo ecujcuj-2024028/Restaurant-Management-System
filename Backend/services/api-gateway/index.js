@@ -60,6 +60,7 @@ app.use(createProxyMiddleware({
     pathFilter: (path) =>
         path.startsWith(`${BASE_PATH}/analytics`) ||
         path.startsWith(`${BASE_PATH}/events`) ||
+        path.startsWith(`${BASE_PATH}/notifications`) ||
         path.startsWith(`${BASE_PATH}/reports`)
 }));
 

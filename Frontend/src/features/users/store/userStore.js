@@ -3,6 +3,8 @@ import {
   getProfile,
   updateProfile,
   updateProfilePicture,
+  updatePassword,
+  requestRoleUpgrade,
   getUsers,
   getRoleRequests,
   approveRoleRequest,
@@ -51,6 +53,30 @@ const useUserStore = create((set, get) => ({
       set({ profile: userData, loading: false })
       useAuthStore.getState().user = userData
       return userData
+    } catch (error) {
+      set({ error: error.message, loading: false })
+      throw error
+    }
+  },
+
+  updatePassword: async (data) => {
+    set({ loading: true })
+    try {
+      const response = await updatePassword(data)
+      set({ loading: false })
+      return response.data
+    } catch (error) {
+      set({ error: error.message, loading: false })
+      throw error
+    }
+  },
+
+  requestRoleChange: async (requestedRole) => {
+    set({ loading: true })
+    try {
+      const response = await requestRoleUpgrade(requestedRole)
+      set({ loading: false })
+      return response.data
     } catch (error) {
       set({ error: error.message, loading: false })
       throw error

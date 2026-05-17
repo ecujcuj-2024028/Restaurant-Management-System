@@ -58,6 +58,15 @@ app.get(`${BASE_PATH}/health`, (req, res) => {
 
 app.use(errorHandler);
 
+// Manejador de 404 para depuración
+app.use((req, res) => {
+    console.log(`[ManagementService] 404 Not Found: ${req.method} ${req.originalUrl}`);
+    res.status(404).json({
+        success: false,
+        message: `Ruta no encontrada en Management Service: ${req.method} ${req.originalUrl}`
+    });
+});
+
 /* =========================
    Arranque
    ========================= */

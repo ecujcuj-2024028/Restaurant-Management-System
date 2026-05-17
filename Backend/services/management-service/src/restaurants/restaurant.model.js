@@ -42,6 +42,18 @@ const restaurantSchema = mongoose.Schema(
             trim: true
         },
 
+        openingTime: {
+            type: String,
+            default: "08:00",
+            trim: true
+        },
+
+        closingTime: {
+            type: String,
+            default: "22:00",
+            trim: true
+        },
+
         ownerId: {
             type: String,
             required: [true, "El ID del dueño es obligatorio"]

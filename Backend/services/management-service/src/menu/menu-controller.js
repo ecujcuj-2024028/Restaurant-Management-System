@@ -2,6 +2,22 @@
 
 import Menu    from '../menu/menu-models.js';
 import Product from '../product/products-model.js';
+import Restaurant from '../restaurants/restaurant.model.js';
+import { ADMIN_SISTEMA, ADMIN_RESTAURANTE } from '../../helpers/role-constants.js';
+
+/* ─────────────────────────────────────────────
+   Helper: obtener IDs de restaurantes propios
+─────────────────────────────────────────────── */
+const getOwnedRestaurantIds = async (req) => {
+    const isSystemAdmin = req.userRoles?.includes(ADMIN_SISTEMA);
+    const isRestauranteAdmin = req.userRoles?.includes(ADMIN_RESTAURANTE);
+
+    if (isSystemAdmin) return null; // Acceso total
+    if (!isRestauranteAdmin) return []; // Otros roles ven solo lo suyo (si aplica)
+
+    const myRestaurants = await Restaurant.find({ ownerId: req.userId, isActive: true }, '_id');
+    return myRestaurants.map(r => r._id);
+};
 
 const addExpirationFlag = (menu) => {
     const now = new Date();
@@ -17,7 +33,21 @@ export const getMenus = async (req, res) => {
         const { restaurant, menuType, isActive } = req.query;
         const filter = {};
 
-        if (restaurant) filter.restaurant = restaurant;
+        // SEGURIDAD: Filtrar por propiedad
+        const ownedIds = await getOwnedRestaurantIds(req);
+        if (ownedIds) {
+            if (restaurant) {
+                if (!ownedIds.some(id => id.toString() === restaurant)) {
+                    return res.status(403).json({ success: false, message: 'No tienes permiso para ver este restaurante' });
+                }
+                filter.restaurant = restaurant;
+            } else {
+                filter.restaurant = { $in: ownedIds };
+            }
+        } else if (restaurant) {
+            filter.restaurant = restaurant;
+        }
+
         if (menuType)   filter.menuType   = menuType;
         if (isActive !== undefined) filter.isActive = isActive === 'true';
 
@@ -54,6 +84,12 @@ export const getMenu = async (req, res) => {
                 message: `Menú no encontrado con id ${req.params.id}`
             });
 
+        // SEGURIDAD: Validar propiedad
+        const ownedIds = await getOwnedRestaurantIds(req);
+        if (ownedIds && !ownedIds.some(id => id.toString() === menu.restaurant._id.toString())) {
+            return res.status(403).json({ success: false, message: 'No tienes permiso para ver este menú' });
+        }
+
         return res.status(200).json({
             success: true,
             menu: addExpirationFlag(menu)
@@ -70,7 +106,6 @@ export const getMenu = async (req, res) => {
 export const createMenu = async (req, res) => {
     try {
         const data = req.body;
-
         const { restaurantId } = req.body;
 
         if (!restaurantId) {
@@ -78,6 +113,12 @@ export const createMenu = async (req, res) => {
                 success: false,
                 message: 'El campo restaurantId es obligatorio.'
             });
+        }
+
+        // SEGURIDAD: Validar propiedad
+        const ownedIds = await getOwnedRestaurantIds(req);
+        if (ownedIds && !ownedIds.some(id => id.toString() === restaurantId)) {
+            return res.status(403).json({ success: false, message: 'No tienes permiso para crear menús en este restaurante' });
         }
 
         if (data.items && data.items.length > 0) {
@@ -123,12 +164,9 @@ export const updateMenu = async (req, res) => {
                 message: `Menú no encontrado con id ${req.params.id}`
             });
 
-        const userRoles = req.user?.UserRoles?.map(
-   ur => ur.Role.Name
-) || [];
-        const isAdmin   = userRoles.includes('ADMIN_SISTEMA');
-
-        if (!isAdmin && menu.restaurant.toString() !== req.body.restaurantId) {
+        // SEGURIDAD: Validar propiedad
+        const ownedIds = await getOwnedRestaurantIds(req);
+        if (ownedIds && !ownedIds.some(id => id.toString() === menu.restaurant.toString())) {
             return res.status(403).json({
                 success: false,
                 message: 'No autorizado para actualizar este menú'
@@ -154,6 +192,24 @@ export const updateMenu = async (req, res) => {
     }
 };
 
+export const deleteMenu = async (req, res) => {
+    try {
+        const menu = await Menu.findById(req.params.id);
+        if (!menu) return res.status(404).json({ success: false, message: 'Menú no encontrado' });
+
+        // SEGURIDAD: Validar propiedad
+        const ownedIds = await getOwnedRestaurantIds(req);
+        if (ownedIds && !ownedIds.some(id => id.toString() === menu.restaurant.toString())) {
+            return res.status(403).json({ success: false, message: 'No tienes permiso para eliminar este menú' });
+        }
+
+        await Menu.findByIdAndUpdate(req.params.id, { isActive: false });
+        return res.status(200).json({ success: true, message: 'Menú desactivado' });
+    } catch (error) {
+        return res.status(500).json({ success: false, message: error.message });
+    }
+};
+
 export const addMenuItem = async (req, res) => {
     try {
         const menu = await Menu.findById(req.params.id);
@@ -164,12 +220,9 @@ export const addMenuItem = async (req, res) => {
                 message: `Menú no encontrado con id ${req.params.id}`
             });
 
-        const userRoles = req.user?.UserRoles?.map(
-   ur => ur.Role.Name
-) || [];
-        const isAdmin   = userRoles.includes('ADMIN_SISTEMA');
-
-        if (!isAdmin && menu.restaurant.toString() !== req.body.restaurantId) {
+        // SEGURIDAD: Validar propiedad
+        const ownedIds = await getOwnedRestaurantIds(req);
+        if (ownedIds && !ownedIds.some(id => id.toString() === menu.restaurant.toString())) {
             return res.status(403).json({
                 success: false,
                 message: 'No autorizado para modificar este menú'
@@ -212,12 +265,9 @@ export const removeMenuItem = async (req, res) => {
                 message: `Menú no encontrado con id ${req.params.id}`
             });
 
-        const userRoles = req.user?.UserRoles?.map(
-   ur => ur.Role.Name
-) || [];
-        const isAdmin   = userRoles.includes('ADMIN_SISTEMA');
-
-        if (!isAdmin && menu.restaurant.toString() !== req.body.restaurantId) {
+        // SEGURIDAD: Validar propiedad
+        const ownedIds = await getOwnedRestaurantIds(req);
+        if (ownedIds && !ownedIds.some(id => id.toString() === menu.restaurant.toString())) {
             return res.status(403).json({
                 success: false,
                 message: 'No autorizado para modificar este menú'
@@ -227,129 +277,11 @@ export const removeMenuItem = async (req, res) => {
         menu.items = menu.items.filter(
             i => i.product.toString() !== req.params.productId
         );
-
         await menu.save();
 
         return res.status(200).json({
             success: true,
             menu
-        });
-
-    } catch (error) {
-        return res.status(500).json({
-            success: false,
-            message: error.message
-        });
-    }
-};
-
-export const deleteMenu = async (req, res) => {
-    try {
-        const menu = await Menu.findById(req.params.id);
-
-        if (!menu)
-            return res.status(404).json({
-                success: false,
-                message: `Menú no encontrado con id ${req.params.id}`
-            });
-
-        const userRoles = req.user?.UserRoles?.map(
-   ur => ur.Role.Name
-) || [];
-        const isAdmin   = userRoles.includes('ADMIN_SISTEMA');
-
-        if (!isAdmin && menu.restaurant.toString() !== req.body.restaurantId) {
-            return res.status(403).json({
-                success: false,
-                message: 'No autorizado para eliminar este menú'
-            });
-        }
-
-        await Menu.findByIdAndUpdate(req.params.id, { isActive: false });
-
-        return res.status(200).json({
-            success: true,
-            message: 'Menú desactivado correctamente'
-        });
-
-    } catch (error) {
-        return res.status(500).json({
-            success: false,
-            message: error.message
-        });
-    }
-};
-
-export const toggleMenuStatus = async (req, res) => {
-    try {
-        const menu = await Menu.findById(req.params.id);
-
-        if (!menu)
-            return res.status(404).json({
-                success: false,
-                message: `Menú no encontrado con id ${req.params.id}`
-            });
-
-        const updated = await Menu.findByIdAndUpdate(
-            req.params.id,
-            { isActive: !menu.isActive },
-            { new: true, runValidators: true }
-        ).populate('restaurant', 'name');
-
-        return res.status(200).json({
-            success: true,
-            message: `Menú ${updated.isActive ? 'activado' : 'desactivado'} correctamente`,
-            menu: updated
-        });
-
-    } catch (error) {
-        return res.status(500).json({
-            success: false,
-            message: error.message
-        });
-    }
-};
-
-export const activateCategory = async (req, res) => {
-    try {
-        const { categoryId, isAvailable } = req.body;
-
-        if (!categoryId || isAvailable === undefined)
-            return res.status(400).json({
-                success: false,
-                message: 'Se requieren los campos categoryId e isAvailable'
-            });
-
-        const menu = await Menu.findById(req.params.id)
-            .populate('items.product', '_id category');
-
-        if (!menu)
-            return res.status(404).json({
-                success: false,
-                message: `Menú no encontrado con id ${req.params.id}`
-            });
-
-        const productIds = menu.items
-            .filter(item => item.product && item.product.category &&
-                item.product.category.toString() === categoryId)
-            .map(item => item.product._id);
-
-        if (productIds.length === 0)
-            return res.status(404).json({
-                success: false,
-                message: 'No se encontraron productos con la categoría especificada en este menú'
-            });
-
-        const result = await Product.updateMany(
-            { _id: { $in: productIds } },
-            { isAvailable: Boolean(isAvailable) }
-        );
-
-        return res.status(200).json({
-            success: true,
-            message: `Se actualizaron ${result.modifiedCount} producto(s) de la categoría`,
-            updatedCount: result.modifiedCount,
-            isAvailable: Boolean(isAvailable)
         });
 
     } catch (error) {

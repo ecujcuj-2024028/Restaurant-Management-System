@@ -26,13 +26,13 @@ const router = Router();
  * @swagger
  * /categories:
  *   get:
- *     summary: Obtener todas las categorías activas
+ *     summary: Obtener todas las categorías activas (Filtrado por rol)
  *     tags: [Categories]
  *     responses:
  *       200:
  *         description: Lista de categorías obtenida con éxito
  */
-router.get('/',    getCategories);
+router.get('/', validateJWT, getCategories);
 
 /**
  * @swagger

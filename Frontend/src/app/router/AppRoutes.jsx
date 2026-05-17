@@ -13,11 +13,14 @@ import TableList from "../../features/tables/components/TableList";
 import ReservationList from "../../features/reservations/components/ReservationList";
 import MyReservations from "../../features/reservations/components/MyReservations";
 import ExternalOrderList from "../../features/external-orders/components/ExternalOrderList";
-import UserProfile from "../../features/users/components/UserProfile";
+import ProfilePage from "../../features/users/components/ProfilePage";
 import NotFound from "../../shared/components/ui/NotFound";
 import RoleRoute from "../../shared/components/RoleRoute";
 import OrderList from "../../features/orders/components/OrderList";
 import ReportsPage from "../../features/reports/components/ReportsPage";
+import MyOrders from '../../features/orders/components/MyOrders'
+import EventList from '../../features/events/components/EventList'
+import MenuList from '../../features/menu/components/MenuList';
 
 // Roles disponibles en el sistema
 const ROLES = {
@@ -67,7 +70,7 @@ const AppRoutes = () => {
           <Route
             path="categories"
             element={
-              <RoleRoute roles={ROLES.ADMIN_SISTEMA}>
+              <RoleRoute roles={ADMIN_ROLES}>
                 <CategoryList />
               </RoleRoute>
             }
@@ -75,7 +78,7 @@ const AppRoutes = () => {
           <Route
             path="tables"
             element={
-              <RoleRoute roles={ROLES.ADMIN_SISTEMA}>
+              <RoleRoute roles={ADMIN_ROLES}>
                 <TableList />
               </RoleRoute>
             }
@@ -83,7 +86,7 @@ const AppRoutes = () => {
           <Route
             path="products"
             element={
-              <RoleRoute roles={ROLES.ADMIN_SISTEMA}>
+              <RoleRoute roles={ADMIN_ROLES}>
                 <ProductList />
               </RoleRoute>
             }
@@ -118,7 +121,7 @@ const AppRoutes = () => {
             path="menus"
             element={
               <RoleRoute roles={ADMIN_ROLES}>
-                <div className="text-white">Menús (próximamente)</div>
+                <MenuList/>
               </RoleRoute>
             }
           />
@@ -158,20 +161,20 @@ const AppRoutes = () => {
             path="events"
             element={
               <RoleRoute roles={ADMIN_ROLES}>
-                <div className="text-white">Eventos (próximamente)</div>
+                <EventList />
               </RoleRoute>
             }
           />
 
           {/* ── CLIENTE ── */}
           <Route
-            path="my-orders"
-            element={
-              <RoleRoute roles={ROLES.CLIENTE}>
-                <div className="text-white">Mis Pedidos (próximamente)</div>
-              </RoleRoute>
-            }
-          />
+              path="my-orders"
+              element={
+                <RoleRoute roles={ROLES.CLIENTE}>
+                  <MyOrders />
+                </RoleRoute>
+              }
+            />
           <Route
             path="my-reservations"
             element={
@@ -184,7 +187,7 @@ const AppRoutes = () => {
             path="profile"
             element={
               <RoleRoute roles={Object.values(ROLES)}>
-                <UserProfile />
+                <ProfilePage />
               </RoleRoute>
             }
           />

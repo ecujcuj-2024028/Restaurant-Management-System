@@ -10,13 +10,34 @@ import {
   Heart,
   TrendingUp,
   Filter,
-  X
+  X,
+  Plus
 } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import useAuthStore from '../../auth/store/authStore'
 import useRestaurantStore from '../../restaurants/store/restaurantStore'
 import useProductStore from '../../product/store/productStore'
 import Skeleton from '../../../shared/components/ui/Skeleton'
+import ProductReviews from '../../reviews/components/ProductReviews'
+import ReviewModal from '../../reviews/components/ReviewModal'
+import Modal from '../../../shared/components/ui/Modal'
+import useReviewStore from '../../reviews/store/reviewStore'
+
+const StarDisplay = ({ value, size = 12 }) => (
+  <div className="flex gap-0.5">
+    {[1, 2, 3, 4, 5].map((star) => (
+      <Star
+        key={star}
+        size={size}
+        className={
+          star <= Math.round(value)
+            ? 'fill-orange-400 text-orange-400'
+            : 'fill-zinc-700 text-zinc-700'
+        }
+      />
+    ))}
+  </div>
+)
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -37,9 +58,12 @@ const ClientDashboard = () => {
   
   const { restaurants, fetchRestaurants, loading: loadingRestaurants } = useRestaurantStore()
   const { products, fetchProducts, loading: loadingProducts } = useProductStore()
+  const { reviewsByProduct, fetchReviewsByProduct } = useReviewStore()
   
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedCategory, setSelectedCategory] = useState('Todos')
+  const [selectedProductForReview, setSelectedProductForReview] = useState(null)
+  const [showWriteReview, setShowWriteReview] = useState(false)
 
   useEffect(() => {
     fetchRestaurants()
@@ -155,7 +179,8 @@ const ClientDashboard = () => {
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 whileHover={{ y: -5 }}
-                className="bg-zinc-900/40 border border-white/5 rounded-3xl overflow-hidden hover:bg-zinc-900/60 transition-all group"
+                className="bg-zinc-900/40 border border-white/5 rounded-3xl overflow-hidden hover:bg-zinc-900/60 transition-all group cursor-pointer"
+                onClick={() => setSelectedProductForReview(product)}
               >
                 <div className="relative h-40 overflow-hidden">
                   <img 
@@ -168,10 +193,13 @@ const ClientDashboard = () => {
                   </div>
                 </div>
                 <div className="p-5">
-                  <h3 className="text-white font-bold mb-1 truncate text-sm">{product.name}</h3>
-                  <p className="text-zinc-500 text-[10px] font-medium line-clamp-1">
-                    {product.restaurant?.name || 'Ver restaurante'}
-                  </p>
+                  <h3 className="text-white font-bold mb-1 truncate text-sm group-hover:text-orange-500 transition-colors">{product.name}</h3>
+                  <div className="flex items-center justify-between">
+                    <p className="text-zinc-500 text-[10px] font-medium line-clamp-1">
+                      {product.restaurant?.name || 'Ver restaurante'}
+                    </p>
+                    <StarDisplay value={reviewsByProduct[product._id || product.id]?.promedioRating || 0} size={10} />
+                  </div>
                 </div>
               </motion.div>
             ))
@@ -182,6 +210,47 @@ const ClientDashboard = () => {
           )}
         </div>
       </section>
+
+      {/* Modales de Reseñas */}
+      <AnimatePresence>
+        {selectedProductForReview && (
+          <Modal 
+            title={selectedProductForReview.name} 
+            onClose={() => setSelectedProductForReview(null)}
+          >
+            <div className="space-y-6">
+              <img 
+                src={selectedProductForReview.image || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&q=80&w=800'} 
+                className="w-full h-48 object-cover rounded-3xl"
+                alt=""
+              />
+              
+              <div className="flex items-center justify-between">
+                <h3 className="text-xl font-bold text-white">Reseñas de la comunidad</h3>
+                <button 
+                  onClick={() => setShowWriteReview(true)}
+                  className="text-orange-500 text-sm font-bold flex items-center gap-1 hover:underline"
+                >
+                  <Plus size={16} /> Escribir reseña
+                </button>
+              </div>
+
+              <ProductReviews platoId={selectedProductForReview._id || selectedProductForReview.id} />
+            </div>
+          </Modal>
+        )}
+
+        {showWriteReview && selectedProductForReview && (
+          <ReviewModal 
+            product={selectedProductForReview}
+            restauranteId={selectedProductForReview.restaurant?._id || selectedProductForReview.restaurant}
+            onClose={() => setShowWriteReview(false)}
+            onSuccess={() => {
+                fetchReviewsByProduct(selectedProductForReview._id || selectedProductForReview.id)
+            }}
+          />
+        )}
+      </AnimatePresence>
 
       {/* Restaurantes (Dinámicos según búsqueda) */}
       <section className="space-y-6">

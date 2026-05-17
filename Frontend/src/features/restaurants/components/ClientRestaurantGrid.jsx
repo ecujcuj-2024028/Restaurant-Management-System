@@ -87,7 +87,7 @@ const ClientRestaurantGrid = () => {
                   </div>
                   <div className="flex items-center gap-1.5 text-zinc-500">
                     <Clock size={14} />
-                    <span className="text-[10px] font-black uppercase">20-30 min</span>
+                    <span className="text-[10px] font-black uppercase">Cierra a las {restaurant.closingTime || '22:00'}</span>
                   </div>
                   <div className="w-10 h-10 bg-zinc-800 rounded-xl flex items-center justify-center text-orange-500 group-hover:bg-orange-500 group-hover:text-white transition-all shadow-lg">
                     <ChevronRight size={20} />

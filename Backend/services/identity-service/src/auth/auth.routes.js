@@ -28,6 +28,32 @@ const router = Router();
 
 /**
  * @swagger
+ * /auth/role-upgrade:
+ *   post:
+ *     summary: Solicitar un ascenso de rol (ej. a Admin de Restaurante)
+ *     tags: [Auth]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               requestedRole: { type: string }
+ *     responses:
+ *       200: { description: Solicitud enviada }
+ */
+router.post(
+    '/role-upgrade',
+    validateJWT,
+    hasRole(CLIENTE, ADMIN_RESTAURANTE, ADMIN_SISTEMA),
+    requestRoleUpgrade
+);
+
+/**
+ * @swagger
  * /auth/register:
  *   post:
  *     summary: Registrar un nuevo usuario
@@ -210,36 +236,6 @@ router.patch(
     validateJWT,
     hasRole(ADMIN_SISTEMA),
     rejectRoleRequest
-);
-
-/* ============================================================
-   RUTAS PROTEGIDAS (REQUIEREN JWT)
-   ============================================================ */
-
-/**
- * @swagger
- * /auth/request-role-upgrade:
- *   post:
- *     summary: Solicitar un ascenso de rol (ej. a Admin de Restaurante)
- *     tags: [Auth]
- *     security:
- *       - bearerAuth: []
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             properties:
- *               requestedRole: { type: string }
- *     responses:
- *       200: { description: Solicitud enviada }
- */
-router.post(
-    '/request-role-upgrade',
-    validateJWT,
-    hasRole(CLIENTE,ADMIN_RESTAURANTE,ADMIN_SISTEMA),
-    requestRoleUpgrade
 );
 
 export default router;

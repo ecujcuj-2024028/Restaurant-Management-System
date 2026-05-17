@@ -2,10 +2,29 @@
 
 import Reservation from './reservation.model.js';
 import Table       from '../tables/table.model.js';
+import Restaurant  from '../restaurants/restaurant.model.js';
 import { sendReservationConfirmationEmail } from '../../helpers/email-service.js';
 import { sequelize } from '../../configs/db-postgres.js';
 import { Op } from 'sequelize';
 import { ADMIN_RESTAURANTE, ADMIN_SISTEMA } from '../../helpers/role-constants.js';
+
+/* ─────────────────────────────────────────────
+   Helper: obtener IDs de restaurantes propios
+─────────────────────────────────────────────── */
+const getOwnedRestaurantIds = async (req) => {
+    const isSystemAdmin = req.userRoles?.includes(ADMIN_SISTEMA);
+    const isRestauranteAdmin = req.userRoles?.includes(ADMIN_RESTAURANTE);
+
+    if (isSystemAdmin) return null; // Acceso total
+    if (!isRestauranteAdmin) return []; // Otros roles
+
+    const myRestaurants = await Restaurant.find({ 
+        ownerId: req.userId, 
+        isActive: true 
+    }, '_id');
+    
+    return myRestaurants.map(r => r._id.toString());
+};
 
 const getUserIdFromRequest = (req) => {
     return req.userId?.toString() || req.user?.id?.toString() || req.user?._id?.toString();
@@ -29,8 +48,6 @@ export const createReservation = async (req, res) => {
         const userId = getUserIdFromRequest(req);
         const userRoles = req.userRoles || [];
         const isAdmin = userRoles.some(r => r === ADMIN_SISTEMA || r === ADMIN_RESTAURANTE);
-
-        console.log(`[Reservation Debug] User: ${userId} | Roles: ${JSON.stringify(userRoles)} | IsAdmin: ${isAdmin}`);
 
         if (!userId) {
             await transaction.rollback();
@@ -65,7 +82,6 @@ export const createReservation = async (req, res) => {
             });
         }
 
-        // DETERMINACIÓN ESTRICTA DE ESTADO
         const initialStatus = isAdmin ? 'confirmada' : 'pendiente';
 
         const reservation = await Reservation.create({
@@ -81,10 +97,7 @@ export const createReservation = async (req, res) => {
 
         await transaction.commit();
 
-        // ─── LÓGICA DE EMAIL ULTRA-ESTRICTA ───
-        // Solo enviamos si el estado es exactamente 'confirmada'
         if (reservation.status === 'confirmada') {
-            console.log(`[Email] Disparando correo de confirmación inmediata para ${customerEmail || req.user?.Email}`);
             const recipientEmail = customerEmail || req.user?.Email;
             if (recipientEmail) {
                 sendReservationConfirmationEmail({
@@ -98,8 +111,6 @@ export const createReservation = async (req, res) => {
                     status: 'confirmada'
                 }).catch(e => console.error('Error email:', e.message));
             }
-        } else {
-            console.log(`[Email] Estado es ${reservation.status}. NO se envía correo todavía.`);
         }
 
         return res.status(201).json({ 
@@ -124,14 +135,18 @@ export const updateReservation = async (req, res) => {
         
         if (!reservation) return res.status(404).json({ message: 'No encontrada' });
 
+        // SEGURIDAD: Validar propiedad
+        const ownedIds = await getOwnedRestaurantIds(req);
+        if (ownedIds && !ownedIds.some(oid => oid.toString() === reservation.restaurantId.toString())) {
+            return res.status(403).json({ success: false, message: 'No autorizado para esta reservación' });
+        }
+
         const previousStatus = reservation.status;
 
-        // Si se confirma, marcar mesa como reservada y ENVIAR EMAIL
         if (status === 'confirmada' && previousStatus !== 'confirmada') {
-            console.log(`[Email] Reservación aprobada por Admin. Enviando correo a ${reservation.customerEmail || 'usuario'}`);
             await Table.update({ availability: 'reservado' }, { where: { id: reservation.tableId } });
             
-            const recipientEmail = reservation.customerEmail || (req.user?.Email && reservation.userId === req.userId ? req.user.Email : null);
+            const recipientEmail = reservation.customerEmail;
             
             if (recipientEmail) {
                 sendReservationConfirmationEmail({
@@ -165,11 +180,19 @@ export const updateReservation = async (req, res) => {
 export const getMyReservations = async (req, res) => {
     try {
         const userId = getUserIdFromRequest(req);
-        const userRoles = req.userRoles || [];
-        const isAdmin = userRoles.some(r => r === ADMIN_SISTEMA || r === ADMIN_RESTAURANTE);
-
-        let filter = { userId };
-        if (isAdmin) filter = {}; 
+        const ownedIds = await getOwnedRestaurantIds(req);
+        
+        let filter;
+        if (ownedIds === null) {
+            // ADMIN_SISTEMA: Ve todas
+            filter = {};
+        } else if (ownedIds.length > 0) {
+            // ADMIN_RESTAURANTE: Ve las de sus restaurantes
+            filter = { restaurantId: { [Op.in]: ownedIds } };
+        } else {
+            // CLIENTE: Solo las suyas
+            filter = { userId };
+        }
 
         const { count, rows } = await Reservation.findAndCountAll({
             where: filter,
@@ -186,6 +209,13 @@ export const getMyReservations = async (req, res) => {
 export const getReservationsByRestaurant = async (req, res) => {
     try {
         const { restaurantId } = req.params;
+
+        // SEGURIDAD: Validar propiedad
+        const ownedIds = await getOwnedRestaurantIds(req);
+        if (ownedIds && !ownedIds.some(id => id.toString() === restaurantId)) {
+            return res.status(403).json({ success: false, message: 'No tienes permiso para ver reservaciones de este restaurante' });
+        }
+
         const { count, rows } = await Reservation.findAndCountAll({
             where: { restaurantId },
             include: [{ model: Table, as: 'table' }],
@@ -200,12 +230,24 @@ export const getReservationsByRestaurant = async (req, res) => {
 export const cancelReservation = async (req, res) => {
     try {
         const { id } = req.params;
+        const userId = getUserIdFromRequest(req);
+        
         const reservation = await Reservation.findByPk(id);
         if (!reservation) return res.status(404).json({ message: 'No encontrada' });
 
-        await Table.update({ availability: 'disponible' }, { where: { id: reservation.tableId } });
+        // SEGURIDAD: Dueño de reserva o Dueño de restaurante
+        const ownedIds = await getOwnedRestaurantIds(req);
+        const isRestaurantOwner = ownedIds && ownedIds.some(oid => oid.toString() === reservation.restaurantId.toString());
+        const isReservationOwner = reservation.userId.toString() === userId;
+
+        if (ownedIds !== null && !isRestaurantOwner && !isReservationOwner) {
+            return res.status(403).json({ message: 'No autorizado' });
+        }
+
         reservation.status = 'cancelada';
         await reservation.save();
+
+        await Table.update({ availability: 'disponible' }, { where: { id: reservation.tableId } });
 
         return res.json({ success: true, message: 'Cancelada' });
     } catch (error) {

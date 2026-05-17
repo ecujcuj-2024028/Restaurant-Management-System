@@ -1,7 +1,7 @@
 'use strict';
 
 import { Router } from 'express';
-import { getProfile, getUsers, updateProfile, updateProfilePicture } from './user.controller.js';
+import { getProfile, getUsers, updateProfile, updateProfilePicture, changePassword } from './user.controller.js';
 import { uploadUserProfileImage } from '../../middlewares/restaurant-uploader.js';
 import { hasRole } from '../../middlewares/hasRole.js';
 import { ADMIN_SISTEMA } from '../../helpers/role-constants.js';
@@ -119,5 +119,7 @@ router.patch(
     uploadUserProfileImage.single('image'),
     updateProfilePicture
 );
+
+router.patch('/profile/password', changePassword);
 
 export default router;

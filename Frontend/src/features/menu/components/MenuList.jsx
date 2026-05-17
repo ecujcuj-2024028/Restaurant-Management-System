@@ -9,13 +9,13 @@ import Skeleton from '../../../shared/components/ui/Skeleton'
 import ConfirmDialog from '../../../shared/components/ui/ConfirmDialog'
 
 const MenuList = () => {
-    const { 
+    const {
         menus = [],           // ← Protección por si viene undefined
-        loading, 
-        error, 
-        fetchMenus, 
-        deleteMenu, 
-        toggleMenuStatus 
+        loading,
+        error,
+        fetchMenus,
+        deleteMenu,
+        toggleMenuStatus
     } = useMenuStore()
 
     const [showForm, setShowForm] = useState(false)
@@ -36,30 +36,30 @@ const MenuList = () => {
     }
 
     const handleDelete = async () => {
-    if (!menuToDelete) return
+        if (!menuToDelete) return
 
-    const toastId = toast.loading('Eliminando menú...')
+        const toastId = toast.loading('Eliminando menú...')
 
-    try {
+        try {
 
-        await deleteMenu(menuToDelete)
+            await deleteMenu(menuToDelete)
 
-        setMenuToDelete(null)
+            setMenuToDelete(null)
 
-        toast.success(
-            'Menú eliminado correctamente',
-            { id: toastId }
-        )
+            toast.success(
+                'Menú eliminado correctamente',
+                { id: toastId }
+            )
 
-    } catch (error) {
+        } catch (error) {
 
-        toast.error(
-            error?.response?.data?.message ||
-            'Error al eliminar el menú',
-            { id: toastId }
-        )
+            toast.error(
+                error?.response?.data?.message ||
+                'Error al eliminar el menú',
+                { id: toastId }
+            )
+        }
     }
-}
 
     const openEdit = (menu) => {
         setEditingMenu(menu)
@@ -93,11 +93,11 @@ const MenuList = () => {
                     <p className="text-zinc-500 text-sm mt-1">Gestiona los menús de tus restaurantes</p>
                 </div>
                 <button
-                    onClick={() => { 
+                    onClick={() => {
                         setEditingMenu(null)
-                        setShowForm(true) 
+                        setShowForm(true)
                     }}
-                    className="bg-orange-500 hover:bg-orange-600 px-6 py-3 rounded-2xl font-bold flex items-center gap-2 transition-all"
+                    className="bg-orange-500 hover:bg-orange-600 text-white px-6 py-3 rounded-2xl font-bold flex items-center gap-2 transition-all"
                 >
                     <Plus size={20} /> Nuevo Menú
                 </button>
@@ -140,8 +140,8 @@ const MenuList = () => {
                         ) : (
                             <AnimatePresence>
                                 {menus.map((menu) => (
-                                    <motion.tr 
-                                        key={menu._id || menu.id} 
+                                    <motion.tr
+                                        key={menu._id || menu.id}
                                         initial={{ opacity: 0 }}
                                         animate={{ opacity: 1 }}
                                         exit={{ opacity: 0 }}
@@ -170,13 +170,13 @@ const MenuList = () => {
                                         </td>
                                         <td className="px-8 py-5 text-right">
                                             <div className="flex justify-end gap-2">
-                                                <button 
+                                                <button
                                                     onClick={() => openEdit(menu)}
                                                     className="p-2 hover:bg-zinc-800 rounded-xl text-zinc-400 hover:text-white transition-all"
                                                 >
                                                     <Edit3 size={18} />
                                                 </button>
-                                                <button 
+                                                <button
                                                     onClick={() => setMenuToDelete(menu)}
                                                     className="p-2 hover:bg-red-500/10 rounded-xl text-zinc-400 hover:text-red-400 transition-all"
                                                 >

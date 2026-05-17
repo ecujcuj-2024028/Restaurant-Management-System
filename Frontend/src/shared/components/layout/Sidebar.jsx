@@ -50,25 +50,25 @@ const NAV_ITEMS = [
     label: "Categorías",
     path: "/categories",
     icon: Tag,
-    roles: [ROLES.ADMIN_SISTEMA],
+    roles: [ROLES.ADMIN_SISTEMA, ROLES.ADMIN_RESTAURANTE],
   },
   {
     label: "Productos",
     path: "/products",
     icon: ShoppingBag,
-    roles: [ROLES.ADMIN_SISTEMA],
+    roles: [ROLES.ADMIN_SISTEMA, ROLES.ADMIN_RESTAURANTE],
   },
   {
     label: "Mesas",
     path: "/tables",
     icon: Armchair,
-    roles: [ROLES.ADMIN_SISTEMA],
+    roles: [ROLES.ADMIN_SISTEMA, ROLES.ADMIN_RESTAURANTE],
   },
   {
     label: "Reportes",
     path: "/reports",
     icon: BarChart3,
-    roles: [ROLES.ADMIN_SISTEMA],
+    roles: [ROLES.ADMIN_SISTEMA, ROLES.ADMIN_RESTAURANTE],
   },
 
   // ── Todos pueden ver el catálogo ──
@@ -132,7 +132,7 @@ const NAV_ITEMS = [
     label: "Mi Perfil",
     path: "/profile",
     icon: User,
-    roles: [ROLES.CLIENTE],
+    roles: [],
   },
 ];
 

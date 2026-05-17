@@ -122,7 +122,7 @@ const ExternalOrderList = () => {
         </div>
         <button
           onClick={() => setShowForm(true)}
-          className="bg-orange-500 hover:bg-orange-600 text-white px-8 py-4 rounded-[2rem] font-black flex items-center gap-2 shadow-xl shadow-orange-500/20 active:scale-95 transition-all"
+          className="bg-orange-500 hover:bg-orange-600 text-white px-8 py-4 rounded-[2rem] font-black flex items-center gap-2 shadow-xl active:scale-95 transition-all"
         >
           <Plus size={20} /> Registrar Pedido
         </button>

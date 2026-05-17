@@ -24,8 +24,13 @@ const RestaurantForm = ({ onClose, restaurant }) => {
       phone: restaurant.phone,
       category: restaurant.category,
       description: restaurant.description,
-      ownerId: restaurant.ownerId // Cargamos el ID del propietario actual
-    } : {}
+      openingTime: restaurant.openingTime || '08:00',
+      closingTime: restaurant.closingTime || '22:00',
+      ownerId: restaurant.ownerId
+    } : {
+      openingTime: '08:00',
+      closingTime: '22:00'
+    }
   })
 
   const selectedImage = watch('image')
@@ -51,6 +56,8 @@ const RestaurantForm = ({ onClose, restaurant }) => {
       formData.append('address[country]', data.country)
       formData.append('phone', data.phone)
       formData.append('category', data.category)
+      formData.append('openingTime', data.openingTime)
+      formData.append('closingTime', data.closingTime)
       
       // Enviamos el ownerId si es edición y el usuario es admin
       if (isAdmin && data.ownerId) {
@@ -67,7 +74,6 @@ const RestaurantForm = ({ onClose, restaurant }) => {
         await createRestaurant(formData)
         toast.success('Restaurante creado correctamente', { id: toastId })
       }
-      onSuccess?.()
       onClose()
     } catch (error) {
       const message = error?.response?.data?.message || `Error al ${isEditing ? 'actualizar' : 'crear'} el restaurante`
@@ -88,7 +94,7 @@ const RestaurantForm = ({ onClose, restaurant }) => {
             <input
               {...register('name', { required: 'El nombre es requerido' })}
               className="w-full bg-zinc-800/50 border border-white/5 text-white rounded-2xl px-5 py-4 focus:ring-2 focus:ring-orange-500/50 transition-all outline-none"
-              placeholder="Ej. La Parrilla de Edvin"
+              placeholder="Ej. La Parrilla"
             />
           </div>
 
@@ -114,6 +120,25 @@ const RestaurantForm = ({ onClose, restaurant }) => {
                 <option value="Asiatica">Asiática</option>
                 <option value="Gourmet">Gourmet</option>
               </select>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="text-zinc-500 text-[10px] font-black uppercase tracking-widest ml-1 mb-2 block">Hora de Apertura</label>
+              <input
+                type="time"
+                {...register('openingTime', { required: true })}
+                className="w-full bg-zinc-800/50 border border-white/5 text-white rounded-2xl px-5 py-4 focus:ring-2 focus:ring-orange-500/50 outline-none"
+              />
+            </div>
+            <div>
+              <label className="text-zinc-500 text-[10px] font-black uppercase tracking-widest ml-1 mb-2 block">Hora de Cierre</label>
+              <input
+                type="time"
+                {...register('closingTime', { required: true })}
+                className="w-full bg-zinc-800/50 border border-white/5 text-white rounded-2xl px-5 py-4 focus:ring-2 focus:ring-orange-500/50 outline-none"
+              />
             </div>
           </div>
         </div>

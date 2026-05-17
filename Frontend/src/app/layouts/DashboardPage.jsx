@@ -1,14 +1,21 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Outlet } from 'react-router-dom'
 import Sidebar from '../../shared/components/layout/Sidebar'
 import Navbar from '../../shared/components/layout/Navbar'
 import MobileTabBar from '../../shared/components/layout/MobileTabBar'
+import useAuthStore from '../../features/auth/store/authStore'
 
 const DashboardPage = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false)
+  const refreshProfile = useAuthStore(state => state.refreshProfile)
+
+  useEffect(() => {
+    // Sincronizar perfil con el servidor al entrar al dashboard
+    refreshProfile()
+  }, [refreshProfile])
 
   return (
-    <div className="flex min-h-screen bg-gray-950 overflow-x-hidden">
+    <div className="flex min-h-screen bg-zinc-950 overflow-x-hidden">
       {/* Overlay para móvil */}
       {isSidebarOpen && (
         <div 
