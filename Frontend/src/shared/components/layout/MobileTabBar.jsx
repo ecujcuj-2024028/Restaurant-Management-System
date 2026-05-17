@@ -1,13 +1,23 @@
 import { NavLink } from 'react-router-dom'
-import { LayoutDashboard, Utensils, Package, ShoppingCart, Users } from 'lucide-react'
+import { LayoutDashboard, Utensils, Calendar, ShoppingCart, UserCircle, Package } from 'lucide-react'
+import useAuthStore from '../../../features/auth/store/authStore'
 
 const MobileTabBar = () => {
-  const items = [
+  const { user } = useAuthStore()
+  const isCliente = user?.roles?.includes('CLIENTE')
+
+  const items = isCliente ? [
+    { label: 'Principal', path: '/dashboard', icon: LayoutDashboard },
+    { label: 'Restaurantes', path: '/restaurants', icon: Utensils },
+    { label: 'Pedidos', path: '/my-orders', icon: ShoppingCart },
+    { label: 'Reservas', path: '/my-reservations', icon: Calendar },
+    { label: 'Perfil', path: '/profile', icon: UserCircle },
+  ] : [
     { label: 'Inicio', path: '/dashboard', icon: LayoutDashboard },
     { label: 'Rest.', path: '/restaurants', icon: Utensils },
     { label: 'Stock', path: '/inventory', icon: Package },
     { label: 'Pedidos', path: '/orders', icon: ShoppingCart },
-    { label: 'Perfil', path: '/users', icon: Users },
+    { label: 'Perfil', path: '/profile', icon: UserCircle },
   ]
 
   return (
@@ -20,13 +30,13 @@ const MobileTabBar = () => {
               key={item.path}
               to={item.path}
               className={({ isActive }) =>
-                `flex flex-col items-center gap-1 min-w-[64px] transition-all ${
+                `flex flex-col items-center gap-1 min-w-[50px] transition-all ${
                   isActive ? 'text-orange-500 scale-110' : 'text-zinc-500'
                 }`
               }
             >
               <Icon size={20} />
-              <span className="text-[10px] font-bold uppercase tracking-tighter">
+              <span className="text-[9px] font-bold uppercase tracking-tighter text-center">
                 {item.label}
               </span>
             </NavLink>
