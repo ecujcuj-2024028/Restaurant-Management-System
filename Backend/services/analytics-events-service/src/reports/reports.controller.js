@@ -3,9 +3,11 @@
 import PDFDocument from 'pdfkit';
 import ExcelJS from 'exceljs';
 import Order from '../orders/order.model.js';
+import ExternalOrder from '../orders/external-order.model.js';
 import { Review } from '../analytics/review.model.js';
 import { InventoryItem } from '../inventory/inventory.model.js';
 import mongoose from 'mongoose';
+import { Op } from 'sequelize';
 
 /* ─────────────────────────────────────────────────────────
    Helper: obtener datos de reporte
@@ -22,22 +24,37 @@ const getReportData = async (restaurantId, startDate, endDate) => {
         if (endDate) matchStage.createdAt.$lte = new Date(endDate);
     }
 
-    // Ventas por día
-    const ventasPorDia = await Order.aggregate([
+    // ── 1. VENTAS POR DÍA (Unificar Pedidos Locales y Externos) ──
+    const aggregateVentas = [
         { $match: matchStage },
         {
             $group: {
                 _id: { $dateToString: { format: '%Y-%m-%d', date: '$createdAt' } },
                 totalVentas: { $sum: '$total' },
-                totalPedidos: { $sum: 1 },
-                ticketPromedio: { $avg: '$total' },
+                totalPedidos: { $sum: 1 }
             }
-        },
-        { $sort: { _id: 1 } }
-    ]);
+        }
+    ];
 
-    // Top productos
-    const topProductos = await Order.aggregate([
+    const ventasLocales = await Order.aggregate(aggregateVentas);
+    const ventasExternas = await ExternalOrder.aggregate(aggregateVentas);
+
+    // Unificar ventas por día
+    const ventasMap = {};
+    [...ventasLocales, ...ventasExternas].forEach(v => {
+        if (!ventasMap[v._id]) {
+            ventasMap[v._id] = { _id: v._id, totalVentas: 0, totalPedidos: 0 };
+        }
+        ventasMap[v._id].totalVentas += v.totalVentas;
+        ventasMap[v._id].totalPedidos += v.totalPedidos;
+    });
+
+    const ventasPorDia = Object.values(ventasMap)
+        .map(v => ({ ...v, ticketPromedio: v.totalVentas / v.totalPedidos }))
+        .sort((a, b) => a._id.localeCompare(b._id));
+
+    // ── 2. TOP PRODUCTOS (Unificar) ──
+    const aggregateTop = [
         { $match: matchStage },
         { $unwind: '$items' },
         {
@@ -47,43 +64,68 @@ const getReportData = async (restaurantId, startDate, endDate) => {
                 cantidadVendida: { $sum: '$items.quantity' },
                 ingresos: { $sum: '$items.subtotal' },
             }
-        },
-        { $sort: { cantidadVendida: -1 } },
-        { $limit: 10 }
-    ]);
-
-    // Resumen general
-    const resumen = await Order.aggregate([
-        { $match: matchStage },
-        {
-            $group: {
-                _id: null,
-                totalIngresos: { $sum: '$total' },
-                totalPedidos: { $sum: 1 },
-                ticketPromedio: { $avg: '$total' },
-            }
         }
-    ]);
+    ];
 
-    // Distribución de estados
-    const estadosPedidos = await Order.aggregate([
-        {
-            $match: restaurantId && mongoose.Types.ObjectId.isValid(restaurantId)
-                ? { restaurantId: new mongoose.Types.ObjectId(restaurantId) }
-                : {}
-        },
+    const topLocales = await Order.aggregate(aggregateTop);
+    const topExternos = await ExternalOrder.aggregate(aggregateTop);
+
+    const productosMap = {};
+    [...topLocales, ...topExternos].forEach(p => {
+        const id = p._id.toString();
+        if (!productosMap[id]) {
+            productosMap[id] = { nombre: p.nombre, cantidadVendida: 0, ingresos: 0 };
+        }
+        productosMap[id].cantidadVendida += p.cantidadVendida;
+        productosMap[id].ingresos += p.ingresos;
+    });
+
+    const topProductos = Object.entries(productosMap)
+        .map(([id, p]) => ({ _id: id, ...p }))
+        .sort((a, b) => b.cantidadVendida - a.cantidadVendida)
+        .slice(0, 10);
+
+    // ── 3. RESUMEN GENERAL ──
+    const totalIngresos = ventasPorDia.reduce((sum, v) => sum + v.totalVentas, 0);
+    const totalPedidos = ventasPorDia.reduce((sum, v) => sum + v.totalPedidos, 0);
+    const resumen = {
+        totalIngresos,
+        totalPedidos,
+        ticketPromedio: totalPedidos > 0 ? totalIngresos / totalPedidos : 0
+    };
+
+    // ── 4. DISTRIBUCIÓN DE ESTADOS (Unificar) ──
+    const estadosLocales = await Order.aggregate([
+        { $match: matchStage },
+        { $group: { _id: '$status', total: { $sum: 1 } } }
+    ]);
+    const estadosExternos = await ExternalOrder.aggregate([
+        { $match: matchStage },
         { $group: { _id: '$status', total: { $sum: 1 } } }
     ]);
 
-    // Inventario bajo stock
-    const inventarioBajo = restaurantId
-        ? await InventoryItem.findAll({
-            where: { RestaurantId: restaurantId, IsActive: true },
-            raw: true
-        }).then(items => items.filter(i => parseFloat(i.Quantity) <= parseFloat(i.MinStock)))
-        : [];
+    const estadosMap = {};
+    [...estadosLocales, ...estadosExternos].forEach(e => {
+        estadosMap[e._id] = (estadosMap[e._id] || 0) + e.total;
+    });
+    const estadosPedidos = Object.entries(estadosMap).map(([k, v]) => ({ _id: k, total: v }));
 
-    // Rating promedio por plato
+    // ── 5. INVENTARIO BAJO STOCK (Solo Insumos Básicos) ──
+    // Filtramos donde MongoProductId IS NULL (insumos básicos como tomate, carne, etc.)
+    const inventoryWhere = { 
+        IsActive: true,
+        MongoProductId: { [Op.is]: null }
+    };
+    if (restaurantId) inventoryWhere.RestaurantId = restaurantId;
+
+    const inventarioBajo = await InventoryItem.findAll({
+        where: inventoryWhere,
+        raw: true
+    }).then(items => 
+        items.filter(i => parseFloat(i.Quantity) <= parseFloat(i.MinStock))
+    );
+
+    // ── 6. RATING PROMEDIO ──
     const reviewStats = await Review.aggregate([
         ...(restaurantId && mongoose.Types.ObjectId.isValid(restaurantId)
             ? [{ $match: { restauranteId: new mongoose.Types.ObjectId(restaurantId) } }]
@@ -100,7 +142,7 @@ const getReportData = async (restaurantId, startDate, endDate) => {
     ]);
 
     return {
-        resumen: resumen[0] || { totalIngresos: 0, totalPedidos: 0, ticketPromedio: 0 },
+        resumen,
         ventasPorDia,
         topProductos,
         estadosPedidos,
