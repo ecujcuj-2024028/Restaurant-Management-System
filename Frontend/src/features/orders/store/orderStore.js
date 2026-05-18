@@ -23,10 +23,10 @@ const useOrderStore = create((set) => ({
   }
 },
 
-  fetchOrderHistory: async () => {
+  fetchOrderHistory: async (params = {}) => {
     set({ loading: true, error: null })
     try {
-      const response = await getOrderHistory()
+      const response = await getOrderHistory(params)
       set({ history: response.data?.orders || [], loading: false })
     } catch (error) {
       set({ loading: false, error: error?.response?.data?.message || error.message })

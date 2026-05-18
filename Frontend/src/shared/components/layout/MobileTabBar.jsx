@@ -1,5 +1,5 @@
 import { NavLink } from 'react-router-dom'
-import { LayoutDashboard, Utensils, Calendar, ShoppingCart, UserCircle, Package } from 'lucide-react'
+import { LayoutDashboard, Utensils, Calendar, ShoppingCart, UserCircle, Package, PartyPopper  } from 'lucide-react'
 import useAuthStore from '../../../features/auth/store/authStore'
 
 const MobileTabBar = () => {
@@ -7,15 +7,15 @@ const MobileTabBar = () => {
   const isCliente = user?.roles?.includes('CLIENTE')
 
   const items = isCliente ? [
-    { label: 'Principal', path: '/dashboard', icon: LayoutDashboard },
-    { label: 'Restaurantes', path: '/restaurants', icon: Utensils },
+    { label: 'Inicio', path: '/dashboard', icon: LayoutDashboard },
+    { label: 'Rest.', path: '/restaurants', icon: Utensils },
+    { label: 'Eventos', path: '/events', icon: PartyPopper },
     { label: 'Pedidos', path: '/my-orders', icon: ShoppingCart },
-    { label: 'Reservas', path: '/my-reservations', icon: Calendar },
     { label: 'Perfil', path: '/profile', icon: UserCircle },
   ] : [
     { label: 'Inicio', path: '/dashboard', icon: LayoutDashboard },
-    { label: 'Rest.', path: '/restaurants', icon: Utensils },
     { label: 'Stock', path: '/inventory', icon: Package },
+    { label: 'Eventos', path: '/events', icon: PartyPopper },
     { label: 'Pedidos', path: '/orders', icon: ShoppingCart },
     { label: 'Perfil', path: '/profile', icon: UserCircle },
   ]

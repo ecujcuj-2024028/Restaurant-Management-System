@@ -18,6 +18,7 @@ const getChartsFromResponse = (response) => {
 }
 
 const getVentasPorDiaFormateadas = (ventasPorDia = []) => {
+  if (!Array.isArray(ventasPorDia)) return []
   return ventasPorDia.map((venta) => ({
     ...venta,
     fecha: venta.fecha,
@@ -28,8 +29,10 @@ const getVentasPorDiaFormateadas = (ventasPorDia = []) => {
 }
 
 const getTopProductosFormateados = (topProductos = []) => {
+  if (!Array.isArray(topProductos)) return []
   return topProductos.map((producto) => ({
     ...producto,
+    nombre: producto.nombre || 'Producto Desconocido',
     cantidadVendida: Number(producto.cantidadVendida || 0),
     ingresos: Number(producto.ingresos || 0),
   }))
@@ -92,6 +95,7 @@ const useReportsStore = create((set, get) => ({
 
       return charts
     } catch (error) {
+      console.error('[ReportsStore] fetchReportsData error:', error)
       const message = getErrorMessage(error)
 
       set({
@@ -99,55 +103,32 @@ const useReportsStore = create((set, get) => ({
         loading: false,
       })
 
-      throw new Error(message, { cause: error })
+      // No lanzamos error para evitar que la app crashee, solo guardamos el estado de error
+      return null
     }
   },
 
   exportPdf: async (params = {}) => {
     set({ exporting: true, error: null })
-
     try {
-      const filtrosConsulta = {
-        ...get().filtros,
-        ...params,
-      }
-
+      const filtrosConsulta = { ...get().filtros, ...params }
       await exportReportsPdf(filtrosConsulta)
-
       set({ exporting: false })
     } catch (error) {
       const message = getErrorMessage(error)
-
-      set({
-        error: message,
-        exporting: false,
-      })
-
-      throw new Error(message, { cause: error })
+      set({ error: message, exporting: false })
     }
   },
 
   exportExcel: async (params = {}) => {
     set({ exporting: true, error: null })
-
     try {
-      const filtrosConsulta = {
-        ...get().filtros,
-        ...params,
-      }
-
+      const filtrosConsulta = { ...get().filtros, ...params }
       await exportReportsExcel(filtrosConsulta)
-
       set({ exporting: false })
     } catch (error) {
       const message = getErrorMessage(error)
-
-      set({
-        error: message,
-        exporting: false,
-      })
-
-      throw new Error(message, { cause: error })
+      set({ error: message, exporting: false })
     }
   },
 

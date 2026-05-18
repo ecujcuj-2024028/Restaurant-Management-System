@@ -82,6 +82,12 @@ const eventSchema = mongoose.Schema(
             default: 0
         },
 
+        type: {
+            type: String,
+            enum: ["morning", "afternoon", "night", "all_day", "special"],
+            default: "special"
+        },
+
         additionalResources: {
             type: [additionalResourceSchema],
             default: []

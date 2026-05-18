@@ -199,8 +199,20 @@ export const getMyReservations = async (req, res) => {
             include: [{ model: Table, as: 'table' }],
             order: [['date', 'DESC'], ['time', 'ASC']]
         });
+
+        // Poblar manualmente los datos del restaurante desde MongoDB
+        const reservationsWithRest = await Promise.all(rows.map(async (res) => {
+            const resData = res.toJSON();
+            try {
+                const restaurant = await Restaurant.findById(resData.restaurantId).select('name photos');
+                resData.restaurant = restaurant;
+            } catch (e) {
+                resData.restaurant = { name: 'Restaurante' };
+            }
+            return resData;
+        }));
         
-        return res.json({ success: true, reservations: rows });
+        return res.json({ success: true, reservations: reservationsWithRest });
     } catch (error) {
         return res.status(500).json({ success: false, error: error.message });
     }

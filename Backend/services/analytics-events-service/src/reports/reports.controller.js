@@ -20,10 +20,15 @@ const getReportData = async (restaurantId, startDate, endDate) => {
     if (restaurantId && mongoose.Types.ObjectId.isValid(restaurantId)) {
         matchStage.restaurantId = new mongoose.Types.ObjectId(restaurantId);
     }
-    if (startDate || endDate) {
-        matchStage.createdAt = {};
-        if (startDate) matchStage.createdAt.$gte = new Date(startDate);
-        if (endDate) matchStage.createdAt.$lte = new Date(endDate);
+    if (startDate && startDate.trim() !== '') {
+        if (!matchStage.createdAt) matchStage.createdAt = {};
+        const d = new Date(startDate);
+        if (!isNaN(d)) matchStage.createdAt.$gte = d;
+    }
+    if (endDate && endDate.trim() !== '') {
+        if (!matchStage.createdAt) matchStage.createdAt = {};
+        const d = new Date(endDate);
+        if (!isNaN(d)) matchStage.createdAt.$lte = d;
     }
 
     // ── 1. VENTAS POR DÍA (Unificar Pedidos Locales y Externos) ──
@@ -74,7 +79,7 @@ const getReportData = async (restaurantId, startDate, endDate) => {
 
     const productosMap = {};
     [...topLocales, ...topExternos].forEach(p => {
-        const id = p._id.toString();
+        const id = p._id ? p._id.toString() : `item-${p.nombre}`;
         if (!productosMap[id]) {
             productosMap[id] = { nombre: p.nombre, cantidadVendida: 0, ingresos: 0 };
         }
