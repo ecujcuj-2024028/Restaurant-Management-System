@@ -111,38 +111,67 @@ const ClientDashboard = () => {
       animate="visible"
       className="space-y-10 pb-20"
     >
-      {/* Hero Section */}
-      <section className="relative overflow-hidden rounded-[2.5rem] bg-zinc-900 border border-white/5 p-8 md:p-12 shadow-2xl">
-        <div className="relative z-10 max-w-2xl">
-          <motion.h1 variants={itemVariants} className="text-4xl md:text-5xl font-black text-white mb-4 leading-tight tracking-tight">
-            Bienvenido a <span className="text-orange-500">GastroManager</span>, {user?.username?.split(' ')[0] || 'Gourmet'}.
-          </motion.h1>
-          <motion.p variants={itemVariants} className="text-zinc-400 text-lg mb-8 font-medium">
-            Encuentre los mejores restaurantes y reserve su mesa en segundos.
-          </motion.p>
+      {/* Hero Section Rediseñada */}
+      <section className="relative overflow-hidden rounded-[3rem] bg-zinc-900 border border-white/5 shadow-2xl">
+        <div className="grid grid-cols-1 lg:grid-cols-2 items-center min-h-[400px]">
           
-          <motion.div variants={itemVariants} className="relative max-w-md group">
-            <Search className={`absolute left-4 top-1/2 -translate-y-1/2 transition-colors ${searchTerm ? 'text-orange-500' : 'text-zinc-500'}`} size={20} />
-            <input 
-              type="text" 
-              placeholder="Busca comida, restaurantes..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full bg-zinc-800/50 border border-white/10 rounded-2xl py-4 pl-12 pr-12 text-white placeholder:text-zinc-500 focus:ring-2 focus:ring-orange-500/50 focus:bg-zinc-800 transition-all outline-none"
-            />
-            {searchTerm && (
-              <button 
-                onClick={() => setSearchTerm('')}
-                className="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-white"
-              >
-                <X size={18} />
-              </button>
-            )}
-          </motion.div>
+          {/* Columna Izquierda: Texto y Buscador */}
+          <div className="relative z-10 p-8 md:p-16 lg:pr-0">
+            <motion.div variants={itemVariants}>
+            </motion.div>
+            
+            <motion.h1 variants={itemVariants} className="text-4xl md:text-6xl font-black text-white mb-6 leading-[1.1] tracking-tighter">
+              El sabor que <span className="text-orange-500 italic">mereces</span>, {user?.name?.split(' ')[0] || user?.username?.split(' ')[0] || 'Gourmet'}.
+            </motion.h1>
+            
+            <motion.p variants={itemVariants} className="text-zinc-400 text-lg mb-10 font-medium max-w-md leading-relaxed">
+              Descubre experiencias gastronómicas únicas y reserva en los lugares más exclusivos de la ciudad.
+            </motion.p>
+            
+            <motion.div variants={itemVariants} className="relative max-w-lg group">
+              <div className="absolute inset-0 bg-orange-500/20 blur-2xl group-focus-within:bg-orange-500/30 transition-all opacity-0 group-focus-within:opacity-100" />
+              <div className="relative flex items-center">
+                <Search className={`absolute left-5 transition-colors ${searchTerm ? 'text-orange-500' : 'text-zinc-500'}`} size={22} />
+                <input 
+                  type="text" 
+                  placeholder="Busca tu comida favorita..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="w-full bg-zinc-800/80 backdrop-blur-md border border-white/10 rounded-[1.5rem] py-5 pl-14 pr-14 text-white placeholder:text-zinc-500 focus:ring-2 focus:ring-orange-500/50 focus:bg-zinc-800 transition-all outline-none text-base shadow-2xl"
+                />
+                {searchTerm && (
+                  <button 
+                    onClick={() => setSearchTerm('')}
+                    className="absolute right-5 p-1 bg-zinc-700/50 hover:bg-zinc-700 rounded-full text-zinc-400 hover:text-white transition-colors"
+                  >
+                    <X size={18} />
+                  </button>
+                )}
+              </div>
+            </motion.div>
+          </div>
+
+          {/* Columna Derecha: Visual */}
+          <div className="relative h-full hidden lg:flex items-center justify-center p-12">
+            <motion.div 
+              initial={{ scale: 0.8, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1}}
+              transition={{ duration: 1, ease: "easeOut" }}
+              className="relative z-10 w-full max-w-md aspect-square rounded-[3rem] overflow-hidden  border-4 border-white/5"
+            >
+              <img 
+                src="https://res.cloudinary.com/dscti2jte/image/upload/v1779063294/36251f0b543c447bdd4e9925b1861023_zpnwlz.webp" 
+                className="w-full h-full object-cover scale-110"
+                alt="Delicious food"
+              />
+              <div className="absolute inset-0 bg-gradient-to-tr from-orange-500/20 to-transparent mix-blend-overlay" />
+            </motion.div>
+          </div>
         </div>
         
-        {/* Decoración de fondo */}
-        <div className="absolute top-0 right-0 -translate-y-1/4 translate-x-1/4 w-96 h-96 bg-orange-500/10 rounded-full blur-3xl" />
+        {/* Decoración de fondo extendida */}
+        <div className="absolute top-0 right-0 -translate-y-1/2 translate-x-1/4 w-[600px] h-[600px] bg-orange-500/5 rounded-full blur-[120px]" />
+        <div className="absolute bottom-0 left-0 translate-y-1/2 -translate-x-1/4 w-[400px] h-[400px] bg-orange-500/5 rounded-full blur-[100px]" />
       </section>
 
       {/* Filtro de Categorías */}
