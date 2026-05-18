@@ -160,7 +160,7 @@ const AppRoutes = () => {
           <Route
             path="events"
             element={
-              <RoleRoute roles={ADMIN_ROLES}>
+              <RoleRoute roles={[...ADMIN_ROLES, ROLES.CLIENTE]}>
                 <EventList />
               </RoleRoute>
             }

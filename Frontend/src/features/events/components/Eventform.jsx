@@ -90,6 +90,7 @@ const EventForm = ({ eventToEdit = null, onClose, onSuccess }) => {
       formData.append('restaurantId', data.restaurantId)
       formData.append('name', data.name.trim())
       formData.append('description', data.description?.trim() || '')
+      formData.append('type', data.type)
       formData.append('startDate', new Date(data.startDate).toISOString())
       formData.append('endDate', new Date(data.endDate).toISOString())
 
@@ -188,6 +189,21 @@ const EventForm = ({ eventToEdit = null, onClose, onSuccess }) => {
               {errors.name && (
                 <p className={errorCls}>{errors.name.message}</p>
               )}
+            </div>
+
+            {/* Tipo de Evento */}
+            <div>
+              <label className={labelCls}>Tipo de Horario *</label>
+              <select
+                {...register('type')}
+                className={`${inputCls} appearance-none cursor-pointer`}
+              >
+                <option value="morning">Mañana (Desayunos)</option>
+                <option value="afternoon">Tarde (Almuerzos)</option>
+                <option value="night">Noche (Cenas)</option>
+                <option value="all_day">Todo el día</option>
+                <option value="special">Evento Especial</option>
+              </select>
             </div>
 
             {/* Descripción */}

@@ -13,6 +13,7 @@ import {
 } from 'lucide-react'
 import { toast } from 'react-hot-toast'
 import useEventStore from '../store/eventStore'
+import useAuthStore from '../../auth/store/authStore'
 import EventForm from './EventForm'
 import Skeleton from '../../../shared/components/ui/Skeleton'
 import ConfirmDialog from '../../../shared/components/ui/ConfirmDialog'
@@ -26,6 +27,14 @@ const STATUS_CONFIG = {
   cancelled: { label: 'Cancelado',  color: 'bg-red-500/10 text-red-400 ring-red-500/20' },
 }
 
+const TYPE_CONFIG = {
+  morning:   { label: 'Mañana',   color: 'bg-amber-500/10 text-amber-500 ring-amber-500/20' },
+  afternoon: { label: 'Tarde',    color: 'bg-orange-500/10 text-orange-500 ring-orange-500/20' },
+  night:     { label: 'Noche',    color: 'bg-indigo-500/10 text-indigo-400 ring-indigo-500/20' },
+  all_day:   { label: 'Todo el día', color: 'bg-sky-500/10 text-sky-400 ring-sky-500/20' },
+  special:   { label: 'Especial',  color: 'bg-purple-500/10 text-purple-400 ring-purple-500/20' },
+}
+
 const formatDate = (dateStr) => {
   if (!dateStr) return '—'
   const d = new Date(dateStr)
@@ -36,7 +45,7 @@ const formatDate = (dateStr) => {
   })
 }
 
-const EventCard = ({ event, onEdit, onDelete, index }) => {
+const EventCard = ({ event, onEdit, onDelete, index, isAdmin }) => {
   const eventId = getEventId(event)
   const status = STATUS_CONFIG[event.status] || STATUS_CONFIG.scheduled
   const restaurantName =
@@ -66,29 +75,38 @@ const EventCard = ({ event, onEdit, onDelete, index }) => {
         )}
 
         {/* Status badge */}
-        <div className="absolute top-3 left-3">
+        <div className="absolute top-3 left-3 flex flex-col gap-1.5">
           <span
             className={`inline-flex items-center px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-wider ring-1 ${status.color}`}
           >
             {status.label}
           </span>
+          {event.type && TYPE_CONFIG[event.type] && (
+            <span
+              className={`inline-flex items-center px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-wider ring-1 ${TYPE_CONFIG[event.type].color}`}
+            >
+              {TYPE_CONFIG[event.type].label}
+            </span>
+          )}
         </div>
 
-        {/* Action buttons */}
-        <div className="absolute top-3 right-3 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-          <button
-            onClick={() => onEdit(event)}
-            className="p-2 bg-zinc-900/80 backdrop-blur-sm text-zinc-300 hover:text-white rounded-xl transition-all hover:bg-zinc-800 active:scale-90"
-          >
-            <Edit3 size={14} />
-          </button>
-          <button
-            onClick={() => onDelete(event)}
-            className="p-2 bg-zinc-900/80 backdrop-blur-sm text-zinc-300 hover:text-red-400 rounded-xl transition-all hover:bg-red-500/10 active:scale-90"
-          >
-            <Trash2 size={14} />
-          </button>
-        </div>
+        {/* Action buttons - Only for Admins */}
+        {isAdmin && (
+          <div className="absolute top-3 right-3 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+            <button
+              onClick={() => onEdit(event)}
+              className="p-2 bg-zinc-900/80 backdrop-blur-sm text-zinc-300 hover:text-white rounded-xl transition-all hover:bg-zinc-800 active:scale-90"
+            >
+              <Edit3 size={14} />
+            </button>
+            <button
+              onClick={() => onDelete(event)}
+              className="p-2 bg-zinc-900/80 backdrop-blur-sm text-zinc-300 hover:text-red-400 rounded-xl transition-all hover:bg-red-500/10 active:scale-90"
+            >
+              <Trash2 size={14} />
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Content */}
@@ -141,7 +159,12 @@ const EventCard = ({ event, onEdit, onDelete, index }) => {
 }
 
 const EventList = () => {
+  const { user } = useAuthStore()
   const { events, loading, error, fetchEvents, deleteEvent } = useEventStore()
+
+  const isAdmin = user?.roles?.some(role => 
+    role === 'ADMIN_SISTEMA' || role === 'ADMIN_RESTAURANTE'
+  )
 
   const [showForm, setShowForm] = useState(false)
   const [eventToEdit, setEventToEdit] = useState(null)
@@ -204,16 +227,21 @@ const EventList = () => {
         <div>
           <h1 className="text-3xl font-bold text-white">Eventos</h1>
           <p className="text-zinc-500 text-sm mt-1">
-            Gestiona los eventos especiales y promociones de tu restaurante.
+            {isAdmin 
+              ? 'Gestiona los eventos especiales y promociones de tu restaurante.'
+              : 'Descubre los eventos especiales y promociones que tenemos para ti.'}
           </p>
         </div>
-        <button
-          onClick={openCreateForm}
-          className="w-full sm:w-auto bg-orange-500 hover:bg-orange-600 text-white px-6 py-3 rounded-2xl text-sm font-bold transition-all shadow-lg flex items-center justify-center gap-2 active:scale-95"
-        >
-          <Plus size={18} />
-          Nuevo Evento
-        </button>
+        
+        {isAdmin && (
+          <button
+            onClick={openCreateForm}
+            className="w-full sm:w-auto bg-orange-500 hover:bg-orange-600 text-white px-6 py-3 rounded-2xl text-sm font-bold transition-all shadow-lg flex items-center justify-center gap-2 active:scale-95"
+          >
+            <Plus size={18} />
+            Nuevo Evento
+          </button>
+        )}
       </div>
 
       {error && (
@@ -245,12 +273,14 @@ const EventList = () => {
             <Sparkles size={48} className="text-zinc-600" />
           </div>
           <p className="text-zinc-500 font-medium text-sm">No hay eventos registrados aún.</p>
-          <button
-            onClick={openCreateForm}
-            className="mt-2 text-orange-500 text-sm font-bold hover:text-orange-400 transition-colors"
-          >
-            Crear primer evento →
-          </button>
+          {isAdmin && (
+            <button
+              onClick={openCreateForm}
+              className="mt-2 text-orange-500 text-sm font-bold hover:text-orange-400 transition-colors"
+            >
+              Crear primer evento →
+            </button>
+          )}
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
@@ -262,6 +292,7 @@ const EventList = () => {
                 index={index}
                 onEdit={openEditForm}
                 onDelete={setEventToDelete}
+                isAdmin={isAdmin}
               />
             ))}
           </AnimatePresence>

@@ -112,7 +112,7 @@ const NAV_ITEMS = [
     label: "Eventos",
     path: "/events",
     icon: PartyPopper,
-    roles: [ROLES.ADMIN_SISTEMA, ROLES.ADMIN_RESTAURANTE],
+    roles: [ROLES.ADMIN_SISTEMA, ROLES.ADMIN_RESTAURANTE, ROLES.CLIENTE],
   },
 
   // ── CLIENTE únicamente ──

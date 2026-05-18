@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Calendar, Clock, MapPin, XCircle, AlertCircle, CheckCircle2, Plus, Utensils, Timer } from 'lucide-react'
+import { Calendar, Clock, MapPin, XCircle, AlertCircle, CheckCircle2, Plus, Utensils, Timer, Store } from 'lucide-react'
 import { toast } from 'react-hot-toast'
 import useReservationStore from '../store/reservationStore'
 import useAuthStore from '../../auth/store/authStore'
@@ -121,9 +121,14 @@ const MyReservations = () => {
                     </div>
                   </div>
 
-                  <h3 className="text-xl font-bold text-white mb-6 group-hover:text-orange-500 transition-colors">
-                    {res.restaurant?.name || 'Restaurante'}
-                  </h3>
+                  <div className="flex items-center gap-3 mb-6 group-hover:translate-x-1 transition-transform">
+                    <div className="p-2 bg-orange-500/10 rounded-xl text-orange-500">
+                      <Store size={20} />
+                    </div>
+                    <h3 className="text-xl font-bold text-white group-hover:text-orange-500 transition-colors">
+                      {res.restaurant?.name || 'Restaurante'}
+                    </h3>
+                  </div>
 
                   <div className="space-y-4 mb-8">
                     <div className="flex items-center gap-3 text-zinc-400">
