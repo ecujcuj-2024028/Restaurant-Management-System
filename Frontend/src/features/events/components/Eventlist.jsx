@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { 
   CalendarDays, 
@@ -17,6 +17,7 @@ import {
 } from 'lucide-react'
 import { toast } from 'react-hot-toast'
 import useEventStore from '../store/eventStore'
+import useRestaurantStore from '../../restaurants/store/restaurantStore'
 import useAuthStore from '../../auth/store/authStore'
 import EventForm from './EventForm'
 import Skeleton from '../../../shared/components/ui/Skeleton'
@@ -24,9 +25,9 @@ import ConfirmDialog from '../../../shared/components/ui/ConfirmDialog'
 
 const getEventId = (event) => event?._id || event?.id
 
-const getRestaurantName = (restaurant) => {
-  if (!restaurant) return '—'
-  if (typeof restaurant === 'object') return restaurant?.name || '—'
+const getRestaurantId = (restaurant) => {
+  if (!restaurant) return null
+  if (typeof restaurant === 'object') return restaurant.$oid || restaurant._id || restaurant.id
   return restaurant
 }
 
@@ -55,10 +56,14 @@ const formatDate = (dateStr) => {
   })
 }
 
-const EventCard = ({ event, onEdit, onDelete, index, isAdmin }) => {
+const EventCard = ({ event, onEdit, onDelete, index, isAdmin, restaurants }) => {
   const eventId = getEventId(event)
   const status = STATUS_CONFIG[event.status] || STATUS_CONFIG.scheduled
-  const restaurantName = getRestaurantName(event.restaurant)
+  
+  // Buscar el nombre del restaurante
+  const restaurantId = getRestaurantId(event.restaurant)
+  const restaurant = restaurants.find(r => (r._id || r.id) === restaurantId)
+  const restaurantName = restaurant?.name || 'Restaurante Desconocido'
 
   return (
     <motion.div
@@ -121,6 +126,10 @@ const EventCard = ({ event, onEdit, onDelete, index, isAdmin }) => {
       {/* Content */}
       <div className="p-5 space-y-4">
         <div>
+          <div className="flex items-center gap-1.5 text-orange-500 text-[10px] font-black uppercase mb-1">
+            <Building size={12} />
+            <span>{restaurantName}</span>
+          </div>
           <h3 className="text-white font-black text-lg leading-tight group-hover:text-orange-400 transition-colors">
             {event.name}
           </h3>
@@ -175,6 +184,7 @@ const EventCard = ({ event, onEdit, onDelete, index, isAdmin }) => {
 const EventList = () => {
   const { user } = useAuthStore()
   const { events, loading, error, fetchEvents, deleteEvent } = useEventStore()
+  const { restaurants, fetchRestaurants } = useRestaurantStore()
 
   const isAdmin = user?.roles?.some(role => 
     role === 'ADMIN_SISTEMA' || role === 'ADMIN_RESTAURANTE'
@@ -184,16 +194,24 @@ const EventList = () => {
   const [eventToEdit, setEventToEdit] = useState(null)
   const [eventToDelete, setEventToDelete] = useState(null)
   const [statusFilter, setStatusFilter] = useState('all')
+  const [restaurantFilter, setRestaurantFilter] = useState('all')
 
   // Filtrar eventos
-  const filteredEvents = events.filter(event => {
-    const statusMatch = statusFilter === 'all' || event.status === statusFilter
-    return statusMatch
-  })
+  const filteredEvents = useMemo(() => {
+    return events.filter(event => {
+      const statusMatch = statusFilter === 'all' || event.status === statusFilter
+      
+      const eventRestaurantId = getRestaurantId(event.restaurant)
+      const restaurantMatch = restaurantFilter === 'all' || eventRestaurantId === restaurantFilter
+      
+      return statusMatch && restaurantMatch
+    })
+  }, [events, statusFilter, restaurantFilter])
 
   useEffect(() => {
     fetchEvents()
-  }, [fetchEvents])
+    fetchRestaurants()
+  }, [fetchEvents, fetchRestaurants])
 
   const openCreateForm = () => {
     setEventToEdit(null)
@@ -266,7 +284,7 @@ const EventList = () => {
       </div>
 
       {/* Filters */}
-      <div className="flex flex-col sm:flex-row gap-3 mb-6 p-4 bg-white/5 border border-white/10 rounded-2xl">
+      <div className="flex flex-col sm:flex-row flex-wrap gap-3 mb-6 p-4 bg-white/5 border border-white/10 rounded-2xl">
         <div className="flex items-center gap-2 text-zinc-400 text-sm font-medium">
           <Filter size={16} className="text-orange-500" />
           Filtros:
@@ -283,12 +301,26 @@ const EventList = () => {
           <option value="completed">Finalizado</option>
         </select>
 
-        {statusFilter !== 'all' && (
+        <select
+          value={restaurantFilter}
+          onChange={(e) => setRestaurantFilter(e.target.value)}
+          className="px-3 py-2 bg-zinc-800 border border-white/10 text-white text-sm rounded-lg hover:border-orange-500/30 transition-colors focus:outline-none focus:border-orange-500 min-w-[160px]"
+        >
+          <option value="all">Todos los restaurantes</option>
+          {restaurants.map(restaurant => (
+            <option key={restaurant._id || restaurant.id} value={restaurant._id || restaurant.id}>
+              {restaurant.name}
+            </option>
+          ))}
+        </select>
+
+        {(statusFilter !== 'all' || restaurantFilter !== 'all') && (
           <button
             onClick={() => {
               setStatusFilter('all')
+              setRestaurantFilter('all')
             }}
-            className="ml-auto px-3 py-2 bg-red-500/10 border border-red-500/30 text-red-400 text-sm rounded-lg hover:bg-red-500/20 transition-colors flex items-center gap-1.5"
+            className="sm:ml-auto px-3 py-2 bg-red-500/10 border border-red-500/30 text-red-400 text-sm rounded-lg hover:bg-red-500/20 transition-colors flex items-center gap-1.5"
           >
             <X size={14} />
             Limpiar filtros
@@ -303,7 +335,7 @@ const EventList = () => {
       )}
 
       {/* Grid */}
-      {loading && events.length === 0 && filteredEvents.length === 0 ? (
+      {loading && events.length === 0 ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
           {[1, 2, 3, 4, 5, 6].map((i) => (
             <div
@@ -347,6 +379,7 @@ const EventList = () => {
                 onEdit={openEditForm}
                 onDelete={setEventToDelete}
                 isAdmin={isAdmin}
+                restaurants={restaurants}
               />
             ))}
           </AnimatePresence>
