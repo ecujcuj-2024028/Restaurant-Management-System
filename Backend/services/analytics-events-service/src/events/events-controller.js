@@ -16,16 +16,21 @@ import mongoose from "mongoose";
    Helper: obtener IDs de restaurantes propios
 ─────────────────────────────────────────────── */
 const getOwnedRestaurantIds = async (req) => {
-    const isSystemAdmin = req.userRoles?.includes(ADMIN_SISTEMA);
-    const isRestauranteAdmin = req.userRoles?.includes(ADMIN_RESTAURANTE);
+    const roles = req.userRoles || [];
+    const isSystemAdmin = roles.includes(ADMIN_SISTEMA);
+    const isRestauranteAdmin = roles.includes(ADMIN_RESTAURANTE);
 
     if (isSystemAdmin) return null; // Acceso total
-    if (!isRestauranteAdmin) return []; // Otros roles no ven nada o solo lo suyo
 
-    const myRestaurants = await Restaurant.find({ ownerId: req.userId, isActive: true }, '_id');
-    return myRestaurants.map(r => r._id);
+    if (isRestauranteAdmin) {
+        const myRestaurants = await Restaurant.find({ ownerId: req.userId, isActive: true }, '_id');
+        return myRestaurants.map(r => r._id);
+    }
+
+    // Para CLIENTE u otros roles no administrativos, devolvemos null para que puedan ver 
+    // todos los eventos activos (catálogo público).
+    return null; 
 };
-
 export const getEvents = async (req, res) => {
   try {
     const { restaurantId, status } = req.query;
