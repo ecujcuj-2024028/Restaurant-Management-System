@@ -281,7 +281,6 @@ const EventList = () => {
           <option value="scheduled">Programado</option>
           <option value="ongoing">En curso</option>
           <option value="completed">Finalizado</option>
-          <option value="cancelled">Cancelado</option>
         </select>
 
         {statusFilter !== 'all' && (
