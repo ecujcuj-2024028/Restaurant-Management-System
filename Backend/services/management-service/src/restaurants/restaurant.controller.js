@@ -138,6 +138,18 @@ export const updateRestaurant = async (req, res) => {
             }
         }
 
+        // Manejar dirección (address) que puede venir como campos individuales o anidados
+        const street = req.body.street || (req.body.address && req.body.address.street);
+        const city = req.body.city || (req.body.address && req.body.address.city);
+        const country = req.body.country || (req.body.address && req.body.address.country);
+
+        if (street || city || country) {
+            updateData.address = {};
+            if (street) updateData.address.street = street;
+            if (city) updateData.address.city = city;
+            if (country) updateData.address.country = country;
+        }
+
         // Validación de cambio de dueño
         if (updateData.ownerId) {
             const currentRestaurant = await Restaurant.findById(id);
@@ -160,8 +172,8 @@ export const updateRestaurant = async (req, res) => {
 
         const restaurant = await Restaurant.findByIdAndUpdate(
             id,
-            updateData,
-            { new: true }
+            { $set: updateData },
+            { new: true, runValidators: true }
         );
 
         if (!restaurant) {
