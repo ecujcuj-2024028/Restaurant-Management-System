@@ -121,11 +121,6 @@ const ClientDashboard = () => {
           
           {/* Columna Izquierda: Texto y Buscador */}
           <div className="relative z-10 p-8 md:p-16 lg:pr-0">
-            <motion.div variants={itemVariants}>
-              <span className="inline-block px-4 py-1.5 rounded-full bg-orange-500/10 border border-orange-500/20 text-orange-500 text-[10px] font-black uppercase tracking-[0.2em] mb-6">
-                Premium Dining Experience
-              </span>
-            </motion.div>
             
             <motion.h1 variants={itemVariants} className="text-4xl md:text-6xl font-black text-white mb-6 leading-[1.1] tracking-tighter">
               El sabor que <span className="text-orange-500 italic">mereces</span>, {user?.name?.split(' ')[0] || user?.username?.split(' ')[0] || 'Gourmet'}.
@@ -161,8 +156,8 @@ const ClientDashboard = () => {
           {/* Columna Derecha: Visual */}
           <div className="relative h-full hidden lg:flex items-center justify-center p-12">
             <motion.div 
-              initial={{ scale: 0.8, opacity: 0, rotate: 10 }}
-              animate={{ scale: 1, opacity: 1, rotate: -2 }}
+              initial={{ scale: 0.8, opacity: 0}}
+              animate={{ scale: 1, opacity: 1}}
               transition={{ duration: 1, ease: "easeOut" }}
               className="relative z-10 w-full max-w-md aspect-square rounded-[3rem] overflow-hidden shadow-[0_0_80px_rgba(249,115,22,0.15)] border-4 border-white/5"
             >
@@ -174,34 +169,7 @@ const ClientDashboard = () => {
               <div className="absolute inset-0 bg-gradient-to-tr from-orange-500/20 to-transparent mix-blend-overlay" />
             </motion.div>
 
-            {/* Elementos Flotantes */}
-            <motion.div 
-              animate={{ y: [0, -15, 0] }}
-              transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
-              className="absolute top-20 right-20 z-20 bg-zinc-900/90 backdrop-blur-xl border border-white/10 p-4 rounded-2xl shadow-2xl flex items-center gap-3"
-            >
-              <div className="w-10 h-10 bg-orange-500 rounded-xl flex items-center justify-center text-white shadow-lg shadow-orange-500/20">
-                <Utensils size={20} />
-              </div>
-              <div>
-                <p className="text-white font-black text-sm">15+</p>
-                <p className="text-zinc-500 text-[10px] uppercase font-bold tracking-tighter">Sedes Activas</p>
-              </div>
-            </motion.div>
-
-            <motion.div 
-              animate={{ y: [0, 15, 0] }}
-              transition={{ duration: 5, repeat: Infinity, ease: "easeInOut", delay: 1 }}
-              className="absolute bottom-20 left-10 z-20 bg-zinc-900/90 backdrop-blur-xl border border-white/10 p-4 rounded-2xl shadow-2xl flex items-center gap-3"
-            >
-              <div className="w-10 h-10 bg-emerald-500 rounded-xl flex items-center justify-center text-white shadow-lg shadow-emerald-500/20">
-                <TrendingUp size={20} />
-              </div>
-              <div>
-                <p className="text-white font-black text-sm">Top Rated</p>
-                <p className="text-zinc-500 text-[10px] uppercase font-bold tracking-tighter">Mejores Precios</p>
-              </div>
-            </motion.div>
+            
           </div>
         </div>
         
