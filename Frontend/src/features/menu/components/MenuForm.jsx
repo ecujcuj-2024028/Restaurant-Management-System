@@ -127,7 +127,7 @@ const MenuForm = ({ menuToEdit = null, onClose, onSuccess }) => {
 
     return (
         <Modal title={isEditing ? 'Editar Menú' : 'Nuevo Menú'} onClose={onClose}>
-            <form onSubmit={handleSubmit(onSubmit)} className="space-y-6 max-h-[80vh] overflow-y-auto pr-2 custom-scrollbar">
+            <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
 
                 {/* IMAGEN DEL MENÚ */}
                 <div className="flex flex-col items-center justify-center">

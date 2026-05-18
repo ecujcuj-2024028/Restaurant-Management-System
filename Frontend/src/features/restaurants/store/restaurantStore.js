@@ -23,8 +23,11 @@ const useRestaurantStore = create((set) => ({
 
   updateRestaurant: async (id, data) => {
     const response = await updateRestaurant(id, data)
+    const updatedRestaurant = response.data.restaurant
     set((state) => ({
-      restaurants: state.restaurants.map((r) => (r.id === id ? response.data.restaurant : r)),
+      restaurants: state.restaurants.map((r) => 
+        (r.id === id || r._id === id) ? updatedRestaurant : r
+      ),
     }))
   },
 
