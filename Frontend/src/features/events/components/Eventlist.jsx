@@ -10,8 +10,10 @@ import {
   Users, 
   Ticket, 
   Sparkles, 
-  Store, 
-  MapPin 
+  Building, 
+  MapPin,
+  Filter,
+  X
 } from 'lucide-react'
 import { toast } from 'react-hot-toast'
 import useEventStore from '../store/eventStore'
@@ -21,6 +23,12 @@ import Skeleton from '../../../shared/components/ui/Skeleton'
 import ConfirmDialog from '../../../shared/components/ui/ConfirmDialog'
 
 const getEventId = (event) => event?._id || event?.id
+
+const getRestaurantName = (restaurant) => {
+  if (!restaurant) return '—'
+  if (typeof restaurant === 'object') return restaurant?.name || '—'
+  return restaurant
+}
 
 const STATUS_CONFIG = {
   scheduled: { label: 'Programado', color: 'bg-blue-500/10 text-blue-400 ring-blue-500/20' },
@@ -50,8 +58,7 @@ const formatDate = (dateStr) => {
 const EventCard = ({ event, onEdit, onDelete, index, isAdmin }) => {
   const eventId = getEventId(event)
   const status = STATUS_CONFIG[event.status] || STATUS_CONFIG.scheduled
-  const restaurantName =
-    typeof event.restaurant === 'object' ? event.restaurant?.name : '—'
+  const restaurantName = getRestaurantName(event.restaurant)
 
   return (
     <motion.div
@@ -114,14 +121,6 @@ const EventCard = ({ event, onEdit, onDelete, index, isAdmin }) => {
       {/* Content */}
       <div className="p-5 space-y-4">
         <div>
-          <div className="flex items-center gap-2 mb-1">
-            <div className="p-1.5 bg-orange-500/10 rounded-lg text-orange-500">
-              <Store size={12} />
-            </div>
-            <span className="text-zinc-500 text-[10px] font-black uppercase tracking-widest">
-              {restaurantName}
-            </span>
-          </div>
           <h3 className="text-white font-black text-lg leading-tight group-hover:text-orange-400 transition-colors">
             {event.name}
           </h3>
@@ -147,15 +146,6 @@ const EventCard = ({ event, onEdit, onDelete, index, isAdmin }) => {
               </span>
             </div>
           </div>
-
-          {(event.restaurant?.address || event.restaurant?.location) && (
-            <div className="flex items-center gap-2 text-zinc-500 text-[11px] bg-white/5 p-2 rounded-xl">
-              <MapPin size={13} className="text-orange-500 flex-shrink-0" />
-              <span className="truncate font-medium">
-                {event.restaurant.address || event.restaurant.location}
-              </span>
-            </div>
-          )}
 
           <div className="flex items-center gap-4 border-t border-white/5 pt-3">
             {event.capacity && (
@@ -193,6 +183,13 @@ const EventList = () => {
   const [showForm, setShowForm] = useState(false)
   const [eventToEdit, setEventToEdit] = useState(null)
   const [eventToDelete, setEventToDelete] = useState(null)
+  const [statusFilter, setStatusFilter] = useState('all')
+
+  // Filtrar eventos
+  const filteredEvents = events.filter(event => {
+    const statusMatch = statusFilter === 'all' || event.status === statusFilter
+    return statusMatch
+  })
 
   useEffect(() => {
     fetchEvents()
@@ -268,6 +265,38 @@ const EventList = () => {
         )}
       </div>
 
+      {/* Filters */}
+      <div className="flex flex-col sm:flex-row gap-3 mb-6 p-4 bg-white/5 border border-white/10 rounded-2xl">
+        <div className="flex items-center gap-2 text-zinc-400 text-sm font-medium">
+          <Filter size={16} className="text-orange-500" />
+          Filtros:
+        </div>
+        
+        <select
+          value={statusFilter}
+          onChange={(e) => setStatusFilter(e.target.value)}
+          className="px-3 py-2 bg-zinc-800 border border-white/10 text-white text-sm rounded-lg hover:border-orange-500/30 transition-colors focus:outline-none focus:border-orange-500"
+        >
+          <option value="all">Todos los estados</option>
+          <option value="scheduled">Programado</option>
+          <option value="ongoing">En curso</option>
+          <option value="completed">Finalizado</option>
+          <option value="cancelled">Cancelado</option>
+        </select>
+
+        {statusFilter !== 'all' && (
+          <button
+            onClick={() => {
+              setStatusFilter('all')
+            }}
+            className="ml-auto px-3 py-2 bg-red-500/10 border border-red-500/30 text-red-400 text-sm rounded-lg hover:bg-red-500/20 transition-colors flex items-center gap-1.5"
+          >
+            <X size={14} />
+            Limpiar filtros
+          </button>
+        )}
+      </div>
+
       {error && (
         <div className="bg-red-500/10 border border-red-500/30 text-red-400 text-sm px-4 py-3 rounded-xl mb-6">
           {error}
@@ -275,7 +304,7 @@ const EventList = () => {
       )}
 
       {/* Grid */}
-      {loading && events.length === 0 ? (
+      {loading && events.length === 0 && filteredEvents.length === 0 ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
           {[1, 2, 3, 4, 5, 6].map((i) => (
             <div
@@ -291,13 +320,15 @@ const EventList = () => {
             </div>
           ))}
         </div>
-      ) : events.length === 0 ? (
+      ) : filteredEvents.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-28 gap-4">
           <div className="p-5 bg-zinc-800/60 rounded-full ring-1 ring-white/5">
             <Sparkles size={48} className="text-zinc-600" />
           </div>
-          <p className="text-zinc-500 font-medium text-sm">No hay eventos registrados aún.</p>
-          {isAdmin && (
+          <p className="text-zinc-500 font-medium text-sm">
+            {events.length === 0 ? 'No hay eventos registrados aún.' : 'No hay eventos que coincidan con los filtros seleccionados.'}
+          </p>
+          {isAdmin && events.length === 0 && (
             <button
               onClick={openCreateForm}
               className="mt-2 text-orange-500 text-sm font-bold hover:text-orange-400 transition-colors"
@@ -309,7 +340,7 @@ const EventList = () => {
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
           <AnimatePresence>
-            {events.map((event, index) => (
+            {filteredEvents.map((event, index) => (
               <EventCard
                 key={getEventId(event)}
                 event={event}
