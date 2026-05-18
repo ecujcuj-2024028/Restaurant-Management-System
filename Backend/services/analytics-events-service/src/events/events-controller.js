@@ -54,7 +54,7 @@ export const getEvents = async (req, res) => {
     if (status) filter.status = status;
 
     const events = await Event.find(filter)
-      .populate("restaurant", "name")
+      .populate("restaurant", "name location address photos")
       .populate("featuredProducts", "name price image")
       .sort({ startDate: 1 });
 
