@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Eye, Star, ChevronDown, ChevronUp } from 'lucide-react'
+import { Eye, Star, ChevronDown, ChevronUp, Store, Clock, ShoppingBag } from 'lucide-react'
 import useOrderStore from '../store/orderStore'
 import useAuthStore from '../../auth/store/authStore'
+import useRestaurantStore from '../../restaurants/store/restaurantStore'
 import OrderStatusBadge from './OrderStatusBadge'
 import OrderDetailModal from './OrderDetailModal'
 import ReviewModal from '../../reviews/components/ReviewModal'
@@ -15,6 +16,7 @@ const OrderRow = ({ order, onViewDetail, onOpenReview }) => {
   const [viewingReviews, setViewingReviews] = useState(null)
 
   const isEntregado = order.status === 'entregado'
+  const restaurantName = order.restaurantId?.name || 'Restaurante'
 
   return (
     <>
@@ -25,9 +27,17 @@ const OrderRow = ({ order, onViewDetail, onOpenReview }) => {
         className="hover:bg-white/5 transition-colors"
       >
         <td className="px-8 py-5">
-          <span className="font-mono text-white font-bold text-sm">
-            #{(order._id || order.id)?.slice(-6).toUpperCase()}
-          </span>
+          <div className="flex flex-col">
+            <span className="font-mono text-white font-bold text-xs">
+              #{(order._id || order.id)?.slice(-6).toUpperCase()}
+            </span>
+            <div className="flex items-center gap-1.5 mt-1">
+               <Store size={10} className="text-orange-500" />
+               <span className="text-zinc-400 text-[10px] font-black uppercase tracking-tight">
+                 {restaurantName}
+               </span>
+            </div>
+          </div>
         </td>
         <td className="px-8 py-5 text-zinc-300">Mesa #{order.tableNumber}</td>
         <td className="px-8 py-5 text-zinc-300">{order.items?.length || 0} items</td>
@@ -107,7 +117,7 @@ const OrderRow = ({ order, onViewDetail, onOpenReview }) => {
                                   name: item.name,
                                   image: item.image,
                                 },
-                                restauranteId: order.restaurantId,
+                                restauranteId: order.restaurantId?._id || order.restaurantId,
                               })
                             }
                             className="flex items-center gap-1.5 px-3 py-1.5 bg-orange-500/10 hover:bg-orange-500 text-orange-400 hover:text-white rounded-xl text-xs font-bold transition-all"
@@ -146,20 +156,26 @@ const OrderRow = ({ order, onViewDetail, onOpenReview }) => {
 
 // ── Componente principal ──────────────────────────────────────────────────────
 const MyOrders = () => {
-  const { history, loading, error, fetchOrderHistory } = useOrderStore()
+  const { history, loading, fetchOrderHistory } = useOrderStore()
+  const { restaurants, fetchRestaurants } = useRestaurantStore()
 
-  // Estados para modales movidos fuera del loop de la tabla para evitar errores de DOM
   const [selectedOrder, setSelectedOrder] = useState(null)
   const [reviewTarget, setReviewTarget] = useState(null)
+  const [selectedRestaurant, setSelectedRestaurant] = useState('')
 
   useEffect(() => {
-    fetchOrderHistory()
-  }, [fetchOrderHistory])
+    fetchRestaurants()
+  }, [fetchRestaurants])
+
+  useEffect(() => {
+    const params = {}
+    if (selectedRestaurant) params.restaurantId = selectedRestaurant
+    fetchOrderHistory(params)
+  }, [selectedRestaurant, fetchOrderHistory])
 
   return (
     <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="pb-10">
       
-      {/* MODALES FUERA DE LA TABLA */}
       {selectedOrder && (
         <OrderDetailModal
           order={selectedOrder}
@@ -174,66 +190,89 @@ const MyOrders = () => {
           product={reviewTarget.product}
           restauranteId={reviewTarget.restauranteId}
           onClose={() => setReviewTarget(null)}
+          onSuccess={() => fetchOrderHistory(selectedRestaurant ? { restaurantId: selectedRestaurant } : {})}
         />
       )}
 
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-white">Mis Pedidos</h1>
-        <p className="text-zinc-500 text-sm mt-1">
-          Historial de tus pedidos — en los entregados puedes reseñar cada plato
-        </p>
+      <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6 mb-8">
+        <div>
+          <h1 className="text-3xl font-black text-white tracking-tight">Mis Visitas</h1>
+          <p className="text-zinc-500 text-sm mt-1 font-medium">
+            Revive tus mejores experiencias gastronómicas.
+          </p>
+        </div>
+
+        <div className="relative w-full md:w-72 group">
+          <div className="absolute left-4 top-1/2 -translate-y-1/2 text-orange-500 transition-transform group-hover:scale-110 z-10 pointer-events-none">
+            <Store size={18} />
+          </div>
+          <select
+            value={selectedRestaurant}
+            onChange={(e) => setSelectedRestaurant(e.target.value)}
+            className="w-full bg-zinc-900/80 backdrop-blur-md border border-white/10 text-white pl-12 pr-10 py-3.5 rounded-[1.25rem] text-sm font-black uppercase tracking-widest focus:outline-none focus:ring-2 focus:ring-orange-500/50 appearance-none transition-all cursor-pointer hover:bg-zinc-800 relative z-0"
+          >
+            <option value="">Todas mis visitas</option>
+            {restaurants.map((res) => (
+              <option key={res.id || res._id} value={res.id || res._id}>
+                {res.name}
+              </option>
+            ))}
+          </select>
+          <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-zinc-500 z-10">
+            <ChevronDown size={16} />
+          </div>
+        </div>
       </div>
 
-      {error && (
-        <div className="bg-red-500/10 border border-red-500/30 text-red-400 p-4 rounded-2xl mb-6">
-          {error}
-        </div>
-      )}
-
-      <div className="bg-zinc-900/50 border border-white/5 rounded-3xl overflow-hidden">
-        <table className="w-full">
-          <thead>
-            <tr className="bg-white/5 border-b border-white/5">
-              <th className="px-8 py-5 text-left text-zinc-400 text-xs font-black uppercase tracking-widest">Pedido</th>
-              <th className="px-8 py-5 text-left text-zinc-400 text-xs font-black uppercase tracking-widest">Mesa</th>
-              <th className="px-8 py-5 text-left text-zinc-400 text-xs font-black uppercase tracking-widest">Items</th>
-              <th className="px-8 py-5 text-left text-zinc-400 text-xs font-black uppercase tracking-widest">Total</th>
-              <th className="px-8 py-5 text-left text-zinc-400 text-xs font-black uppercase tracking-widest">Estado</th>
-              <th className="px-8 py-5 text-right text-zinc-400 text-xs font-black uppercase tracking-widest">Acciones</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-white/5">
-            {loading && history.length === 0 ? (
-              Array(4).fill(0).map((_, i) => (
-                <tr key={i}>
-                  <td className="px-8 py-5"><Skeleton className="h-6 w-24" /></td>
-                  <td className="px-8 py-5"><Skeleton className="h-6 w-16" /></td>
-                  <td className="px-8 py-5"><Skeleton className="h-6 w-12" /></td>
-                  <td className="px-8 py-5"><Skeleton className="h-6 w-20" /></td>
-                  <td className="px-8 py-5"><Skeleton className="h-6 w-28" /></td>
-                  <td className="px-8 py-5"><Skeleton className="h-8 w-20 ml-auto" /></td>
-                </tr>
-              ))
-            ) : history.length === 0 ? (
-              <tr>
-                <td colSpan={6} className="text-center py-20 text-zinc-500">
-                  No tienes pedidos registrados aún.
-                </td>
+      <div className="bg-zinc-900/40 backdrop-blur-sm border border-white/5 rounded-[2.5rem] overflow-hidden shadow-2xl">
+        <div className="overflow-x-auto">
+          <table className="w-full border-collapse">
+            <thead>
+              <tr className="bg-white/[0.02] border-b border-white/5">
+                <th className="px-8 py-6 text-left text-zinc-500 text-[10px] font-black uppercase tracking-[0.2em]">Referencia</th>
+                <th className="px-8 py-6 text-left text-zinc-500 text-[10px] font-black uppercase tracking-[0.2em]">Ubicación</th>
+                <th className="px-8 py-6 text-left text-zinc-500 text-[10px] font-black uppercase tracking-[0.2em]">Detalle</th>
+                <th className="px-8 py-6 text-left text-zinc-500 text-[10px] font-black uppercase tracking-[0.2em]">Inversión</th>
+                <th className="px-8 py-6 text-left text-zinc-500 text-[10px] font-black uppercase tracking-[0.2em]">Estado</th>
+                <th className="px-8 py-6 text-right text-zinc-500 text-[10px] font-black uppercase tracking-[0.2em]">Acciones</th>
               </tr>
-            ) : (
-              <AnimatePresence>
-                {history.map((order) => (
-                  <OrderRow 
-                    key={order._id || order.id} 
-                    order={order} 
-                    onViewDetail={() => setSelectedOrder(order)}
-                    onOpenReview={(target) => setReviewTarget(target)}
-                  />
-                ))}
-              </AnimatePresence>
-            )}
-          </tbody>
-        </table>
+            </thead>
+            <tbody className="divide-y divide-white/5">
+              {loading ? (
+                Array(5).fill(0).map((_, i) => (
+                  <tr key={i}>
+                    <td className="px-8 py-6"><Skeleton className="h-8 w-24 rounded-xl" /></td>
+                    <td className="px-8 py-6"><Skeleton className="h-6 w-32 rounded-lg" /></td>
+                    <td className="px-8 py-6"><Skeleton className="h-6 w-16 rounded-lg" /></td>
+                    <td className="px-8 py-6"><Skeleton className="h-6 w-20 rounded-lg" /></td>
+                    <td className="px-8 py-6"><Skeleton className="h-8 w-28 rounded-full" /></td>
+                    <td className="px-8 py-6 text-right"><Skeleton className="h-10 w-10 rounded-xl ml-auto" /></td>
+                  </tr>
+                ))
+              ) : history.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="text-center py-32">
+                    <div className="flex flex-col items-center gap-4 opacity-20">
+                      <ShoppingBag size={64} className="text-zinc-500" />
+                      <p className="text-lg font-black text-zinc-400 uppercase tracking-widest">Sin registros encontrados</p>
+                    </div>
+                  </td>
+                </tr>
+              ) : (
+                <AnimatePresence>
+                  {history.map((order) => (
+                    <OrderRow 
+                      key={order._id || order.id} 
+                      order={order} 
+                      onViewDetail={() => setSelectedOrder(order)}
+                      onOpenReview={(target) => setReviewTarget(target)}
+                    />
+                  ))}
+                </AnimatePresence>
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
     </motion.div>
   )

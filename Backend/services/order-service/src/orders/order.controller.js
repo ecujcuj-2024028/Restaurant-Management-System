@@ -212,11 +212,16 @@ export const cancelOrder = async (req, res) => {
 export const getOrderHistory = async (req, res) => {
   try {
     const userId = req.userId;
+    const { restaurantId } = req.query; // Soportar filtro por restaurante
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 10;
     const skip = (page - 1) * limit;
 
-    const orders = await Order.find({ userId })
+    const filter = { userId };
+    if (restaurantId) filter.restaurantId = restaurantId;
+
+    const orders = await Order.find(filter)
+      .populate('restaurantId', 'name photos')
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit);
