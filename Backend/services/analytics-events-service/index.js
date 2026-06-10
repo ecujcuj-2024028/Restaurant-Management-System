@@ -63,9 +63,9 @@ const startServer = async () => {
 
         setupSwagger(app);
 
-        app.listen(PORT, () => {
+        app.listen(PORT, HOST, () => {
             console.log('---------------------------------------------');
-            console.log(`Analytics Service running on port: ${PORT}`);
+            console.log(`Analytics Service running on http://${HOST}:${PORT}`);
             console.log('---------------------------------------------');
         });
     } catch (error) {
