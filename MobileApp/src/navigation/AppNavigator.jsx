@@ -3,6 +3,7 @@ import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import AuthStack from './AuthStack';
 import MainTab from './MainTab';
+import OnboardingScreen from '../features/onboarding/screens/OnboardingScreen';
 import useAuthStore from '../store/useAuthStore';
 import { View, ActivityIndicator } from 'react-native';
 import { COLORS } from '../shared/constants/colors';
@@ -10,7 +11,7 @@ import { COLORS } from '../shared/constants/colors';
 const Stack = createNativeStackNavigator();
 
 const AppNavigator = () => {
-  const { isAuthenticated, isLoading, initialize } = useAuthStore();
+  const { isAuthenticated, hasSeenOnboarding, isLoading, initialize } = useAuthStore();
 
   useEffect(() => {
     initialize();
@@ -29,6 +30,8 @@ const AppNavigator = () => {
       <Stack.Navigator screenOptions={{ headerShown: false }}>
         {isAuthenticated ? (
           <Stack.Screen name="Main" component={MainTab} />
+        ) : !hasSeenOnboarding ? (
+          <Stack.Screen name="Onboarding" component={OnboardingScreen} />
         ) : (
           <Stack.Screen name="Auth" component={AuthStack} />
         )}
