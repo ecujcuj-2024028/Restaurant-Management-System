@@ -6,25 +6,30 @@ const useAuthStore = create((set) => ({
   user: null,
   token: null,
   isAuthenticated: false,
+  hasSeenOnboarding: false,
   isLoading: true,
 
   initialize: async () => {
     try {
       const token = await SecureStore.getItemAsync('userToken');
       const userStr = await SecureStore.getItemAsync('userData');
-      if (token && userStr) {
-        set({ 
-          token, 
-          user: JSON.parse(userStr), 
-          isAuthenticated: true,
-          isLoading: false 
-        });
-      } else {
-        set({ isLoading: false });
-      }
+      const hasSeenOnboarding = await SecureStore.getItemAsync('hasSeenOnboarding');
+      
+      set({ 
+        token: token || null, 
+        user: userStr ? JSON.parse(userStr) : null, 
+        isAuthenticated: !!token,
+        hasSeenOnboarding: hasSeenOnboarding === 'true',
+        isLoading: false 
+      });
     } catch (error) {
       set({ isLoading: false });
     }
+  },
+
+  setHasSeenOnboarding: async (value) => {
+    await SecureStore.setItemAsync('hasSeenOnboarding', value ? 'true' : 'false');
+    set({ hasSeenOnboarding: value });
   },
 
   login: async (credentials) => {

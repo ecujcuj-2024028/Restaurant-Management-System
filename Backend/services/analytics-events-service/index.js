@@ -25,6 +25,7 @@ dotenv.config();
 
 const app = express();
 const PORT = process.env.ANALYTICS_SERVICE_PORT || 3004;
+const HOST = process.env.HOST || '0.0.0.0';
 const BASE_PATH = '/restaurantManagement/v1';
 
 /* =========================
