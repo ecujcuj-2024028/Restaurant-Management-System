@@ -33,7 +33,6 @@ const LoginScreen = ({ navigation }) => {
 
     setLoading(true);
     try {
-      // El backend espera emailOrUsername
       await login({ email: emailOrUsername, password });
     } catch (error) {
       const errorMsg = error.response?.data?.message || error.message || 'Credenciales incorrectas';
@@ -72,7 +71,6 @@ const LoginScreen = ({ navigation }) => {
             }}
             autoCapitalize="none"
             error={errors.emailOrUsername}
-            leftIcon={<MaterialIcons name="person" size={20} color={COLORS.textSecondary} />}
           />
 
           <Input
@@ -83,9 +81,8 @@ const LoginScreen = ({ navigation }) => {
               setPassword(text);
               if (errors.password) setErrors({...errors, password: null});
             }}
-            secureTextEntry
+            isPassword={true}
             error={errors.password}
-            leftIcon={<MaterialIcons name="lock" size={20} color={COLORS.textSecondary} />}
           />
 
           <Button

@@ -54,7 +54,7 @@ const RegisterScreen = ({ navigation }) => {
         phone: formData.phone
       });
       
-      Alert.alert('¡Éxito!', 'Se te enviara un correo de confirmación, para activar tu cuenta.', [
+      Alert.alert('¡Éxito!', 'Cuenta creada correctamente. Por favor, inicia sesión.', [
         { text: 'OK', onPress: () => navigation.navigate('Login') }
       ]);
     } catch (error) {
@@ -138,7 +138,7 @@ const RegisterScreen = ({ navigation }) => {
             value={formData.password}
             onChangeText={(val) => handleChange('password', val)}
             error={errors.password}
-            secureTextEntry
+            isPassword={true}
           />
 
           <Input
@@ -147,7 +147,7 @@ const RegisterScreen = ({ navigation }) => {
             value={formData.confirmPassword}
             onChangeText={(val) => handleChange('confirmPassword', val)}
             error={errors.confirmPassword}
-            secureTextEntry
+            isPassword={true}
           />
 
           <Button 

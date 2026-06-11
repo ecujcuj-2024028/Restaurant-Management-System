@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, StyleSheet } from 'react-native';
+import { View, Text, TextInput, StyleSheet, TouchableOpacity } from 'react-native';
+import { FontAwesome6 } from '@expo/vector-icons';
 import { COLORS } from '../../constants/colors';
 import { THEME } from '../../constants/theme';
 
@@ -9,19 +10,23 @@ import { THEME } from '../../constants/theme';
  * @param {string} error - Error message
  * @param {React.ReactNode} leftIcon - Optional icon at the left
  * @param {React.ReactNode} rightIcon - Optional icon at the right
+ * @param {boolean} isPassword - If true, adds a toggle for secure text entry
  */
 const Input = ({ 
   label, 
   error, 
   leftIcon, 
   rightIcon, 
+  isPassword = false,
   style, 
   inputStyle,
   onFocus,
   onBlur,
+  secureTextEntry,
   ...props 
 }) => {
   const [isFocused, setIsFocused] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   const handleFocus = (e) => {
     setIsFocused(true);
@@ -33,6 +38,15 @@ const Input = ({
     if (onBlur) onBlur(e);
   };
 
+  const togglePasswordVisibility = () => {
+    setShowPassword(!showPassword);
+  };
+
+  // Determinar si el texto debe estar oculto
+  // Si es password, depende del estado interno showPassword
+  // Si no es password, respeta la prop secureTextEntry (si existe)
+  const isSecure = isPassword ? !showPassword : secureTextEntry;
+
   return (
     <View style={[styles.container, style]}>
       {label && <Text style={styles.label}>{label}</Text>}
@@ -43,14 +57,27 @@ const Input = ({
         inputStyle
       ]}>
         {leftIcon && <View style={styles.iconLeft}>{leftIcon}</View>}
+        
         <TextInput
           style={styles.textInput}
           placeholderTextColor={COLORS.textSecondary}
           onFocus={handleFocus}
           onBlur={handleBlur}
+          secureTextEntry={isSecure}
           {...props}
         />
-        {rightIcon && <View style={styles.iconRight}>{rightIcon}</View>}
+
+        {isPassword ? (
+          <TouchableOpacity onPress={togglePasswordVisibility} style={styles.iconRight}>
+            <FontAwesome6 
+              name={showPassword ? "eye-slash" : "eye"} 
+              size={18} 
+              color={COLORS.textSecondary} 
+            />
+          </TouchableOpacity>
+        ) : rightIcon ? (
+          <View style={styles.iconRight}>{rightIcon}</View>
+        ) : null}
       </View>
       {error && <Text style={styles.errorText}>{error}</Text>}
     </View>
@@ -96,7 +123,7 @@ const styles = StyleSheet.create({
     marginRight: 10,
   },
   iconRight: {
-    marginLeft: 10,
+    padding: 5,
   },
   errorText: {
     color: COLORS.error,
