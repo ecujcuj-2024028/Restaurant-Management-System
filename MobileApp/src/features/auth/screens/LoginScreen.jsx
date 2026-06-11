@@ -1,8 +1,13 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
+import { View, StyleSheet, Alert, KeyboardAvoidingView, Platform, ScrollView, TouchableOpacity } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { COLORS } from '../../../shared/constants/colors';
 import useAuthStore from '../../../store/useAuthStore';
+
+// Common Components
+import Button from '../../../shared/components/common/Button';
+import Input from '../../../shared/components/common/Input';
+import Typography from '../../../shared/components/common/Typography';
 
 const LoginScreen = ({ navigation }) => {
   const [emailOrUsername, setEmailOrUsername] = useState('');
@@ -30,7 +35,6 @@ const LoginScreen = ({ navigation }) => {
     try {
       // El backend espera emailOrUsername
       await login({ email: emailOrUsername, password });
-      // La redirección es automática gracias a AppNavigator y el estado global
     } catch (error) {
       const errorMsg = error.response?.data?.message || error.message || 'Credenciales incorrectas';
       Alert.alert('Error de Inicio de Sesión', errorMsg);
@@ -50,75 +54,70 @@ const LoginScreen = ({ navigation }) => {
             <View style={styles.logoIcon}>
               <MaterialIcons name="restaurant" size={40} color={COLORS.primary} />
             </View>
-            <Text style={styles.logoText}>GastroManager</Text>
+            <Typography variant="h2" color="white">GastroManager</Typography>
           </View>
         </View>
 
         <View style={styles.formContainer}>
-          <Text style={styles.title}>Bienvenido de vuelta</Text>
-          <Text style={styles.subtitle}>Inicia sesión para continuar</Text>
+          <Typography variant="h2">Bienvenido de vuelta</Typography>
+          <Typography variant="caption" style={{ marginBottom: 30 }}>Inicia sesión para continuar</Typography>
 
-          <View style={styles.inputContainer}>
-            <Text style={styles.label}>Correo o Usuario</Text>
-            <TextInput
-              style={[styles.input, errors.emailOrUsername && styles.inputError]}
-              placeholder="tu@correo.com o usuario"
-              value={emailOrUsername}
-              onChangeText={(text) => {
-                setEmailOrUsername(text);
-                if (errors.emailOrUsername) setErrors({...errors, emailOrUsername: null});
-              }}
-              autoCapitalize="none"
-            />
-            {errors.emailOrUsername && <Text style={styles.errorText}>{errors.emailOrUsername}</Text>}
-          </View>
+          <Input
+            label="Correo o Usuario"
+            placeholder="tu@correo.com o usuario"
+            value={emailOrUsername}
+            onChangeText={(text) => {
+              setEmailOrUsername(text);
+              if (errors.emailOrUsername) setErrors({...errors, emailOrUsername: null});
+            }}
+            autoCapitalize="none"
+            error={errors.emailOrUsername}
+            leftIcon={<MaterialIcons name="person" size={20} color={COLORS.textSecondary} />}
+          />
 
-          <View style={styles.inputContainer}>
-            <Text style={styles.label}>Contraseña</Text>
-            <TextInput
-              style={[styles.input, errors.password && styles.inputError]}
-              placeholder="••••••••"
-              value={password}
-              onChangeText={(text) => {
-                setPassword(text);
-                if (errors.password) setErrors({...errors, password: null});
-              }}
-              secureTextEntry
-            />
-            {errors.password && <Text style={styles.errorText}>{errors.password}</Text>}
-          </View>
+          <Input
+            label="Contraseña"
+            placeholder="••••••••"
+            value={password}
+            onChangeText={(text) => {
+              setPassword(text);
+              if (errors.password) setErrors({...errors, password: null});
+            }}
+            secureTextEntry
+            error={errors.password}
+            leftIcon={<MaterialIcons name="lock" size={20} color={COLORS.textSecondary} />}
+          />
 
-          <TouchableOpacity 
-            style={styles.forgotPassword} 
+          <Button
+            title="¿Olvidaste tu contraseña?"
+            variant="ghost"
+            style={styles.forgotPassword}
+            textStyle={styles.forgotPasswordText}
             onPress={() => navigation.navigate('ForgotPassword')}
-          >
-            <Text style={styles.forgotPasswordText}>¿Olvidaste tu contraseña?</Text>
-          </TouchableOpacity>
+          />
 
-          <TouchableOpacity 
-            style={[styles.loginButton, loading && styles.disabledButton]} 
+          <Button
+            title="Iniciar Sesión"
             onPress={handleLogin}
-            disabled={loading}
-          >
-            <Text style={styles.loginButtonText}>
-              {loading ? 'Iniciando...' : 'Iniciar Sesión'}
-            </Text>
-          </TouchableOpacity>
+            loading={loading}
+            style={styles.loginButton}
+          />
 
           <View style={styles.footer}>
-            <Text style={styles.footerText}>¿No tienes cuenta? </Text>
+            <Typography variant="caption">¿No tienes cuenta? </Typography>
             <TouchableOpacity onPress={() => navigation.navigate('Register')}>
-              <Text style={styles.registerText}>Regístrate</Text>
+              <Typography variant="bodyBold" color={COLORS.primary}>Regístrate</Typography>
             </TouchableOpacity>
           </View>
 
           {/* BOTÓN SOLO PARA PRUEBAS */}
-          <TouchableOpacity 
-            style={styles.debugButton} 
+          <Button
+            title="Reiniciar Onboarding (Solo Pruebas)"
+            variant="outline"
+            style={styles.debugButton}
+            textStyle={styles.debugButtonText}
             onPress={() => setHasSeenOnboarding(false)}
-          >
-            <Text style={styles.debugButtonText}>Reiniciar Onboarding (Solo Pruebas)</Text>
-          </TouchableOpacity>
+          />
         </View>
       </ScrollView>
     </KeyboardAvoidingView>
@@ -153,11 +152,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 10,
   },
-  logoText: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: 'white',
-  },
   formContainer: {
     flex: 1,
     paddingHorizontal: 30,
@@ -168,96 +162,30 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 30,
     borderTopRightRadius: 30,
   },
-  title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: COLORS.text,
-    marginBottom: 5,
-  },
-  subtitle: {
-    fontSize: 16,
-    color: COLORS.textSecondary,
-    marginBottom: 30,
-  },
-  inputContainer: {
-    marginBottom: 15,
-  },
-  label: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: COLORS.text,
-    marginBottom: 8,
-  },
-  input: {
-    backgroundColor: 'white',
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    borderRadius: 10,
-    paddingHorizontal: 15,
-    paddingVertical: 12,
-    fontSize: 16,
-  },
-  inputError: {
-    borderColor: COLORS.error,
-  },
-  errorText: {
-    color: COLORS.error,
-    fontSize: 12,
-    marginTop: 5,
-  },
   forgotPassword: {
     alignSelf: 'flex-end',
-    marginBottom: 30,
+    marginBottom: 20,
+    minHeight: 0,
+    paddingVertical: 5,
+    paddingHorizontal: 0,
   },
   forgotPasswordText: {
-    color: COLORS.primary,
-    fontWeight: '600',
     fontSize: 14,
+    color: COLORS.primary,
   },
   loginButton: {
-    backgroundColor: COLORS.primary,
-    borderRadius: 10,
-    paddingVertical: 15,
-    alignItems: 'center',
-    shadowColor: COLORS.primary,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 5,
-    elevation: 5,
-  },
-  disabledButton: {
-    opacity: 0.7,
-  },
-  loginButtonText: {
-    color: 'white',
-    fontSize: 18,
-    fontWeight: 'bold',
+    marginVertical: 10,
   },
   footer: {
     flexDirection: 'row',
     justifyContent: 'center',
-    marginTop: 30,
-  },
-  footerText: {
-    color: COLORS.textSecondary,
-    fontSize: 14,
-  },
-  registerText: {
-    color: COLORS.primary,
-    fontWeight: 'bold',
-    fontSize: 14,
+    marginTop: 20,
   },
   debugButton: {
     marginTop: 40,
-    padding: 10,
-    borderWidth: 1,
-    borderColor: COLORS.border,
     borderStyle: 'dashed',
-    borderRadius: 10,
-    alignItems: 'center',
   },
   debugButtonText: {
-    color: COLORS.textSecondary,
     fontSize: 12,
     fontStyle: 'italic',
   },

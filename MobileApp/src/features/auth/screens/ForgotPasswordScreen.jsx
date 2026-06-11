@@ -1,9 +1,13 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { View, StyleSheet, Alert, KeyboardAvoidingView, Platform, ScrollView, TouchableOpacity } from 'react-native';
+import { FontAwesome6 } from '@expo/vector-icons';
 import { COLORS } from '../../../shared/constants/colors';
 import { forgotPassword } from '../../../api/auth';
 
+// Common Components
+import Button from '../../../shared/components/common/Button';
+import Input from '../../../shared/components/common/Input';
+import Typography from '../../../shared/components/common/Typography';
 
 const ForgotPasswordScreen = ({ navigation }) => {
     const [email, setEmail] = useState('');
@@ -11,16 +15,14 @@ const ForgotPasswordScreen = ({ navigation }) => {
     const [error, setError] = useState('');
 
     const handleResetPassword = async () => {
-        // Campo vacío
         if (!email.trim()) {
             setError('Por favor, ingresa tu correo electrónico.');
             return;
         }
 
-        //  Formato de correo electrónico válido
         const emailRegex = /\S+@\S+\.\S+/;
         if (!emailRegex.test(email)) {
-            setError('Por favor, ingresa un correo válido (ej: tu@correo.com).');
+            setError('Por favor, ingresa un correo válido.');
             return;
         }
 
@@ -53,52 +55,48 @@ const ForgotPasswordScreen = ({ navigation }) => {
                 keyboardShouldPersistTaps="handled"
             >
                 <View style={styles.container}>
-                    {/* Botón de Regreso (Estilo del primer diseño) */}
                     <View style={styles.containerReturnButton}>
                         <TouchableOpacity style={styles.returnButton} onPress={() => navigation?.goBack()}>
-                            <Ionicons name="arrow-back" size={30} color={COLORS.primary} />
-                            <Text style={styles.returnButtonText}>Volver</Text>
+                            <FontAwesome6 name="arrow-left" size={20} color={COLORS.primary} />
+                            <Typography variant="bodyBold" color={COLORS.primary} style={{ marginLeft: 10 }}>Volver</Typography>
                         </TouchableOpacity>
                     </View>
 
                     <View style={styles.containerMain}>
-                        {/* Icono agregado del segundo diseño */}
                         <View style={styles.iconContainer}>
-                            <Ionicons name="lock-open" size={50} color={COLORS.white || 'white'} />
+                            <FontAwesome6 name="lock-open" size={40} color="white" />
                         </View>
 
                         <View style={styles.containerInfo}>
-                            <Text style={styles.title}>Recuperar Contraseña</Text>
-                            <Text style={styles.parragraph}>Ingrese tu correo y te enviaremos instrucciones para restablecer tu contraseña.</Text>
+                            <Typography variant="h2" style={{ textAlign: 'center', marginBottom: 10 }}>Recuperar Contraseña</Typography>
+                            <Typography variant="caption" style={{ textAlign: 'center' }}>
+                                Ingresa tu correo y te enviaremos instrucciones para restablecer tu contraseña.
+                            </Typography>
                         </View>
 
                         <View style={styles.containerInput}>
-                            <Text style={styles.textInputLabel}>Correo Electrónico</Text>
-                            <TextInput
-                                style={[styles.input, error ? styles.inputError : null]}
+                            <Input
+                                label="Correo Electrónico"
                                 placeholder="tu@correo.com"
                                 keyboardType="email-address"
                                 autoCapitalize="none"
                                 value={email}
+                                error={error}
                                 onChangeText={(text) => {
                                     setEmail(text);
-                                    if (error) setError(''); // Limpia el error mientras el usuario escribe
+                                    if (error) setError('');
                                 }}
+                                leftIcon={<FontAwesome6 name="envelope" size={18} color={COLORS.textSecondary} />}
                             />
-                            {/* Mensaje de error visual */}
-                            {error ? <Text style={styles.errorText}>{error}</Text> : null}
                         </View>
 
                         <View style={styles.containerButton}>
-                            <TouchableOpacity
-                                style={[styles.button, loading && styles.disabledButton]}
+                            <Button
+                                title="Enviar Correo"
                                 onPress={handleResetPassword}
-                                disabled={loading}
-                            >
-                                <Text style={styles.buttonText}>
-                                    {loading ? 'Enviando...' : 'Enviar Correo'}
-                                </Text>
-                            </TouchableOpacity>
+                                loading={loading}
+                                style={styles.button}
+                            />
                         </View>
                     </View>
                 </View>
@@ -110,38 +108,27 @@ const ForgotPasswordScreen = ({ navigation }) => {
 const styles = StyleSheet.create({
     flexContainer: {
         flex: 1,
-        backgroundColor: COLORS.white || '#FFFFFF',
+        backgroundColor: COLORS.background,
     },
     scrollViewContent: {
         flexGrow: 1,
     },
     container: {
         flex: 1,
-        justifyContent: 'center',
-        alignItems: 'center',
     },
     containerReturnButton: {
-        position: 'absolute',
-        top: 50,
-        left: 20,
-        zIndex: 10,
+        marginTop: 50,
+        marginLeft: 20,
     },
     returnButton: {
         flexDirection: 'row',
         alignItems: 'center',
     },
-    returnButtonText: {
-        color: COLORS.primary,
-        fontSize: 16,
-        marginLeft: 5,
-    },
     containerMain: {
-        width: '100%',
         flex: 1,
         justifyContent: 'center',
         alignItems: 'center',
-        paddingHorizontal: 20,
-        marginTop: 60,
+        paddingHorizontal: 30,
     },
     iconContainer: {
         width: 100,
@@ -150,7 +137,7 @@ const styles = StyleSheet.create({
         backgroundColor: COLORS.primary,
         justifyContent: 'center',
         alignItems: 'center',
-        marginBottom: 20,
+        marginBottom: 30,
         shadowColor: COLORS.primary,
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.3,
@@ -158,78 +145,15 @@ const styles = StyleSheet.create({
         elevation: 5,
     },
     containerInfo: {
-        width: '100%',
-        paddingHorizontal: 20,
-        marginBottom: 20,
-    },
-    title: {
-        fontSize: 32,
-        textAlign: 'center',
-        paddingBottom: 10,
-        color: COLORS.text,
-    },
-    parragraph: {
-        fontSize: 14,
-        textAlign: 'center',
-        color: COLORS.text,
-        opacity: 0.6,
-        lineHeight: 22,
+        marginBottom: 30,
     },
     containerInput: {
         width: '100%',
-        paddingHorizontal: 20,
-    },
-    textInputLabel: {
-        fontSize: 16,
-        marginBottom: 5,
-        color: COLORS.text,
-        fontWeight: 'bold',
-    },
-    input: {
-        backgroundColor: COLORS.white || '#FFFFFF',
-        borderWidth: 1,
-        borderColor: COLORS.border || '#CCCCCC',
-        borderRadius: 10,
-        paddingHorizontal: 15,
-        paddingVertical: 12,
-        fontSize: 16,
-        height: 50,
-        width: '100%',
-    },
-    inputError: {
-        borderColor: 'red',
-        borderWidth: 1.5,
-    },
-    errorText: {
-        color: 'red',
-        fontSize: 12,
-        marginTop: 5,
-        marginLeft: 5,
     },
     containerButton: {
         width: '100%',
-        paddingHorizontal: 20,
-        marginTop: 30,
+        marginTop: 10,
     },
-    button: {
-        backgroundColor: COLORS.primary,
-        borderRadius: 10,
-        paddingVertical: 15,
-        alignItems: 'center',
-        shadowColor: COLORS.primary,
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.3,
-        shadowRadius: 5,
-        elevation: 5,
-    },
-    disabledButton: {
-        opacity: 0.6,
-    },
-    buttonText: {
-        color: COLORS.white || '#FFFFFF',
-        fontSize: 18,
-        fontWeight: 'bold',
-    }
 });
 
 export default ForgotPasswordScreen;
