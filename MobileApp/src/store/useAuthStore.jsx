@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import * as SecureStore from 'expo-secure-store';
 import { login as loginApi } from '../api/auth';
+import { saveExpoToken } from "../api/notifications";
 
 const useAuthStore = create((set) => ({
   user: null,
@@ -32,15 +33,31 @@ const useAuthStore = create((set) => ({
     set({ hasSeenOnboarding: value });
   },
 
-  login: async (credentials) => {
-    const data = await loginApi(credentials);
-    const { token, user } = data;
-    
-    await SecureStore.setItemAsync('userToken', token);
-    await SecureStore.setItemAsync('userData', JSON.stringify(user));
-    
-    set({ user, token, isAuthenticated: true });
-  },
+  login: async (credentials, expoToken = null) => {
+  const data = await loginApi(credentials);
+
+  const { token, user } = data;
+
+  await SecureStore.setItemAsync("userToken", token);
+  await SecureStore.setItemAsync(
+    "userData",
+    JSON.stringify(user)
+  );
+
+  if (expoToken) {
+    try {
+      await saveExpoToken(expoToken);
+    } catch (error) {
+      console.log(error);
+    }
+  }
+
+  set({
+    user,
+    token,
+    isAuthenticated: true,
+  });
+},
 
   logout: async () => {
     await SecureStore.deleteItemAsync('userToken');

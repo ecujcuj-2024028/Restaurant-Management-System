@@ -18,7 +18,7 @@ const AdminRestaurantStack = () => {
       <Stack.Screen
         name="AdminProducts"
         component={AdminProductsScreen}
-        options={{ headerShown: false }}
+        options={{ title: 'Mis Productos' }}
       />
     </Stack.Navigator>
   );
