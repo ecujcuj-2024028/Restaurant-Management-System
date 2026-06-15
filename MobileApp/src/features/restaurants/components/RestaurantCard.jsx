@@ -49,7 +49,7 @@ const RestaurantCard = ({ restaurant, onPress, isDark = false }) => {
             color={isDark ? COLORS.darkTextSecondary : COLORS.textSecondary}
             style={styles.detailText}
           >
-            {stats?.promedioRating ? stats.promedioRating.toFixed(1) : 'Nuevo'}
+            {stats?.promedioRating ? stats.promedioRating.toFixed(1) : 'Sin calificación'}
           </Typography>
           <View style={[styles.dot, { backgroundColor: isDark ? COLORS.darkTextSecondary : COLORS.textSecondary }]} />
           <Typography

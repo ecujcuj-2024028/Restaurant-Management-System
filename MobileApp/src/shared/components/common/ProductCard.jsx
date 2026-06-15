@@ -61,7 +61,7 @@ const ProductCard = ({ product, onPress, isDark = false }) => {
             <View style={styles.ratingRow}>
               <Ionicons name="star" size={10} color={COLORS.accent} />
               <Text style={[styles.ratingText, { color: isDark ? COLORS.darkTextSecondary : COLORS.textSecondary }]}>
-                {stats?.promedioRating ? stats.promedioRating.toFixed(1) : 'Nuevo'}
+                {stats?.promedioRating ? stats.promedioRating.toFixed(1) : 'Sin calificación'}
               </Text>
             </View>
           </View>

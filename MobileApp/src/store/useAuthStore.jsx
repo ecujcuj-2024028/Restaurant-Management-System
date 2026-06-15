@@ -2,8 +2,9 @@ import { create } from 'zustand';
 import * as SecureStore from 'expo-secure-store';
 import { login as loginApi } from '../api/auth';
 import { saveExpoToken } from "../api/notifications";
+import { getProfile } from '../api/users';
 
-const useAuthStore = create((set) => ({
+const useAuthStore = create((set, get) => ({
   user: null,
   token: null,
   isAuthenticated: false,
@@ -18,15 +19,37 @@ const useAuthStore = create((set) => ({
       const hasSeenOnboarding = await SecureStore.getItemAsync('hasSeenOnboarding');
       const theme = await SecureStore.getItemAsync('theme');
 
+      let parsedUser = userStr ? JSON.parse(userStr) : null;
+      
       set({ 
         token: token || null, 
-        user: userStr ? JSON.parse(userStr) : null, 
+        user: parsedUser, 
         isAuthenticated: !!token,
         hasSeenOnboarding: hasSeenOnboarding === 'true',
         isDarkMode: theme === null ? true : theme === 'dark',
-        isLoading: false 
       });
+
+      if (token) {
+        get().fetchProfile();
+      } else {
+        set({ isLoading: false });
+      }
     } catch (error) {
+      set({ isLoading: false });
+    }
+  },
+
+  fetchProfile: async () => {
+    try {
+      const response = await getProfile();
+      const userData = response.user;
+      if (userData) {
+        await SecureStore.setItemAsync('userData', JSON.stringify(userData));
+        set({ user: userData });
+      }
+    } catch (error) {
+      console.error('Error fetching profile:', error);
+    } finally {
       set({ isLoading: false });
     }
   },
