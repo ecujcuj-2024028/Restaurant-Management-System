@@ -1,0 +1,44 @@
+{
+  "menu": {
+    "myProfile": "Meu Perfil",
+    "myReservations": "Minhas Reservas",
+    "myOrders": "Meus Pedidos",
+    "events": "Eventos",
+    "notifications": "Notificações",
+    "cart": "Carrinho",
+    "preferences": "Preferências",
+    "help": "Ajuda e Suporte",
+    "logout": "Sair",
+    "back": "Voltar",
+    "backMenu": "Voltar ao Menu",
+    "appearance": "Configurações de Aparência",
+    "theme": "Tema",
+    "dark": "Modo Escuro",
+    "light": "Modo Claro",
+    "language": "Idioma",
+    "lang_es": "Espanhol",
+    "lang_en": "Inglês",
+    "lang_pt": "Português",
+    "lang_zh": "Chinês Simplificado",
+    "appearanceDesc": "Personalize a aparência do aplicativo no seu dispositivo."
+  },
+  "home": {
+    "greeting": "Olá",
+    "guest": "Convidado",
+    "searchPlaceholder": "Pesquisar restaurantes, comida...",
+    "categories": "Categorias",
+    "all": "Todas",
+    "featured": "Destaque perto de você",
+    "popular": "Pratos Populares",
+    "viewAll": "Ver tudo",
+    "noRestaurants": "Não há restaurantes nesta categoria.",
+    "noProducts": "Não há pratos disponíveis nesta categoria.",
+    "dishes": "pratos"
+  },
+  "tabs": {
+    "home": "Início",
+    "restaurants": "Restaurantes",
+    "reservations": "Reservas",
+    "menu": "Menu"
+  }
+}

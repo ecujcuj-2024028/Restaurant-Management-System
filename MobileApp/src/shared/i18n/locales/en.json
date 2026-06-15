@@ -1,0 +1,44 @@
+{
+  "menu": {
+    "myProfile": "My Profile",
+    "myReservations": "My Reservations",
+    "myOrders": "My Orders",
+    "events": "Events",
+    "notifications": "Notifications",
+    "cart": "Cart",
+    "preferences": "Preferences",
+    "help": "Help & Support",
+    "logout": "Log Out",
+    "back": "Back",
+    "backMenu": "Back to Menu",
+    "appearance": "Appearance Settings",
+    "theme": "Theme",
+    "dark": "Dark Mode",
+    "light": "Light Mode",
+    "language": "Language",
+    "lang_es": "Spanish",
+    "lang_en": "English",
+    "lang_pt": "Portuguese",
+    "lang_zh": "Simplified Chinese",
+    "appearanceDesc": "Customize how the app looks on your device."
+  },
+  "home": {
+    "greeting": "Hello",
+    "guest": "Guest",
+    "searchPlaceholder": "Search restaurants, food...",
+    "categories": "Categories",
+    "all": "All",
+    "featured": "Featured near you",
+    "popular": "Popular Dishes",
+    "viewAll": "View all",
+    "noRestaurants": "No restaurants found in this category.",
+    "noProducts": "No dishes available in this category.",
+    "dishes": "dishes"
+  },
+  "tabs": {
+    "home": "Home",
+    "restaurants": "Restaurants",
+    "reservations": "Reservations",
+    "menu": "Menu"
+  }
+}
