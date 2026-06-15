@@ -1,51 +1,58 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import {
   View,
-  FlatList,
   StyleSheet,
   ActivityIndicator,
   ScrollView,
   TouchableOpacity,
   RefreshControl,
+  FlatList,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS } from '../../../shared/constants/colors';
-import { COMMON_STYLES, THEME } from '../../../shared/constants/theme';
+import { THEME, COMMON_STYLES } from '../../../shared/constants/theme';
 import { getRestaurants } from '../../../api/restaurants';
+import { getProducts } from '../../../api/products';
 import RestaurantCard from '../components/RestaurantCard';
+import ProductCard from '../../../shared/components/common/ProductCard';
 import Input from '../../../shared/components/common/Input';
 import Typography from '../../../shared/components/common/Typography';
 
-// Categorías disponibles — se pueden extender según el backend
 const CATEGORIES = ['Todos', 'Comida Rápida', 'Italiana', 'Mexicana', 'Japonesa', 'Saludable', 'Postres'];
 
 const HomeScreen = ({ navigation }) => {
   const [restaurants, setRestaurants] = useState([]);
+  const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [search, setSearch] = useState('');
   const [activeCategory, setActiveCategory] = useState('Todos');
 
   useEffect(() => {
-    fetchRestaurants();
+    fetchData();
   }, []);
 
-  const fetchRestaurants = async (isRefresh = false) => {
+  const fetchData = async (isRefresh = false) => {
     if (isRefresh) setRefreshing(true);
     else setLoading(true);
     try {
-      const data = await getRestaurants();
-      setRestaurants(Array.isArray(data) ? data : []);
+      const [restaurantsRes, productsRes] = await Promise.all([
+        getRestaurants(),
+        getProducts()
+      ]);
+      
+      setRestaurants(restaurantsRes.restaurants || []);
+      setProducts(productsRes.products || []);
     } catch (error) {
-      console.error('Error fetching restaurants:', error);
+      console.error('Error fetching data:', error);
       setRestaurants([]);
+      setProducts([]);
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
   };
 
-  // Filtro combinado: categoría + búsqueda de texto
   const filteredRestaurants = useMemo(() => {
     return (restaurants || []).filter((r) => {
       const matchesSearch = r?.name?.toLowerCase().includes(search.toLowerCase());
@@ -55,6 +62,17 @@ const HomeScreen = ({ navigation }) => {
       return matchesSearch && matchesCategory;
     });
   }, [restaurants, search, activeCategory]);
+
+  const filteredProducts = useMemo(() => {
+    return (products || []).filter((p) => {
+      const matchesSearch = p?.name?.toLowerCase().includes(search.toLowerCase()) || 
+                           p?.description?.toLowerCase().includes(search.toLowerCase());
+      const matchesCategory =
+        activeCategory === 'Todos' ||
+        p?.category?.name?.toLowerCase() === activeCategory.toLowerCase();
+      return matchesSearch && matchesCategory;
+    });
+  }, [products, search, activeCategory]);
 
   if (loading) {
     return (
@@ -66,111 +84,107 @@ const HomeScreen = ({ navigation }) => {
 
   return (
     <View style={COMMON_STYLES.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        <Typography variant="h2" color={COLORS.text}>
-          Explorar
-        </Typography>
-        <Typography variant="caption" color={COLORS.textSecondary}>
-          Descubre los mejores restaurantes
-        </Typography>
-
-        {/* Barra de búsqueda — reutilizando el Input existente */}
-        <Input
-          placeholder="Buscar restaurantes..."
-          value={search}
-          onChangeText={setSearch}
-          style={styles.searchInput}
-          leftIcon={<Ionicons name="search-outline" size={20} color={COLORS.textSecondary} />}
-          rightIcon={
-            search.length > 0 ? (
-              <TouchableOpacity onPress={() => setSearch('')}>
-                <Ionicons name="close-circle" size={20} color={COLORS.textSecondary} />
-              </TouchableOpacity>
-            ) : null
-          }
-        />
-      </View>
-
-      {/* Filtros por categoría */}
-      <View style={styles.categoriesWrapper}>
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.categoriesContent}
-        >
-          {CATEGORIES.map((cat) => {
-            const isActive = cat === activeCategory;
-            return (
-              <TouchableOpacity
-                key={cat}
-                onPress={() => setActiveCategory(cat)}
-                style={[styles.categoryChip, isActive && styles.categoryChipActive]}
-                activeOpacity={0.7}
-              >
-                <Typography
-                  variant="small"
-                  color={isActive ? COLORS.white : COLORS.textSecondary}
-                  style={isActive && styles.categoryChipTextActive}
-                >
-                  {cat}
-                </Typography>
-              </TouchableOpacity>
-            );
-          })}
-        </ScrollView>
-      </View>
-
-      {/* Contador de resultados */}
-      <View style={styles.resultsRow}>
-        <Typography variant="caption" color={COLORS.textSecondary}>
-          {filteredRestaurants.length}{' '}
-          {filteredRestaurants.length === 1 ? 'resultado' : 'resultados'}
-        </Typography>
-      </View>
-
-      {/* Lista de restaurantes */}
-      <FlatList
-        data={filteredRestaurants}
-        keyExtractor={(item) => item.id.toString()}
-        renderItem={({ item }) => (
-          <RestaurantCard
-            restaurant={item}
-            onPress={() => navigation.navigate('RestaurantDetail', { id: item.id })}
-          />
-        )}
-        contentContainerStyle={styles.listContent}
+      <ScrollView
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
-            onRefresh={() => fetchRestaurants(true)}
+            onRefresh={() => fetchData(true)}
             colors={[COLORS.primary]}
-            tintColor={COLORS.primary}
           />
         }
-        ListEmptyComponent={
-          <View style={styles.emptyContainer}>
-            <Ionicons name="search-outline" size={48} color={COLORS.border} />
-            <Typography variant="body" color={COLORS.textSecondary} style={styles.emptyText}>
-              No se encontraron restaurantes
-            </Typography>
-            {(search || activeCategory !== 'Todos') && (
-              <TouchableOpacity
-                onPress={() => {
-                  setSearch('');
-                  setActiveCategory('Todos');
-                }}
-                style={styles.clearFiltersBtn}
-              >
-                <Typography variant="caption" color={COLORS.primary}>
-                  Limpiar filtros
-                </Typography>
-              </TouchableOpacity>
+      >
+        {/* Header */}
+        <View style={styles.header}>
+          <Typography variant="h2" color={COLORS.text}>
+            Explorar
+          </Typography>
+          <Input
+            placeholder="Buscar comida o restaurantes..."
+            value={search}
+            onChangeText={setSearch}
+            style={styles.searchInput}
+            leftIcon={<Ionicons name="search-outline" size={20} color={COLORS.textSecondary} />}
+          />
+        </View>
+
+        {/* Filtros por categoría */}
+        <View style={styles.categoriesWrapper}>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.categoriesContent}
+          >
+            {CATEGORIES.map((cat) => {
+              const isActive = cat === activeCategory;
+              return (
+                <TouchableOpacity
+                  key={cat}
+                  onPress={() => setActiveCategory(cat)}
+                  style={[styles.categoryChip, isActive && styles.categoryChipActive]}
+                >
+                  <Typography
+                    variant="small"
+                    color={isActive ? COLORS.white : COLORS.textSecondary}
+                  >
+                    {cat}
+                  </Typography>
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
+        </View>
+
+        {/* Carrusel de Restaurantes */}
+        <View style={styles.sectionContainer}>
+          <View style={styles.sectionHeader}>
+            <Typography variant="h3" color={COLORS.text}>Restaurantes Populares</Typography>
+            <TouchableOpacity onPress={() => {}}>
+              <Typography variant="caption" color={COLORS.primary}>Ver todos</Typography>
+            </TouchableOpacity>
+          </View>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.restaurantsCarousel}
+          >
+            {filteredRestaurants.length > 0 ? (
+              filteredRestaurants.map((item) => (
+                <RestaurantCard
+                  key={item._id}
+                  restaurant={item}
+                  onPress={() => navigation.navigate('RestaurantDetail', { id: item._id })}
+                />
+              ))
+            ) : (
+              <Typography variant="body" color={COLORS.textSecondary}>No hay restaurantes disponibles</Typography>
+            )}
+          </ScrollView>
+        </View>
+
+        {/* Lista de Productos */}
+        <View style={styles.sectionContainer}>
+          <View style={styles.sectionHeader}>
+            <Typography variant="h3" color={COLORS.text}>Platos Destacados</Typography>
+          </View>
+          <View style={styles.productsList}>
+            {filteredProducts.length > 0 ? (
+              filteredProducts.map((item) => (
+                <ProductCard
+                  key={item._id}
+                  product={item}
+                  onPress={() => {}}
+                />
+              ))
+            ) : (
+              <View style={styles.emptyContainer}>
+                <Ionicons name="fast-food-outline" size={48} color={COLORS.border} />
+                <Typography variant="body" color={COLORS.textSecondary}>No se encontraron productos</Typography>
+              </View>
             )}
           </View>
-        }
-      />
+        </View>
+      </ScrollView>
     </View>
   );
 };
@@ -181,25 +195,21 @@ const styles = StyleSheet.create({
     paddingTop: THEME.spacing.lg,
     paddingBottom: THEME.spacing.sm,
     backgroundColor: COLORS.white,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.border,
   },
   searchInput: {
     marginTop: THEME.spacing.sm,
-    marginBottom: 0,
   },
   categoriesWrapper: {
     backgroundColor: COLORS.white,
-    paddingBottom: THEME.spacing.sm,
+    paddingBottom: THEME.spacing.md,
   },
   categoriesContent: {
     paddingHorizontal: THEME.spacing.md,
     gap: THEME.spacing.sm,
-    paddingTop: THEME.spacing.sm,
   },
   categoryChip: {
     paddingHorizontal: THEME.spacing.md,
-    paddingVertical: THEME.spacing.xs + 2,
+    paddingVertical: 8,
     borderRadius: THEME.borderRadius.round,
     backgroundColor: COLORS.background,
     borderWidth: 1,
@@ -209,32 +219,27 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.primary,
     borderColor: COLORS.primary,
   },
-  categoryChipTextActive: {
-    fontWeight: '600',
-  },
-  resultsRow: {
+  sectionContainer: {
+    marginTop: THEME.spacing.md,
     paddingHorizontal: THEME.spacing.md,
-    paddingVertical: THEME.spacing.xs,
   },
-  listContent: {
-    padding: THEME.spacing.md,
-    paddingTop: THEME.spacing.sm,
+  sectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: THEME.spacing.sm,
+  },
+  restaurantsCarousel: {
+    paddingRight: THEME.spacing.md,
+    paddingBottom: THEME.spacing.xs,
+  },
+  productsList: {
+    paddingBottom: THEME.spacing.xl,
   },
   emptyContainer: {
     alignItems: 'center',
-    marginTop: 60,
+    paddingVertical: 40,
     gap: THEME.spacing.sm,
-  },
-  emptyText: {
-    textAlign: 'center',
-  },
-  clearFiltersBtn: {
-    marginTop: THEME.spacing.xs,
-    paddingVertical: THEME.spacing.xs,
-    paddingHorizontal: THEME.spacing.md,
-    borderRadius: THEME.borderRadius.round,
-    borderWidth: 1,
-    borderColor: COLORS.primary,
   },
 });
 
