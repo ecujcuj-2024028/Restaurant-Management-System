@@ -9,23 +9,34 @@ const useAuthStore = create((set) => ({
   isAuthenticated: false,
   hasSeenOnboarding: false,
   isLoading: true,
+  isDarkMode: true,
 
   initialize: async () => {
     try {
       const token = await SecureStore.getItemAsync('userToken');
       const userStr = await SecureStore.getItemAsync('userData');
       const hasSeenOnboarding = await SecureStore.getItemAsync('hasSeenOnboarding');
-      
+      const theme = await SecureStore.getItemAsync('theme');
+
       set({ 
         token: token || null, 
         user: userStr ? JSON.parse(userStr) : null, 
         isAuthenticated: !!token,
         hasSeenOnboarding: hasSeenOnboarding === 'true',
+        isDarkMode: theme === null ? true : theme === 'dark',
         isLoading: false 
       });
     } catch (error) {
       set({ isLoading: false });
     }
+  },
+
+  toggleTheme: async () => {
+    set((state) => {
+      const newMode = !state.isDarkMode;
+      SecureStore.setItemAsync('theme', newMode ? 'dark' : 'light');
+      return { isDarkMode: newMode };
+    });
   },
 
   setHasSeenOnboarding: async (value) => {
