@@ -1,32 +1,83 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { View, Text, StyleSheet, Image, TouchableOpacity } from 'react-native';
 import { COLORS } from '../../../shared/constants/colors';
 import { THEME, COMMON_STYLES } from '../../../shared/constants/theme';
 import { Ionicons } from '@expo/vector-icons';
+import Typography from './Typography';
+import useReviewStore from '../../../store/useReviewStore';
 
-const ProductCard = ({ product, onPress }) => {
+const ProductCard = ({ product, onPress, isDark = false }) => {
+  const { productStats } = useReviewStore();
+  const id = product._id || product.id;
+  const stats = productStats[id];
+
   const mainImage = product.image 
     ? product.image 
     : 'https://via.placeholder.com/150?text=Producto';
 
   return (
-    <TouchableOpacity style={[styles.container, COMMON_STYLES.shadow]} onPress={onPress}>
+    <TouchableOpacity 
+      style={[
+        styles.container, 
+        isDark ? styles.containerDark : styles.containerLight,
+        !isDark && COMMON_STYLES.shadow
+      ]} 
+      onPress={onPress}
+    >
       <Image source={{ uri: mainImage }} style={styles.image} />
       <View style={styles.content}>
         <View style={styles.header}>
-          <Text style={styles.name} numberOfLines={1}>{product.name}</Text>
-          <Text style={styles.price}>Q {product.price.toFixed(2)}</Text>
+          <Typography 
+            variant="bodyBold" 
+            color={isDark ? COLORS.darkText : COLORS.text} 
+            numberOfLines={1} 
+            style={styles.name}
+          >
+            {product.name}
+          </Typography>
+          <Typography 
+            variant="bodyBold" 
+            color={COLORS.primary} 
+            style={styles.price}
+          >
+            Q {product.price.toFixed(2)}
+          </Typography>
         </View>
-        <Text style={styles.description} numberOfLines={2}>
+        <Typography 
+          variant="small" 
+          color={isDark ? COLORS.darkTextSecondary : COLORS.textSecondary} 
+          numberOfLines={2} 
+          style={styles.description}
+        >
           {product.description || 'Sin descripción disponible'}
-        </Text>
+        </Typography>
         <View style={styles.footer}>
-          <View style={styles.tag}>
-            <Text style={styles.tagText}>{product.category?.name || 'Comida'}</Text>
+          <View style={styles.leftFooter}>
+            <View style={[styles.tag, { backgroundColor: isDark ? '#334155' : COLORS.background }]}>
+              <Text style={[styles.tagText, { color: isDark ? COLORS.darkTextSecondary : COLORS.textSecondary }]}>
+                {product.category?.name || 'Comida'}
+              </Text>
+            </View>
+            <View style={styles.ratingRow}>
+              <Ionicons name="star" size={10} color={COLORS.accent} />
+              <Text style={[styles.ratingText, { color: isDark ? COLORS.darkTextSecondary : COLORS.textSecondary }]}>
+                {stats?.promedioRating ? stats.promedioRating.toFixed(1) : 'Nuevo'}
+              </Text>
+            </View>
           </View>
           <View style={styles.restaurantInfo}>
-            <Ionicons name="restaurant-outline" size={12} color={COLORS.textSecondary} />
-            <Text style={styles.restaurantName} numberOfLines={1}>
+            <Ionicons 
+              name="restaurant-outline" 
+              size={12} 
+              color={isDark ? COLORS.darkTextSecondary : COLORS.textSecondary} 
+            />
+            <Text 
+              style={[
+                styles.restaurantName, 
+                { color: isDark ? COLORS.darkTextSecondary : COLORS.textSecondary }
+              ]} 
+              numberOfLines={1}
+            >
               {product.restaurant?.name || 'Restaurante'}
             </Text>
           </View>
@@ -39,19 +90,26 @@ const ProductCard = ({ product, onPress }) => {
 const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
-    backgroundColor: COLORS.white,
-    borderRadius: THEME.borderRadius.md,
-    marginBottom: THEME.spacing.md,
+    borderRadius: 16,
     overflow: 'hidden',
-    height: 110,
+    height: 120,
+  },
+  containerLight: {
+    backgroundColor: COLORS.white,
+  },
+  containerDark: {
+    backgroundColor: COLORS.darkSurface,
   },
   image: {
-    width: 110,
-    height: 110,
+    width: 100,
+    height: 100,
+    borderRadius: 12,
+    margin: 10,
   },
   content: {
     flex: 1,
-    padding: THEME.spacing.sm,
+    padding: 12,
+    paddingLeft: 0,
     justifyContent: 'space-between',
   },
   header: {
@@ -60,38 +118,42 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   name: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: COLORS.text,
     flex: 1,
-    marginRight: THEME.spacing.xs,
+    marginRight: 8,
   },
   price: {
-    fontSize: 15,
-    fontWeight: 'bold',
-    color: COLORS.primary,
+    fontSize: 14,
   },
   description: {
-    fontSize: 13,
-    color: COLORS.textSecondary,
     marginVertical: 4,
   },
   footer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginTop: 4,
+  },
+  leftFooter: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
   },
   tag: {
-    backgroundColor: COLORS.background,
     paddingHorizontal: 8,
     paddingVertical: 2,
-    borderRadius: THEME.borderRadius.sm,
+    borderRadius: 6,
   },
   tagText: {
-    fontSize: 11,
-    color: COLORS.textSecondary,
+    fontSize: 10,
     fontWeight: '600',
+  },
+  ratingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 2,
+  },
+  ratingText: {
+    fontSize: 10,
+    fontWeight: 'bold',
   },
   restaurantInfo: {
     flexDirection: 'row',
@@ -101,8 +163,7 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   restaurantName: {
-    fontSize: 11,
-    color: COLORS.textSecondary,
+    fontSize: 10,
     marginLeft: 4,
     maxWidth: 80,
   },

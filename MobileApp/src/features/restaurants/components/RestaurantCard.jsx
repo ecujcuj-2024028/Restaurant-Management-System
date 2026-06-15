@@ -1,30 +1,83 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Image } from 'react-native';
 import { COLORS } from '../../../shared/constants/colors';
 import { THEME, COMMON_STYLES } from '../../../shared/constants/theme';
 import { Ionicons } from '@expo/vector-icons';
+import Typography from '../../../shared/components/common/Typography';
+import useReviewStore from '../../../store/useReviewStore';
 
-const RestaurantCard = ({ restaurant, onPress }) => {
-  // Obtenemos la primera foto del array o usamos un placeholder
-  const mainImage = restaurant.photos && restaurant.photos.length > 0 
-    ? restaurant.photos[0] 
+const RestaurantCard = ({ restaurant, onPress, isDark = false }) => {
+  const { restaurantStats, fetchRestaurantStats } = useReviewStore();
+  const id = restaurant._id || restaurant.id;
+  const stats = restaurantStats[id];
+
+  useEffect(() => {
+    if (id) {
+      fetchRestaurantStats(id);
+    }
+  }, [id]);
+
+  const mainImage = restaurant.photos && restaurant.photos.length > 0
+    ? restaurant.photos[0]
     : 'https://via.placeholder.com/400x400?text=Restaurante';
 
   return (
-    <TouchableOpacity style={[styles.card, COMMON_STYLES.shadow]} onPress={onPress}>
-      <Image 
-        source={{ uri: mainImage }} 
+    <TouchableOpacity
+      style={[
+        styles.card,
+        isDark ? styles.cardDark : styles.cardLight,
+        !isDark && COMMON_STYLES.shadow
+      ]}
+      onPress={onPress}
+    >
+      <Image
+        source={{ uri: mainImage }}
         style={styles.image}
       />
-      <View style={styles.overlay}>
-        <View style={styles.rating}>
-          <Ionicons name="star" size={12} color={COLORS.accent} />
-          <Text style={styles.ratingText}>{restaurant.rating || '4.5'}</Text>
-        </View>
-      </View>
       <View style={styles.info}>
-        <Text style={styles.name} numberOfLines={1}>{restaurant.name}</Text>
-        <Text style={styles.category} numberOfLines={1}>{restaurant.category || 'Categoría'}</Text>
+        <Typography
+          variant="bodyBold"
+          color={isDark ? COLORS.darkText : COLORS.text}
+          numberOfLines={1}
+        >
+          {restaurant.name}
+        </Typography>
+        <View style={styles.detailsRow}>
+          <Ionicons name="star" size={12} color={COLORS.accent} />
+          <Typography
+            variant="small"
+            color={isDark ? COLORS.darkTextSecondary : COLORS.textSecondary}
+            style={styles.detailText}
+          >
+            {stats?.promedioRating ? stats.promedioRating.toFixed(1) : 'Nuevo'}
+          </Typography>
+          <View style={[styles.dot, { backgroundColor: isDark ? COLORS.darkTextSecondary : COLORS.textSecondary }]} />
+          <Typography
+            variant="small"
+            color={isDark ? COLORS.darkTextSecondary : COLORS.textSecondary}
+          >
+            {stats?.totalReviews ? `${stats.totalReviews} reseñas` : 'Sin reseñas'}
+          </Typography>
+        </View>
+
+        {/* Dirección del Restaurante */}
+        <View style={styles.addressRow}>
+          <Ionicons 
+            name="location-outline" 
+            size={12} 
+            color={isDark ? COLORS.darkTextSecondary : COLORS.textSecondary} 
+          />
+          <Typography
+            variant="small"
+            color={isDark ? COLORS.darkTextSecondary : COLORS.textSecondary}
+            numberOfLines={1}
+            style={styles.addressText}
+          >
+            {typeof restaurant.address === 'object' 
+              ? `${restaurant.address.street || ''}, ${restaurant.address.city || ''}`
+              : restaurant.address || 'Dirección no disponible'}
+          </Typography>
+        </View>
       </View>
     </TouchableOpacity>
   );
@@ -32,49 +85,48 @@ const RestaurantCard = ({ restaurant, onPress }) => {
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: COLORS.white,
-    borderRadius: THEME.borderRadius.lg,
+    borderRadius: 16,
     marginRight: 16,
-    width: 160,
-    height: 180,
+    width: 220,
     overflow: 'hidden',
-    marginBottom: 8, // Para la sombra
+    marginBottom: 8,
+  },
+  cardLight: {
+    backgroundColor: COLORS.white,
+  },
+  cardDark: {
+    backgroundColor: COLORS.darkSurface,
   },
   image: {
     width: '100%',
     height: 120,
-  },
-  overlay: {
-    position: 'absolute',
-    top: 8,
-    right: 8,
-  },
-  rating: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.9)',
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: THEME.borderRadius.sm,
-  },
-  ratingText: {
-    fontSize: 10,
-    fontWeight: 'bold',
-    marginLeft: 2,
-    color: COLORS.text,
+    borderRadius: 12,
   },
   info: {
-    padding: 10,
+    padding: 12,
   },
-  name: {
-    fontSize: 14,
-    fontWeight: 'bold',
-    color: COLORS.text,
+  detailsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 4,
   },
-  category: {
-    fontSize: 12,
-    color: COLORS.textSecondary,
-    marginTop: 2,
+  detailText: {
+    marginLeft: 4,
+  },
+  dot: {
+    width: 3,
+    height: 3,
+    borderRadius: 1.5,
+    marginHorizontal: 6,
+  },
+  addressRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 6,
+  },
+  addressText: {
+    marginLeft: 4,
+    flex: 1,
   }
 });
 

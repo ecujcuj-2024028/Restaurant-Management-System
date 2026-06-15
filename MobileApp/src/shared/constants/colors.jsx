@@ -13,4 +13,11 @@ export const COLORS = {
   border: '#DEE2E6',
   white: '#FFFFFF',
   black: '#000000',
+
+  // Dark Theme
+  darkBackground: '#0F172A',
+  darkSurface: '#1E293B',
+  darkText: '#FFFFFF',
+  darkTextSecondary: '#94A3B8',
+  darkBorder: '#334155',
 };
