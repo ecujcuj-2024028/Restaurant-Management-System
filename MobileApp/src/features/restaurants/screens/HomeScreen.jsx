@@ -7,26 +7,75 @@ import {
   TouchableOpacity,
   RefreshControl,
   FlatList,
+  StatusBar,
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { COLORS } from '../../../shared/constants/colors';
 import { THEME, COMMON_STYLES } from '../../../shared/constants/theme';
 import { getRestaurants } from '../../../api/restaurants';
 import { getProducts } from '../../../api/products';
+import useAuthStore from '../../../store/useAuthStore';
 import RestaurantCard from '../components/RestaurantCard';
 import ProductCard from '../../../shared/components/common/ProductCard';
 import Input from '../../../shared/components/common/Input';
 import Typography from '../../../shared/components/common/Typography';
+import Skeleton from '../../../shared/components/common/Skeleton';
 
-const CATEGORIES = ['Todos', 'Comida Rápida', 'Italiana', 'Mexicana', 'Japonesa', 'Saludable', 'Postres'];
+const CATEGORIES = [
+  { id: '1', name: 'Pizza', icon: 'pizza' },
+  { id: '2', name: 'Sushi', icon: 'food-variant' },
+  { id: '3', name: 'Burgers', icon: 'hamburger' },
+  { id: '4', name: 'Tacos', icon: 'taco' },
+];
+
+const HomeSkeleton = ({ isDark }) => (
+  <View style={[styles.container, { backgroundColor: isDark ? COLORS.darkBackground : COLORS.background, paddingTop: 40 }]}>
+    <View style={styles.header}>
+      <View style={COMMON_STYLES.row}>
+        <View style={{ flex: 1 }}>
+          <Skeleton width={120} height={20} style={{ marginBottom: 8 }} isDark={isDark} />
+          <Skeleton width={150} height={30} isDark={isDark} />
+        </View>
+        <Skeleton width={45} height={45} borderRadius={12} isDark={isDark} />
+      </View>
+      <Skeleton width="100%" height={50} borderRadius={12} style={{ marginTop: 24 }} isDark={isDark} />
+    </View>
+    <View style={{ marginTop: 24, paddingHorizontal: 16 }}>
+      <Skeleton width={100} height={20} style={{ marginBottom: 16 }} isDark={isDark} />
+      <View style={COMMON_STYLES.row}>
+        {[1, 2, 3, 4].map((i) => (
+          <Skeleton key={i} width={70} height={35} borderRadius={20} style={{ marginRight: 10 }} isDark={isDark} />
+        ))}
+      </View>
+    </View>
+    <View style={{ marginTop: 32, paddingHorizontal: 16 }}>
+      <View style={[COMMON_STYLES.row, { justifyContent: 'space-between', marginBottom: 16 }]}>
+        <Skeleton width={150} height={24} isDark={isDark} />
+        <Skeleton width={80} height={16} isDark={isDark} />
+      </View>
+      <View style={COMMON_STYLES.row}>
+        {[1, 2].map((i) => (
+          <Skeleton key={i} width={160} height={180} borderRadius={16} style={{ marginRight: 16 }} isDark={isDark} />
+        ))}
+      </View>
+    </View>
+  </View>
+);
 
 const HomeScreen = ({ navigation }) => {
+  const { user, isDarkMode } = useAuthStore();
   const [restaurants, setRestaurants] = useState([]);
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [search, setSearch] = useState('');
-  const [activeCategory, setActiveCategory] = useState('Todos');
+  const [activeCategory, setActiveCategory] = useState('Todas');
+
+  const bgColor = isDarkMode ? COLORS.darkBackground : COLORS.background;
+  const textColor = isDarkMode ? COLORS.darkText : COLORS.text;
+  const textSecondary = isDarkMode ? COLORS.darkTextSecondary : COLORS.textSecondary;
+  const surfaceColor = isDarkMode ? COLORS.darkSurface : COLORS.white;
 
   useEffect(() => {
     fetchData();
@@ -53,12 +102,27 @@ const HomeScreen = ({ navigation }) => {
     }
   };
 
+  const categories = useMemo(() => {
+    const uniqueCats = new Set();
+    products.forEach(p => {
+      const catName = p.category?.name || p.category;
+      if (catName) uniqueCats.add(catName);
+    });
+    
+    const catsArray = Array.from(uniqueCats).map((name, index) => ({
+      id: (index + 1).toString(),
+      name,
+      icon: 'food'
+    }));
+
+    return [{ id: '0', name: 'Todas', icon: 'apps' }, ...catsArray];
+  }, [products]);
+
   const filteredRestaurants = useMemo(() => {
     return (restaurants || []).filter((r) => {
       const matchesSearch = r?.name?.toLowerCase().includes(search.toLowerCase());
-      const matchesCategory =
-        activeCategory === 'Todos' ||
-        r?.category?.toLowerCase() === activeCategory.toLowerCase();
+      const matchesCategory = activeCategory === 'Todas' || 
+                             r?.category?.toLowerCase() === activeCategory.toLowerCase();
       return matchesSearch && matchesCategory;
     });
   }, [restaurants, search, activeCategory]);
@@ -67,67 +131,79 @@ const HomeScreen = ({ navigation }) => {
     return (products || []).filter((p) => {
       const matchesSearch = p?.name?.toLowerCase().includes(search.toLowerCase()) || 
                            p?.description?.toLowerCase().includes(search.toLowerCase());
-      const matchesCategory =
-        activeCategory === 'Todos' ||
-        p?.category?.name?.toLowerCase() === activeCategory.toLowerCase();
+      const pCat = p.category?.name || p.category;
+      const matchesCategory = activeCategory === 'Todas' || 
+                             pCat?.toLowerCase() === activeCategory.toLowerCase();
       return matchesSearch && matchesCategory;
     });
   }, [products, search, activeCategory]);
 
   if (loading) {
-    return (
-      <View style={[COMMON_STYLES.container, COMMON_STYLES.center]}>
-        <ActivityIndicator size="large" color={COLORS.primary} />
-      </View>
-    );
+    return <HomeSkeleton isDark={isDarkMode} />;
   }
 
   return (
-    <View style={COMMON_STYLES.container}>
+    <SafeAreaView style={[styles.container, { backgroundColor: bgColor }]} edges={['top', 'left', 'right']}>
+      <StatusBar barStyle={isDarkMode ? "light-content" : "dark-content"} />
       <ScrollView
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
             onRefresh={() => fetchData(true)}
-            colors={[COLORS.primary]}
+            tintColor={COLORS.primary}
           />
         }
       >
-        {/* Header */}
+        {/* Header con Saludo y Notificación */}
         <View style={styles.header}>
-          <Typography variant="h2" color={COLORS.text}>
-            Explorar
-          </Typography>
+          <View style={styles.greetingRow}>
+            <View>
+              <Typography variant="body" color={textSecondary}>
+                Hola, {user?.name || (user?.firstName ? `${user.firstName} ${user.lastName}` : 'Invitado')}
+              </Typography>
+            </View>
+            <TouchableOpacity style={[styles.notificationIcon, { backgroundColor: surfaceColor }]}>
+              <Ionicons name="notifications" size={24} color={textColor} />
+              <View style={[styles.notificationDot, { borderColor: surfaceColor }]} />
+            </TouchableOpacity>
+          </View>
+
+          {/* Buscador Estilo Adaptable */}
           <Input
-            placeholder="Buscar comida o restaurantes..."
+            placeholder="Buscar restaurantes, comidas..."
             value={search}
             onChangeText={setSearch}
-            style={styles.searchInput}
-            leftIcon={<Ionicons name="search-outline" size={20} color={COLORS.textSecondary} />}
+            style={styles.searchContainer}
+            inputStyle={[styles.searchInput, { backgroundColor: surfaceColor, color: textColor }]}
+            placeholderTextColor={textSecondary}
+            leftIcon={<Ionicons name="search-outline" size={20} color={textSecondary} />}
           />
         </View>
 
-        {/* Filtros por categoría */}
-        <View style={styles.categoriesWrapper}>
+        {/* Categorías Dinámicas */}
+        <View style={styles.sectionContainer}>
+          <Typography variant="h3" color={textColor} style={styles.sectionTitle}>
+            Categorías
+          </Typography>
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.categoriesContent}
+            contentContainerStyle={styles.categoriesList}
           >
-            {CATEGORIES.map((cat) => {
-              const isActive = cat === activeCategory;
+            {categories.map((cat) => {
+              const isActive = cat.name === activeCategory;
               return (
                 <TouchableOpacity
-                  key={cat}
-                  onPress={() => setActiveCategory(cat)}
-                  style={[styles.categoryChip, isActive && styles.categoryChipActive]}
+                  key={cat.id}
+                  onPress={() => setActiveCategory(cat.name)}
+                  style={[styles.categoryChip, { backgroundColor: surfaceColor }, isActive && styles.categoryChipActive]}
                 >
                   <Typography
                     variant="small"
-                    color={isActive ? COLORS.white : COLORS.textSecondary}
+                    color={isActive ? COLORS.white : textSecondary}
                   >
-                    {cat}
+                    {cat.name}
                   </Typography>
                 </TouchableOpacity>
               );
@@ -135,111 +211,134 @@ const HomeScreen = ({ navigation }) => {
           </ScrollView>
         </View>
 
-        {/* Carrusel de Restaurantes */}
+        {/* Destacados cerca de ti */}
         <View style={styles.sectionContainer}>
           <View style={styles.sectionHeader}>
-            <Typography variant="h3" color={COLORS.text}>Restaurantes Populares</Typography>
-            <TouchableOpacity onPress={() => {}}>
-              <Typography variant="caption" color={COLORS.primary}>Ver todos</Typography>
+            <Typography variant="h3" color={textColor}>
+              {activeCategory === 'Todas' ? 'Destacados cerca de ti' : `Restaurantes de ${activeCategory}`}
+            </Typography>
+            <TouchableOpacity>
+              <Typography variant="caption" color={COLORS.primary}>Ver todos &rarr;</Typography>
             </TouchableOpacity>
           </View>
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.restaurantsCarousel}
+            contentContainerStyle={styles.horizontalList}
           >
             {filteredRestaurants.length > 0 ? (
               filteredRestaurants.map((item) => (
                 <RestaurantCard
-                  key={item._id}
+                  key={item._id || item.id}
                   restaurant={item}
-                  onPress={() => navigation.navigate('RestaurantDetail', { id: item._id })}
+                  isDark={isDarkMode}
+                  onPress={() => navigation.navigate('RestaurantDetail', { id: item._id || item.id })}
                 />
               ))
             ) : (
-              <Typography variant="body" color={COLORS.textSecondary}>No hay restaurantes disponibles</Typography>
+              <Typography variant="small" color={textSecondary} style={{ paddingVertical: 20 }}>
+                No hay restaurantes en esta categoría.
+              </Typography>
             )}
           </ScrollView>
         </View>
 
-        {/* Lista de Productos */}
+        {/* Platos Populares */}
         <View style={styles.sectionContainer}>
           <View style={styles.sectionHeader}>
-            <Typography variant="h3" color={COLORS.text}>Platos Destacados</Typography>
+            <Typography variant="h3" color={textColor}>
+              {activeCategory === 'Todas' ? 'Platos Populares' : `Platos de ${activeCategory}`}
+            </Typography>
           </View>
           <View style={styles.productsList}>
             {filteredProducts.length > 0 ? (
               filteredProducts.map((item) => (
                 <ProductCard
-                  key={item._id}
+                  key={item._id || item.id}
                   product={item}
+                  isDark={isDarkMode}
                   onPress={() => {}}
                 />
               ))
             ) : (
-              <View style={styles.emptyContainer}>
-                <Ionicons name="fast-food-outline" size={48} color={COLORS.border} />
-                <Typography variant="body" color={COLORS.textSecondary}>No se encontraron productos</Typography>
-              </View>
+              <Typography variant="small" color={textSecondary} style={{ textAlign: 'center', paddingVertical: 20 }}>
+                No hay platos disponibles en esta categoría.
+              </Typography>
             )}
           </View>
         </View>
       </ScrollView>
-    </View>
+    </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+  },
   header: {
-    paddingHorizontal: THEME.spacing.md,
-    paddingTop: THEME.spacing.lg,
-    paddingBottom: THEME.spacing.sm,
-    backgroundColor: COLORS.white,
+    paddingHorizontal: 16,
+    paddingTop: 20,
+  },
+  greetingRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  notificationIcon: {
+    padding: 10,
+    borderRadius: 12,
+  },
+  notificationDot: {
+    position: 'absolute',
+    top: 10,
+    right: 10,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: COLORS.primary,
+    borderWidth: 1.5,
+  },
+  searchContainer: {
+    marginBottom: 0,
   },
   searchInput: {
-    marginTop: THEME.spacing.sm,
-  },
-  categoriesWrapper: {
-    backgroundColor: COLORS.white,
-    paddingBottom: THEME.spacing.md,
-  },
-  categoriesContent: {
-    paddingHorizontal: THEME.spacing.md,
-    gap: THEME.spacing.sm,
-  },
-  categoryChip: {
-    paddingHorizontal: THEME.spacing.md,
-    paddingVertical: 8,
-    borderRadius: THEME.borderRadius.round,
-    backgroundColor: COLORS.background,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-  },
-  categoryChipActive: {
-    backgroundColor: COLORS.primary,
-    borderColor: COLORS.primary,
+    borderColor: 'transparent',
+    borderRadius: 12,
+    height: 52,
+    paddingHorizontal: 12,
   },
   sectionContainer: {
-    marginTop: THEME.spacing.md,
-    paddingHorizontal: THEME.spacing.md,
+    marginTop: 24,
+    paddingHorizontal: 16,
+  },
+  sectionTitle: {
+    marginBottom: 16,
   },
   sectionHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: THEME.spacing.sm,
+    marginBottom: 16,
   },
-  restaurantsCarousel: {
-    paddingRight: THEME.spacing.md,
-    paddingBottom: THEME.spacing.xs,
+  categoriesList: {
+    gap: 12,
+  },
+  categoryChip: {
+    paddingHorizontal: 20,
+    paddingVertical: 8,
+    borderRadius: 20,
+  },
+  categoryChipActive: {
+    backgroundColor: COLORS.primary,
+  },
+  horizontalList: {
+    paddingRight: 16,
   },
   productsList: {
-    paddingBottom: THEME.spacing.xl,
-  },
-  emptyContainer: {
-    alignItems: 'center',
-    paddingVertical: 40,
-    gap: THEME.spacing.sm,
+    gap: 16,
+    paddingBottom: 40,
   },
 });
 

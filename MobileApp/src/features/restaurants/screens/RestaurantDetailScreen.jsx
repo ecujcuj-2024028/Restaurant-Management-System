@@ -6,12 +6,15 @@ import {
   Image,
   StyleSheet,
   ActivityIndicator,
+  StatusBar,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS } from '../../../shared/constants/colors';
 import { THEME, COMMON_STYLES } from '../../../shared/constants/theme';
 import { getRestaurantById } from '../../../api/restaurants';
 import api from '../../../api/api';
+import useAuthStore from '../../../store/useAuthStore';
+import Typography from '../../../shared/components/common/Typography';
  
 // Llama a GET /restaurants/{id}/menu
 const getRestaurantMenu = async (id) => {
@@ -31,19 +34,19 @@ const groupByCategory = (products = []) => {
 };
  
 // ── Componente para cada producto dentro de una sección ──
-const ProductRow = ({ item }) => (
-  <View style={styles.productCard}>
+const ProductRow = ({ item, isDark }) => (
+  <View style={[styles.productCard, { backgroundColor: isDark ? COLORS.darkSurface : COLORS.white, borderBottomColor: isDark ? COLORS.darkBorder : COLORS.border }]}>
     <View style={styles.productInfo}>
-      <Text style={styles.productName}>{item.name}</Text>
-      <Text style={styles.productDescription} numberOfLines={2}>
+      <Typography variant="bodyBold" color={isDark ? COLORS.darkText : COLORS.text}>{item.name}</Typography>
+      <Typography variant="small" color={isDark ? COLORS.darkTextSecondary : COLORS.textSecondary} numberOfLines={2}>
         {item.description || 'Sin descripción disponible.'}
-      </Text>
+      </Typography>
       <View style={styles.productMeta}>
-        <Text style={styles.productPrice}>${item.price?.toFixed(2)}</Text>
+        <Typography variant="bodyBold" color={COLORS.primary}>${item.price?.toFixed(2)}</Typography>
         {item.preparationTime && (
           <View style={styles.timeRow}>
-            <Ionicons name="time-outline" size={12} color={COLORS.textSecondary} />
-            <Text style={styles.timeText}>{item.preparationTime} min</Text>
+            <Ionicons name="time-outline" size={12} color={isDark ? COLORS.darkTextSecondary : COLORS.textSecondary} />
+            <Typography variant="small" color={isDark ? COLORS.darkTextSecondary : COLORS.textSecondary}>{item.preparationTime} min</Typography>
           </View>
         )}
         {!item.isAvailable && (
@@ -63,7 +66,7 @@ const ProductRow = ({ item }) => (
 );
  
 // ── Cabecera del restaurante (se usa como ListHeaderComponent) ──
-const RestaurantHeader = ({ restaurant }) => (
+const RestaurantHeader = ({ restaurant, isDark }) => (
   <View>
     <Image
       source={{
@@ -71,26 +74,26 @@ const RestaurantHeader = ({ restaurant }) => (
       }}
       style={styles.heroImage}
     />
-    <View style={styles.info}>
-      <Text style={styles.name}>{restaurant?.name}</Text>
-      <Text style={styles.category}>{restaurant?.category}</Text>
+    <View style={[styles.info, { backgroundColor: isDark ? COLORS.darkSurface : COLORS.white }]}>
+      <Typography variant="h2" color={isDark ? COLORS.darkText : COLORS.text}>{restaurant?.name}</Typography>
+      <Typography color={isDark ? COLORS.darkTextSecondary : COLORS.textSecondary} style={{ marginBottom: 12 }}>{restaurant?.category}</Typography>
  
       <View style={styles.detailsRow}>
         {restaurant?.openingHours && (
           <View style={styles.detailItem}>
             <Ionicons name="time-outline" size={16} color={COLORS.primary} />
-            <Text style={styles.detailText}>{restaurant.openingHours}</Text>
+            <Typography variant="small" color={isDark ? COLORS.darkText : COLORS.text}>{restaurant.openingHours}</Typography>
           </View>
         )}
         {restaurant?.address && (
           <View style={styles.detailItem}>
             <Ionicons name="location-outline" size={16} color={COLORS.primary} />
-            <Text style={styles.detailText}>{restaurant.address}</Text>
+            <Typography variant="small" color={isDark ? COLORS.darkText : COLORS.text}>{restaurant.address}</Typography>
           </View>
         )}
       </View>
  
-      <Text style={styles.menuTitle}>Menú</Text>
+      <Typography variant="h3" color={isDark ? COLORS.darkText : COLORS.text}>Menú</Typography>
     </View>
   </View>
 );
@@ -98,6 +101,7 @@ const RestaurantHeader = ({ restaurant }) => (
 // ── Pantalla principal ──
 const RestaurantDetailScreen = ({ route }) => {
   const { id } = route.params;
+  const { isDarkMode } = useAuthStore();
   const [restaurant, setRestaurant] = useState(null);
   const [menuProducts, setMenuProducts] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -127,39 +131,43 @@ const RestaurantDetailScreen = ({ route }) => {
  
   if (loading) {
     return (
-      <View style={[COMMON_STYLES.container, COMMON_STYLES.center]}>
+      <View style={[COMMON_STYLES.container, COMMON_STYLES.center, { backgroundColor: isDarkMode ? COLORS.darkBackground : COLORS.background }]}>
         <ActivityIndicator size="large" color={COLORS.primary} />
       </View>
     );
   }
  
   return (
-    <SectionList
-      style={COMMON_STYLES.container}
-      sections={sections}
-      keyExtractor={(item) => item._id || item.id}
-      // Cabecera del restaurante encima de todas las secciones
-      ListHeaderComponent={<RestaurantHeader restaurant={restaurant} />}
-      // Título de cada categoría
-      renderSectionHeader={({ section: { title, data } }) => (
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>{title}</Text>
-          <Text style={styles.sectionCount}>{data.length} platos</Text>
-        </View>
-      )}
-      // Cada producto
-      renderItem={({ item }) => <ProductRow item={item} />}
-      // Estado vacío
-      ListEmptyComponent={
-        <View style={styles.emptyContainer}>
-          <Ionicons name="restaurant-outline" size={48} color={COLORS.border} />
-          <Text style={styles.emptyText}>Este restaurante aún no tiene menú disponible.</Text>
-        </View>
-      }
-      contentContainerStyle={styles.listContent}
-      stickySectionHeadersEnabled
-      showsVerticalScrollIndicator={false}
-    />
+    <View style={{ flex: 1, backgroundColor: isDarkMode ? COLORS.darkBackground : COLORS.background }}>
+      <StatusBar barStyle={isDarkMode ? "light-content" : "dark-content"} />
+      <SectionList
+        style={COMMON_STYLES.container}
+        contentContainerStyle={{ backgroundColor: isDarkMode ? COLORS.darkBackground : COLORS.background }}
+        sections={sections}
+        keyExtractor={(item) => item._id || item.id}
+        // Cabecera del restaurante encima de todas las secciones
+        ListHeaderComponent={<RestaurantHeader restaurant={restaurant} isDark={isDarkMode} />}
+        // Título de cada categoría
+        renderSectionHeader={({ section: { title, data } }) => (
+          <View style={[styles.sectionHeader, { backgroundColor: isDarkMode ? COLORS.darkBackground : COLORS.background, borderBottomColor: isDarkMode ? COLORS.darkBorder : COLORS.border }]}>
+            <Typography variant="bodyBold" color={isDarkMode ? COLORS.darkText : COLORS.text}>{title}</Typography>
+            <Typography variant="small" color={isDarkMode ? COLORS.darkTextSecondary : COLORS.textSecondary}>{data.length} platos</Typography>
+          </View>
+        )}
+        // Cada producto
+        renderItem={({ item }) => <ProductRow item={item} isDark={isDarkMode} />}
+        // Estado vacío
+        ListEmptyComponent={
+          <View style={styles.emptyContainer}>
+            <Ionicons name="restaurant-outline" size={48} color={isDarkMode ? COLORS.darkBorder : COLORS.border} />
+            <Typography color={isDarkMode ? COLORS.darkTextSecondary : COLORS.textSecondary} style={{ textAlign: 'center' }}>Este restaurante aún no tiene menú disponible.</Typography>
+          </View>
+        }
+        contentContainerStyle={styles.listContent}
+        stickySectionHeadersEnabled
+        showsVerticalScrollIndicator={false}
+      />
+    </View>
   );
 };
  
@@ -170,20 +178,9 @@ const styles = StyleSheet.create({
   },
   info: {
     padding: THEME.spacing.md,
-    backgroundColor: COLORS.white,
     borderTopLeftRadius: THEME.borderRadius.xl,
     borderTopRightRadius: THEME.borderRadius.xl,
     marginTop: -20,
-  },
-  name: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: COLORS.text,
-  },
-  category: {
-    fontSize: 16,
-    color: COLORS.textSecondary,
-    marginBottom: THEME.spacing.md,
   },
   detailsRow: {
     flexDirection: 'column',
@@ -195,57 +192,25 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 6,
   },
-  detailText: {
-    fontSize: 14,
-    color: COLORS.text,
-  },
-  menuTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: COLORS.text,
-  },
   // Cabecera de sección (sticky)
   sectionHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    backgroundColor: COLORS.background,
     paddingHorizontal: THEME.spacing.md,
     paddingVertical: THEME.spacing.sm,
     borderBottomWidth: 1,
-    borderBottomColor: COLORS.border,
-  },
-  sectionTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: COLORS.text,
-  },
-  sectionCount: {
-    fontSize: 12,
-    color: COLORS.textSecondary,
   },
   // Tarjeta de producto
   productCard: {
     flexDirection: 'row',
     padding: THEME.spacing.md,
-    backgroundColor: COLORS.white,
     borderBottomWidth: 1,
-    borderBottomColor: COLORS.border,
     gap: THEME.spacing.sm,
   },
   productInfo: {
     flex: 1,
     gap: 4,
-  },
-  productName: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: COLORS.text,
-  },
-  productDescription: {
-    fontSize: 13,
-    color: COLORS.textSecondary,
-    lineHeight: 18,
   },
   productMeta: {
     flexDirection: 'row',
@@ -253,19 +218,10 @@ const styles = StyleSheet.create({
     gap: THEME.spacing.sm,
     marginTop: 4,
   },
-  productPrice: {
-    fontSize: 15,
-    fontWeight: 'bold',
-    color: COLORS.primary,
-  },
   timeRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 2,
-  },
-  timeText: {
-    fontSize: 12,
-    color: COLORS.textSecondary,
   },
   outOfStockBadge: {
     backgroundColor: `${COLORS.error}15`,
@@ -295,11 +251,6 @@ const styles = StyleSheet.create({
     paddingTop: 60,
     gap: THEME.spacing.sm,
     paddingHorizontal: THEME.spacing.md,
-  },
-  emptyText: {
-    fontSize: 14,
-    color: COLORS.textSecondary,
-    textAlign: 'center',
   },
 });
  
