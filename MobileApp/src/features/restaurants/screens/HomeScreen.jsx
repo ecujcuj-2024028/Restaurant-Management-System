@@ -21,13 +21,7 @@ import ProductCard from '../../../shared/components/common/ProductCard';
 import Input from '../../../shared/components/common/Input';
 import Typography from '../../../shared/components/common/Typography';
 import Skeleton from '../../../shared/components/common/Skeleton';
-
-const CATEGORIES = [
-  { id: '1', name: 'Pizza', icon: 'pizza' },
-  { id: '2', name: 'Sushi', icon: 'food-variant' },
-  { id: '3', name: 'Burgers', icon: 'hamburger' },
-  { id: '4', name: 'Tacos', icon: 'taco' },
-];
+import { useTranslation } from 'react-i18next';
 
 const HomeSkeleton = ({ isDark }) => (
   <View style={[styles.container, { backgroundColor: isDark ? COLORS.darkBackground : COLORS.background, paddingTop: 40 }]}>
@@ -64,18 +58,23 @@ const HomeSkeleton = ({ isDark }) => (
 );
 
 const HomeScreen = ({ navigation }) => {
+  const { t } = useTranslation();
   const { user, isDarkMode } = useAuthStore();
   const [restaurants, setRestaurants] = useState([]);
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [search, setSearch] = useState('');
-  const [activeCategory, setActiveCategory] = useState('Todas');
+  const [activeCategory, setActiveCategory] = useState(t('home.all'));
 
   const bgColor = isDarkMode ? COLORS.darkBackground : COLORS.background;
   const textColor = isDarkMode ? COLORS.darkText : COLORS.text;
   const textSecondary = isDarkMode ? COLORS.darkTextSecondary : COLORS.textSecondary;
   const surfaceColor = isDarkMode ? COLORS.darkSurface : COLORS.white;
+
+  useEffect(() => {
+    setActiveCategory(t('home.all'));
+  }, [t]);
 
   useEffect(() => {
     fetchData();
@@ -115,28 +114,28 @@ const HomeScreen = ({ navigation }) => {
       icon: 'food'
     }));
 
-    return [{ id: '0', name: 'Todas', icon: 'apps' }, ...catsArray];
-  }, [products]);
+    return [{ id: '0', name: t('home.all'), icon: 'apps' }, ...catsArray];
+  }, [products, t]);
 
   const filteredRestaurants = useMemo(() => {
     return (restaurants || []).filter((r) => {
       const matchesSearch = r?.name?.toLowerCase().includes(search.toLowerCase());
-      const matchesCategory = activeCategory === 'Todas' || 
+      const matchesCategory = activeCategory === t('home.all') || 
                              r?.category?.toLowerCase() === activeCategory.toLowerCase();
       return matchesSearch && matchesCategory;
     });
-  }, [restaurants, search, activeCategory]);
+  }, [restaurants, search, activeCategory, t]);
 
   const filteredProducts = useMemo(() => {
     return (products || []).filter((p) => {
       const matchesSearch = p?.name?.toLowerCase().includes(search.toLowerCase()) || 
                            p?.description?.toLowerCase().includes(search.toLowerCase());
       const pCat = p.category?.name || p.category;
-      const matchesCategory = activeCategory === 'Todas' || 
+      const matchesCategory = activeCategory === t('home.all') || 
                              pCat?.toLowerCase() === activeCategory.toLowerCase();
       return matchesSearch && matchesCategory;
     });
-  }, [products, search, activeCategory]);
+  }, [products, search, activeCategory, t]);
 
   if (loading) {
     return <HomeSkeleton isDark={isDarkMode} />;
@@ -160,7 +159,7 @@ const HomeScreen = ({ navigation }) => {
           <View style={styles.greetingRow}>
             <View>
               <Typography variant="body" color={textSecondary}>
-                Hola, {user?.name || (user?.firstName ? `${user.firstName} ${user.lastName}` : 'Invitado')}
+                {t('home.greeting')}, {user?.name || (user?.firstName ? `${user.firstName} ${user.lastName}` : t('home.guest'))}
               </Typography>
             </View>
             <TouchableOpacity style={[styles.notificationIcon, { backgroundColor: surfaceColor }]}>
@@ -171,7 +170,7 @@ const HomeScreen = ({ navigation }) => {
 
           {/* Buscador Estilo Adaptable */}
           <Input
-            placeholder="Buscar restaurantes, comidas..."
+            placeholder={t('home.searchPlaceholder')}
             value={search}
             onChangeText={setSearch}
             style={styles.searchContainer}
@@ -184,7 +183,7 @@ const HomeScreen = ({ navigation }) => {
         {/* Categorías Dinámicas */}
         <View style={styles.sectionContainer}>
           <Typography variant="h3" color={textColor} style={styles.sectionTitle}>
-            Categorías
+            {t('home.categories')}
           </Typography>
           <ScrollView
             horizontal
@@ -215,10 +214,10 @@ const HomeScreen = ({ navigation }) => {
         <View style={styles.sectionContainer}>
           <View style={styles.sectionHeader}>
             <Typography variant="h3" color={textColor}>
-              {activeCategory === 'Todas' ? 'Destacados cerca de ti' : `Restaurantes de ${activeCategory}`}
+              {activeCategory === t('home.all') ? t('home.featured') : `${activeCategory}`}
             </Typography>
             <TouchableOpacity>
-              <Typography variant="caption" color={COLORS.primary}>Ver todos &rarr;</Typography>
+              <Typography variant="caption" color={COLORS.primary}>{t('home.viewAll')} &rarr;</Typography>
             </TouchableOpacity>
           </View>
           <ScrollView
@@ -237,7 +236,7 @@ const HomeScreen = ({ navigation }) => {
               ))
             ) : (
               <Typography variant="small" color={textSecondary} style={{ paddingVertical: 20 }}>
-                No hay restaurantes en esta categoría.
+                {t('home.noRestaurants')}
               </Typography>
             )}
           </ScrollView>
@@ -247,7 +246,7 @@ const HomeScreen = ({ navigation }) => {
         <View style={styles.sectionContainer}>
           <View style={styles.sectionHeader}>
             <Typography variant="h3" color={textColor}>
-              {activeCategory === 'Todas' ? 'Platos Populares' : `Platos de ${activeCategory}`}
+              {activeCategory === t('home.all') ? t('home.popular') : `${t('home.popular')} (${activeCategory})`}
             </Typography>
           </View>
           <View style={styles.productsList}>
@@ -262,7 +261,7 @@ const HomeScreen = ({ navigation }) => {
               ))
             ) : (
               <Typography variant="small" color={textSecondary} style={{ textAlign: 'center', paddingVertical: 20 }}>
-                No hay platos disponibles en esta categoría.
+                {t('home.noProducts')}
               </Typography>
             )}
           </View>

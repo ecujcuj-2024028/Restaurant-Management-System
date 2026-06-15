@@ -3,9 +3,10 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS } from '../shared/constants/colors';
 import HomeStack from './HomeStack';
-import ProfileScreen from '../features/users/screens/ProfileScreen';
+import MenuScreen from '../features/users/screens/MenuScreen';
 import { View, Text } from 'react-native';
 import useAuthStore from '../store/useAuthStore';
+import { useTranslation } from 'react-i18next';
 
 const Tab = createBottomTabNavigator();
 
@@ -22,6 +23,7 @@ const Placeholder = ({ name, isDark }) => (
 
 const MainTab = () => {
   const { isDarkMode } = useAuthStore();
+  const { t } = useTranslation();
 
   const bgColor = isDarkMode ? COLORS.darkSurface : COLORS.white;
   const borderColor = isDarkMode ? COLORS.darkBorder : COLORS.border;
@@ -32,13 +34,13 @@ const MainTab = () => {
       screenOptions={({ route }) => ({
         tabBarIcon: ({ focused, color, size }) => {
           let iconName;
-          if (route.name === 'Inicio') {
+          if (route.name === 'InicioTab') {
             iconName = focused ? 'home' : 'home-outline';
-          } else if (route.name === 'Restaurantes') {
+          } else if (route.name === 'RestaurantesTab') {
             iconName = focused ? 'restaurant' : 'restaurant-outline';
-          } else if (route.name === 'Reservaciones') {
+          } else if (route.name === 'ReservacionesTab') {
             iconName = focused ? 'calendar' : 'calendar-outline';
-          } else if (route.name === 'Menu') {
+          } else if (route.name === 'MenuTab') {
             iconName = focused ? 'menu' : 'menu-outline';
           }
           return <Ionicons name={iconName} size={size} color={color} />;
@@ -54,14 +56,28 @@ const MainTab = () => {
         headerShown: false,
       })}
     >
-      <Tab.Screen name="Inicio" component={HomeStack} />
-      <Tab.Screen name="Restaurantes">
-        {(props) => <Placeholder {...props} name="Restaurantes" isDark={isDarkMode} />}
+      <Tab.Screen 
+        name="InicioTab" 
+        component={HomeStack} 
+        options={{ tabBarLabel: t('tabs.home') }}
+      />
+      <Tab.Screen 
+        name="RestaurantesTab"
+        options={{ tabBarLabel: t('tabs.restaurants') }}
+      >
+        {(props) => <Placeholder {...props} name={t('tabs.restaurants')} isDark={isDarkMode} />}
       </Tab.Screen>
-      <Tab.Screen name="Reservaciones">
-        {(props) => <Placeholder {...props} name="Reservaciones" isDark={isDarkMode} />}
+      <Tab.Screen 
+        name="ReservacionesTab"
+        options={{ tabBarLabel: t('tabs.reservations') }}
+      >
+        {(props) => <Placeholder {...props} name={t('tabs.reservations')} isDark={isDarkMode} />}
       </Tab.Screen>
-      <Tab.Screen name="Menu" component={ProfileScreen} />
+      <Tab.Screen 
+        name="MenuTab" 
+        component={MenuScreen} 
+        options={{ tabBarLabel: t('tabs.menu') }}
+      />
     </Tab.Navigator>
   );
 };
