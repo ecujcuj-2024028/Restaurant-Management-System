@@ -4,6 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { COLORS } from '../shared/constants/colors';
 import HomeStack from './HomeStack';
 import MenuScreen from '../features/users/screens/MenuScreen';
+import RestaurantsScreen from '../features/restaurants/screens/RestaurantsScreen';
 import { View, Text } from 'react-native';
 import useAuthStore from '../store/useAuthStore';
 import { useTranslation } from 'react-i18next';
@@ -63,10 +64,9 @@ const MainTab = () => {
       />
       <Tab.Screen 
         name="RestaurantesTab"
+        component={RestaurantsScreen}
         options={{ tabBarLabel: t('tabs.restaurants') }}
-      >
-        {(props) => <Placeholder {...props} name={t('tabs.restaurants')} isDark={isDarkMode} />}
-      </Tab.Screen>
+      />
       <Tab.Screen 
         name="ReservacionesTab"
         options={{ tabBarLabel: t('tabs.reservations') }}
