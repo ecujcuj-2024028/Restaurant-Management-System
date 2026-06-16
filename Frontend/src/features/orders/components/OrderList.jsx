@@ -1,20 +1,58 @@
 import { useEffect, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { toast } from 'react-hot-toast'
-import { Eye, XCircle } from 'lucide-react'
+import { Eye, XCircle, ShoppingBag, Bell } from 'lucide-react'
 import useOrderStore from '../store/orderStore'
 import useRestaurantStore from '../../restaurants/store/restaurantStore'
+import useSocket from '../../../shared/hooks/useSocket'
 import OrderStatusBadge from './OrderStatusBadge'
 import OrderDetailModal from './OrderDetailModal'
 import ConfirmDialog from '../../../shared/components/ui/ConfirmDialog'
 import Skeleton from '../../../shared/components/ui/Skeleton'
 
 const OrderList = () => {
-  const { orders, loading, error, fetchOrders, updateOrderStatus, cancelOrder } = useOrderStore()
+  const { 
+    orders, 
+    loading, 
+    error, 
+    fetchOrders, 
+    updateOrderStatus, 
+    cancelOrder,
+    handleSocketUpdate,
+    handleSocketNewOrder 
+  } = useOrderStore()
   const { restaurants, fetchRestaurants } = useRestaurantStore()
   const [selectedOrder, setSelectedOrder] = useState(null)
   const [orderToCancel, setOrderToCancel] = useState(null)
   const [restaurantId, setRestaurantId] = useState('')
+
+  // Conexión a WebSockets para el restaurante seleccionado
+  const { on } = useSocket(restaurantId)
+
+  useEffect(() => {
+    if (!restaurantId) return
+
+    const unsubscribeCreated = on('order_created', (newOrder) => {
+      toast.success(`Nuevo pedido: #${(newOrder._id || newOrder.id).slice(-6).toUpperCase()}`, {
+        icon: <ShoppingBag className="text-orange-500" size={20} />
+      })
+      handleSocketNewOrder(newOrder)
+    })
+
+    const unsubscribeUpdated = on('order_status_updated', (updatedOrder) => {
+      handleSocketUpdate(updatedOrder)
+    })
+
+    const unsubscribeCancelled = on('order_cancelled', (cancelledOrder) => {
+      handleSocketUpdate(cancelledOrder)
+    })
+
+    return () => {
+      unsubscribeCreated()
+      unsubscribeUpdated()
+      unsubscribeCancelled()
+    }
+  }, [restaurantId, on, handleSocketNewOrder, handleSocketUpdate])
 
   useEffect(() => {
     fetchRestaurants()

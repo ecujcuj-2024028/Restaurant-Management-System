@@ -1,14 +1,16 @@
 import { useEffect, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Eye, Star, ChevronDown, ChevronUp, Store, Clock, ShoppingBag } from 'lucide-react'
+import { Eye, Star, ChevronDown, ChevronUp, Store, Clock, ShoppingBag, Bell, XCircle } from 'lucide-react'
 import useOrderStore from '../store/orderStore'
 import useAuthStore from '../../auth/store/authStore'
 import useRestaurantStore from '../../restaurants/store/restaurantStore'
+import useSocket from '../../../shared/hooks/useSocket'
 import OrderStatusBadge from './OrderStatusBadge'
 import OrderDetailModal from './OrderDetailModal'
 import ReviewModal from '../../reviews/components/ReviewModal'
 import ProductReviews from '../../reviews/components/ProductReviews'
 import Skeleton from '../../../shared/components/ui/Skeleton'
+import { toast } from 'react-hot-toast'
 
 // ── Fila expandible con items reseñables ─────────────────────────────────────
 const OrderRow = ({ order, onViewDetail, onOpenReview }) => {
@@ -156,12 +158,38 @@ const OrderRow = ({ order, onViewDetail, onOpenReview }) => {
 
 // ── Componente principal ──────────────────────────────────────────────────────
 const MyOrders = () => {
-  const { history, loading, fetchOrderHistory } = useOrderStore()
+  const { history, loading, fetchOrderHistory, handleSocketHistoryUpdate } = useOrderStore()
   const { restaurants, fetchRestaurants } = useRestaurantStore()
 
   const [selectedOrder, setSelectedOrder] = useState(null)
   const [reviewTarget, setReviewTarget] = useState(null)
   const [selectedRestaurant, setSelectedRestaurant] = useState('')
+
+  // Conexión a WebSockets
+  const { on } = useSocket(selectedRestaurant)
+
+  useEffect(() => {
+    // Escuchar actualizaciones de estado para el cliente
+    const unsubscribeUpdated = on('order_status_updated', (updatedOrder) => {
+      handleSocketHistoryUpdate(updatedOrder)
+      toast.success(`Tu pedido #${(updatedOrder._id || updatedOrder.id).slice(-6).toUpperCase()} está ahora: ${updatedOrder.status}`, {
+        icon: <Bell className="text-orange-500" size={20} />,
+        duration: 5000
+      })
+    })
+
+    const unsubscribeCancelled = on('order_cancelled', (cancelledOrder) => {
+      handleSocketHistoryUpdate(cancelledOrder)
+      toast.error(`Tu pedido #${(cancelledOrder._id || cancelledOrder.id).slice(-6).toUpperCase()} ha sido cancelado`, {
+        icon: <XCircle className="text-red-500" size={20} />
+      })
+    })
+
+    return () => {
+      unsubscribeUpdated()
+      unsubscribeCancelled()
+    }
+  }, [on, handleSocketHistoryUpdate])
 
   useEffect(() => {
     fetchRestaurants()

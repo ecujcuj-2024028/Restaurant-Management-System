@@ -9,6 +9,9 @@ import { ADMIN_RESTAURANTE, ADMIN_SISTEMA } from '../../helpers/role-constants.j
 import { sequelize } from '../../configs/db-postgres.js';
 import { Op } from 'sequelize';
 import mongoose from 'mongoose';
+import axios from 'axios';
+
+const GATEWAY_INTERNAL_URL = process.env.GATEWAY_INTERNAL_URL || 'http://api_gateway:3000/restaurantManagement/v1/internal/emit';
 
 /* ─────────────────────────────────────────────
    Helper: obtener IDs de restaurantes propios
@@ -127,6 +130,13 @@ export const createOrder = async (req, res) => {
     await newOrder.save();
     await t.commit();
 
+    // Notificar vía WebSockets
+    axios.post(GATEWAY_INTERNAL_URL, {
+      event: 'order_created',
+      data: newOrder,
+      room: `restaurant_${restaurantId}`
+    }).catch(err => console.error('[SocketError] Error notifying creation:', err.message));
+
     return res.status(201).json({ success: true, message: "Pedido creado correctamente", order: newOrder });
 
   } catch (error) {
@@ -197,6 +207,13 @@ export const cancelOrder = async (req, res) => {
     order.status = 'cancelado';
     await order.save();
     await t.commit();
+
+    // Notificar vía WebSockets
+    axios.post(GATEWAY_INTERNAL_URL, {
+      event: 'order_cancelled',
+      data: order,
+      room: `restaurant_${order.restaurantId}`
+    }).catch(err => console.error('[SocketError] Error notifying cancellation:', err.message));
 
     return res.json({ message: "Pedido cancelado correctamente", order });
 
@@ -281,6 +298,13 @@ export const updateOrderStatus = async (req, res) => {
     await order.save();
 
     console.log(`[OrderService] Order ${id} updated from ${previousStatus} to ${status} by ${req.userId}`);
+
+    // Notificar vía WebSockets
+    axios.post(GATEWAY_INTERNAL_URL, {
+      event: 'order_status_updated',
+      data: order,
+      room: `restaurant_${order.restaurantId}`
+    }).catch(err => console.error('[SocketError] Error notifying status update:', err.message));
 
     return res.json({ 
       success: true, 
