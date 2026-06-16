@@ -3,41 +3,81 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS } from '../shared/constants/colors';
 import HomeStack from './HomeStack';
-import ProfileScreen from '../features/users/screens/ProfileScreen';
+import MenuScreen from '../features/users/screens/MenuScreen';
 import { View, Text } from 'react-native';
+import useAuthStore from '../store/useAuthStore';
+import { useTranslation } from 'react-i18next';
 
 const Tab = createBottomTabNavigator();
 
-const Placeholder = ({ name }) => (
-  <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-    <Text>{name} Screen</Text>
+const Placeholder = ({ name, isDark }) => (
+  <View style={{ 
+    flex: 1, 
+    justifyContent: 'center', 
+    alignItems: 'center', 
+    backgroundColor: isDark ? COLORS.darkBackground : COLORS.background 
+  }}>
+    <Text style={{ color: isDark ? COLORS.white : COLORS.text }}>{name} Screen</Text>
   </View>
 );
 
-const OrdersPlaceholder = () => <Placeholder name="Orders" />;
-const ReservationsPlaceholder = () => <Placeholder name="Reservations" />;
-
 const MainTab = () => {
+  const { isDarkMode } = useAuthStore();
+  const { t } = useTranslation();
+
+  const bgColor = isDarkMode ? COLORS.darkSurface : COLORS.white;
+  const borderColor = isDarkMode ? COLORS.darkBorder : COLORS.border;
+  const inactiveColor = isDarkMode ? COLORS.darkTextSecondary : COLORS.textSecondary;
+
   return (
     <Tab.Navigator
       screenOptions={({ route }) => ({
         tabBarIcon: ({ focused, color, size }) => {
           let iconName;
-          if (route.name === 'Home') iconName = focused ? 'home' : 'home-outline';
-          else if (route.name === 'Orders') iconName = focused ? 'list' : 'list-outline';
-          else if (route.name === 'Reservations') iconName = focused ? 'calendar' : 'calendar-outline';
-          else if (route.name === 'Profile') iconName = focused ? 'person' : 'person-outline';
+          if (route.name === 'InicioTab') {
+            iconName = focused ? 'home' : 'home-outline';
+          } else if (route.name === 'RestaurantesTab') {
+            iconName = focused ? 'restaurant' : 'restaurant-outline';
+          } else if (route.name === 'ReservacionesTab') {
+            iconName = focused ? 'calendar' : 'calendar-outline';
+          } else if (route.name === 'MenuTab') {
+            iconName = focused ? 'menu' : 'menu-outline';
+          }
           return <Ionicons name={iconName} size={size} color={color} />;
         },
         tabBarActiveTintColor: COLORS.primary,
-        tabBarInactiveTintColor: COLORS.textSecondary,
+        tabBarInactiveTintColor: inactiveColor,
+        tabBarStyle: {
+          backgroundColor: bgColor,
+          borderTopColor: borderColor,
+          height: 60,
+          paddingBottom: 10,
+        },
         headerShown: false,
       })}
     >
-      <Tab.Screen name="Home" component={HomeStack} />
-      <Tab.Screen name="Orders" component={OrdersPlaceholder} />
-      <Tab.Screen name="Reservations" component={ReservationsPlaceholder} />
-      <Tab.Screen name="Profile" component={ProfileScreen} />
+      <Tab.Screen 
+        name="InicioTab" 
+        component={HomeStack} 
+        options={{ tabBarLabel: t('tabs.home') }}
+      />
+      <Tab.Screen 
+        name="RestaurantesTab"
+        options={{ tabBarLabel: t('tabs.restaurants') }}
+      >
+        {(props) => <Placeholder {...props} name={t('tabs.restaurants')} isDark={isDarkMode} />}
+      </Tab.Screen>
+      <Tab.Screen 
+        name="ReservacionesTab"
+        options={{ tabBarLabel: t('tabs.reservations') }}
+      >
+        {(props) => <Placeholder {...props} name={t('tabs.reservations')} isDark={isDarkMode} />}
+      </Tab.Screen>
+      <Tab.Screen 
+        name="MenuTab" 
+        component={MenuScreen} 
+        options={{ tabBarLabel: t('tabs.menu') }}
+      />
     </Tab.Navigator>
   );
 };

@@ -17,7 +17,7 @@ const slides = [
   },
   {
     id: '2',
-    title: 'Reserva tu mesa favorita',
+    title: 'Reservaciones fáciles y rápidas',
     description: 'Elige fecha, hora y número de personas. Facil y rápido.',
     icon: 'calendar',
     backgroundColor: '#6C63FF',
@@ -26,7 +26,7 @@ const slides = [
   },
   {
     id: '3',
-    title: 'Domicilio rápido a tu puerta',
+    title: 'Entregas rápidas hasta tu puerta',
     description: 'Solo pide y recibe tu comida en casa.',
     icon: 'motorcycle',
     backgroundColor: '#4CAF50',
