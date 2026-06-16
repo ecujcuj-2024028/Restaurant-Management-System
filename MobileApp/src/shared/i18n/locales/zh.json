@@ -8,7 +8,7 @@
     "cart": "购物车",
     "preferences": "偏好设置",
     "help": "帮助与支持",
-    "logout": "退出",
+    "logout": "退出登录",
     "back": "返回",
     "backMenu": "返回菜单",
     "appearance": "外观设置",
@@ -20,7 +20,7 @@
     "lang_en": "英语",
     "lang_pt": "葡萄牙语",
     "lang_zh": "简体中文",
-    "appearanceDesc": "自定义应用程序在您设备上的外观。"
+    "appearanceDesc": "自定义应用在您设备上的外观。"
   },
   "home": {
     "greeting": "你好",
@@ -28,17 +28,43 @@
     "searchPlaceholder": "搜索餐厅、美食...",
     "categories": "分类",
     "all": "全部",
-    "featured": "附近推荐",
+    "featured": "附近精选",
     "popular": "热门菜品",
     "viewAll": "查看全部",
-    "noRestaurants": "此分类下没有餐厅。",
-    "noProducts": "此分类下没有菜品。",
-    "dishes": "道菜品"
+    "noRestaurants": "该分类下没有餐厅。",
+    "noProducts": "该分类下没有可用菜品。",
+    "dishes": "道菜"
   },
   "tabs": {
     "home": "首页",
     "restaurants": "餐厅",
     "reservations": "预订",
     "menu": "菜单"
+  },
+  "restaurants": {
+    "title": "我们的餐厅",
+    "searchPlaceholder": "餐厅",
+    "categories": "分类",
+    "all": "全部",
+    "viewSchedule": "查看时间表",
+    "noResults": "未找到餐厅"
+  },
+  "restaurantDetail": {
+    "searchPlaceholder": "餐厅产品",
+    "categories": "分类",
+    "all": "全部",
+    "starter": "前菜",
+    "main": "主菜",
+    "dessert": "甜点",
+    "beverage": "饮料",
+    "side": "配菜",
+    "ourMenu": "我们的菜单",
+    "viewAll": "查看全部",
+    "noProducts": "没有可用菜品",
+    "combos": "套餐",
+    "order": "点餐",
+    "detail": "详情",
+    "outOfStock": "已售罄",
+    "comboItems": "包含产品"
   }
 }

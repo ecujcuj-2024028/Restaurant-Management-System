@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
 import { COLORS } from '../../../shared/constants/colors';
 import { COMMON_STYLES } from '../../../shared/constants/theme';
 import { getRestaurants } from '../../../api/restaurants';
@@ -45,6 +46,7 @@ const RestaurantsSkeleton = ({ isDark }) => {
 
 // ─── Tarjeta de restaurante en lista vertical ────────────────────────────────
 const RestaurantListCard = ({ restaurant, onPress, isDark }) => {
+    const { t } = useTranslation();
     const { restaurantStats, fetchRestaurantStats } = useReviewStore();
     const id = restaurant._id || restaurant.id;
     const stats = restaurantStats[id];
@@ -62,7 +64,6 @@ const RestaurantListCard = ({ restaurant, onPress, isDark }) => {
     const textColor = isDark ? COLORS.darkText : COLORS.text;
     const textSecondary = isDark ? COLORS.darkTextSecondary : COLORS.textSecondary;
 
-    // Color de fondo del banner cuando no hay imagen
     const bannerColors = ['#FF6B00', '#1A237E', '#2E7D32', '#6A1B9A', '#00695C'];
     const colorIndex = (restaurant.name?.charCodeAt(0) || 0) % bannerColors.length;
     const bannerBg = bannerColors[colorIndex];
@@ -76,7 +77,7 @@ const RestaurantListCard = ({ restaurant, onPress, isDark }) => {
         restaurant.schedule ||
         (restaurant.openingHours
             ? `${restaurant.openingHours.open || ''} - ${restaurant.openingHours.close || ''}`
-            : 'Ver horarios');
+            : t('restaurants.viewSchedule'));
 
     return (
         <TouchableOpacity
@@ -84,7 +85,6 @@ const RestaurantListCard = ({ restaurant, onPress, isDark }) => {
             onPress={onPress}
             activeOpacity={0.85}
         >
-            {/* Banner / imagen */}
             <View style={[styles.listCardBanner, { backgroundColor: bannerBg }]}>
                 {mainImage && (
                     <Image source={{ uri: mainImage }} style={styles.listCardImage} resizeMode="cover" />
@@ -96,7 +96,6 @@ const RestaurantListCard = ({ restaurant, onPress, isDark }) => {
                 </View>
             </View>
 
-            {/* Información */}
             <View style={styles.listCardInfo}>
                 <View style={styles.listCardRow}>
                     <Typography variant="bodyBold" color={textColor} style={{ flex: 1 }} numberOfLines={1}>
@@ -119,8 +118,6 @@ const RestaurantListCard = ({ restaurant, onPress, isDark }) => {
                             {address}
                         </Typography>
                     </View>
-
-                    {/* Botón flecha */}
                     <TouchableOpacity style={styles.arrowBtn} onPress={onPress}>
                         <Ionicons name="arrow-forward" size={18} color={COLORS.white} />
                     </TouchableOpacity>
@@ -132,12 +129,13 @@ const RestaurantListCard = ({ restaurant, onPress, isDark }) => {
 
 // ─── Pantalla principal ───────────────────────────────────────────────────────
 const RestaurantsScreen = ({ navigation }) => {
+    const { t } = useTranslation();
     const { isDarkMode } = useAuthStore();
     const [restaurants, setRestaurants] = useState([]);
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
     const [search, setSearch] = useState('');
-    const [activeCategory, setActiveCategory] = useState('Todos');
+    const [activeCategory, setActiveCategory] = useState(t('restaurants.all'));
 
     const bgColor = isDarkMode ? COLORS.darkBackground : COLORS.background;
     const textColor = isDarkMode ? COLORS.darkText : COLORS.text;
@@ -163,25 +161,23 @@ const RestaurantsScreen = ({ navigation }) => {
         }
     };
 
-    // Categorías únicas derivadas de los restaurantes
     const categories = useMemo(() => {
         const unique = new Set();
         restaurants.forEach((r) => {
             if (r.category) unique.add(r.category);
         });
-        return ['Todos', ...Array.from(unique)];
-    }, [restaurants]);
+        return [t('restaurants.all'), ...Array.from(unique)];
+    }, [restaurants, t]);
 
-    // Filtrado por búsqueda y categoría
     const filtered = useMemo(() => {
         return restaurants.filter((r) => {
             const matchSearch = r?.name?.toLowerCase().includes(search.toLowerCase());
             const matchCat =
-                activeCategory === 'Todos' ||
+                activeCategory === t('restaurants.all') ||
                 r?.category?.toLowerCase() === activeCategory.toLowerCase();
             return matchSearch && matchCat;
         });
-    }, [restaurants, search, activeCategory]);
+    }, [restaurants, search, activeCategory, t]);
 
     if (loading) return <RestaurantsSkeleton isDark={isDarkMode} />;
 
@@ -189,20 +185,18 @@ const RestaurantsScreen = ({ navigation }) => {
         <SafeAreaView style={[styles.container, { backgroundColor: bgColor }]} edges={['top', 'left', 'right']}>
             <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} />
 
-            {/* Header */}
             <View style={styles.header}>
                 <View style={styles.headerTop}>
                     <Typography variant="h2" color={textColor}>
-                        Nuestros Restaurantes
+                        {t('restaurants.title')}
                     </Typography>
                     <TouchableOpacity style={[styles.bellBtn, { backgroundColor: surfaceColor }]}>
                         <Ionicons name="notifications" size={22} color={textColor} />
                     </TouchableOpacity>
                 </View>
 
-                {/* Buscador */}
                 <Input
-                    placeholder="Restaurantes"
+                    placeholder={t('restaurants.searchPlaceholder')}
                     value={search}
                     onChangeText={setSearch}
                     style={{ marginBottom: 0 }}
@@ -212,10 +206,9 @@ const RestaurantsScreen = ({ navigation }) => {
                 />
             </View>
 
-            {/* Categorías */}
             <View style={styles.categoriesWrapper}>
                 <Typography variant="bodyBold" color={textColor} style={styles.categoriesTitle}>
-                    Categorías
+                    {t('restaurants.categories')}
                 </Typography>
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.categoriesList}>
                     {categories.map((cat) => {
@@ -224,10 +217,7 @@ const RestaurantsScreen = ({ navigation }) => {
                             <TouchableOpacity
                                 key={cat}
                                 onPress={() => setActiveCategory(cat)}
-                                style={[
-                                    styles.categoryChip,
-                                    { backgroundColor: isActive ? COLORS.primary : surfaceColor },
-                                ]}
+                                style={[styles.categoryChip, { backgroundColor: isActive ? COLORS.primary : surfaceColor }]}
                             >
                                 <Typography variant="small" color={isActive ? COLORS.white : textSecondary}>
                                     {cat}
@@ -238,7 +228,6 @@ const RestaurantsScreen = ({ navigation }) => {
                 </ScrollView>
             </View>
 
-            {/* Lista de restaurantes */}
             <FlatList
                 data={filtered}
                 keyExtractor={(item) => item._id || item.id}
@@ -255,7 +244,7 @@ const RestaurantsScreen = ({ navigation }) => {
                     <View style={styles.emptyContainer}>
                         <Ionicons name="restaurant-outline" size={48} color={textSecondary} />
                         <Typography variant="body" color={textSecondary} style={{ marginTop: 12, textAlign: 'center' }}>
-                            No se encontraron restaurantes
+                            {t('restaurants.noResults')}
                         </Typography>
                     </View>
                 }
@@ -263,9 +252,7 @@ const RestaurantsScreen = ({ navigation }) => {
                     <RestaurantListCard
                         restaurant={item}
                         isDark={isDarkMode}
-                        onPress={() =>
-                            navigation.navigate('RestaurantDetail', { id: item._id || item.id })
-                        }
+                        onPress={() => navigation.navigate('RestaurantDetail', { id: item._id || item.id })}
                     />
                 )}
             />
@@ -274,9 +261,7 @@ const RestaurantsScreen = ({ navigation }) => {
 };
 
 const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-    },
+    container: { flex: 1 },
     header: {
         paddingHorizontal: 16,
         paddingTop: 16,
@@ -297,9 +282,7 @@ const styles = StyleSheet.create({
         marginTop: 8,
         marginBottom: 4,
     },
-    categoriesTitle: {
-        marginBottom: 10,
-    },
+    categoriesTitle: { marginBottom: 10 },
     categoriesList: {
         gap: 10,
         paddingBottom: 4,

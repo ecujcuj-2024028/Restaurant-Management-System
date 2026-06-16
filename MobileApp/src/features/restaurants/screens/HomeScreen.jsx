@@ -88,7 +88,7 @@ const HomeScreen = ({ navigation }) => {
         getRestaurants(),
         getProducts()
       ]);
-      
+
       setRestaurants(restaurantsRes.restaurants || []);
       setProducts(productsRes.products || []);
     } catch (error) {
@@ -103,11 +103,10 @@ const HomeScreen = ({ navigation }) => {
 
   const categories = useMemo(() => {
     const uniqueCats = new Set();
-    products.forEach(p => {
-      const catName = p.category?.name || p.category;
-      if (catName) uniqueCats.add(catName);
+    restaurants.forEach(r => {
+      if (r.category) uniqueCats.add(r.category);
     });
-    
+
     const catsArray = Array.from(uniqueCats).map((name, index) => ({
       id: (index + 1).toString(),
       name,
@@ -115,27 +114,28 @@ const HomeScreen = ({ navigation }) => {
     }));
 
     return [{ id: '0', name: t('home.all'), icon: 'apps' }, ...catsArray];
-  }, [products, t]);
+  }, [restaurants, t]);
 
   const filteredRestaurants = useMemo(() => {
     return (restaurants || []).filter((r) => {
       const matchesSearch = r?.name?.toLowerCase().includes(search.toLowerCase());
-      const matchesCategory = activeCategory === t('home.all') || 
-                             r?.category?.toLowerCase() === activeCategory.toLowerCase();
+      const matchesCategory = activeCategory === t('home.all') ||
+        r?.category?.toLowerCase() === activeCategory.toLowerCase();
       return matchesSearch && matchesCategory;
     });
   }, [restaurants, search, activeCategory, t]);
 
   const filteredProducts = useMemo(() => {
     return (products || []).filter((p) => {
-      const matchesSearch = p?.name?.toLowerCase().includes(search.toLowerCase()) || 
-                           p?.description?.toLowerCase().includes(search.toLowerCase());
-      const pCat = p.category?.name || p.category;
-      const matchesCategory = activeCategory === t('home.all') || 
-                             pCat?.toLowerCase() === activeCategory.toLowerCase();
+      const matchesSearch = p?.name?.toLowerCase().includes(search.toLowerCase()) ||
+        p?.description?.toLowerCase().includes(search.toLowerCase());
+      const restaurantCategory = p?.restaurant?.category ||
+        restaurants.find(r => (r._id || r.id) === (p.restaurant?._id || p.restaurant))?.category;
+      const matchesCategory = activeCategory === t('home.all') ||
+        restaurantCategory?.toLowerCase() === activeCategory.toLowerCase();
       return matchesSearch && matchesCategory;
     });
-  }, [products, search, activeCategory, t]);
+  }, [products, restaurants, search, activeCategory, t]);
 
   if (loading) {
     return <HomeSkeleton isDark={isDarkMode} />;
@@ -256,7 +256,7 @@ const HomeScreen = ({ navigation }) => {
                   key={item._id || item.id}
                   product={item}
                   isDark={isDarkMode}
-                  onPress={() => {}}
+                  onPress={() => { }}
                 />
               ))
             ) : (
