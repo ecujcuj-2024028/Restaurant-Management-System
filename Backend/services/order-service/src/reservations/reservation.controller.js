@@ -58,24 +58,36 @@ const notifyReservationEvent = async (event, reservation) => {
     try {
         const resData = reservation.toJSON ? reservation.toJSON() : reservation;
         
-        // Intentar poblar el nombre del restaurante desde MongoDB si no existe
-        if (!resData.restaurant || !resData.restaurant.name) {
+        // Asegurar que tenemos los datos del restaurante
+        if (!resData.restaurant || !resData.restaurant.name || !resData.restaurant.phone) {
             try {
-                const restaurant = await Restaurant.findById(resData.restaurantId).select('name photos');
+                const restaurant = await Restaurant.findById(resData.restaurantId).select('name photos phone');
                 if (restaurant) resData.restaurant = restaurant;
             } catch (e) {
-                resData.restaurant = { name: 'Restaurante' };
+                resData.restaurant = { name: 'el restaurante', phone: 'la sede' };
             }
         }
 
-        // Persistir notificación para el cliente si es actualización o cancelación
+        // Persistir notificación para el cliente en la campanita
         if (['reservation_updated', 'reservation_cancelled'].includes(event)) {
+            let title = 'Actualización de Reserva';
+            let message = `Tu reserva en ${resData.restaurant?.name || 'el restaurante'} está ahora: ${resData.status}`;
+
+            if (resData.status === 'confirmada') {
+                message = "Reservacion confirmada. Te esperamos con mucho gusto";
+            } else if (resData.status === 'cancelada') {
+                const phone = resData.restaurant?.phone || 'el restaurante';
+                message = `lamentamos decirle que su reservacion fue rechazarla, si quiere puede contactarse al restaurante numero ${phone}`;
+            } else if (resData.status === 'completada') {
+                message = "Fue un gusto servirte, vuelve de nuevo";
+            }
+
             createPersistentNotification({
                 userId: resData.userId,
                 restaurantId: resData.restaurantId,
                 type: 'reservation',
-                title: 'Actualización de Reserva',
-                message: `Tu reserva en ${resData.restaurant?.name || 'el restaurante'} está ahora: ${resData.status}`,
+                title,
+                message,
                 link: '/reservations'
             });
         }
