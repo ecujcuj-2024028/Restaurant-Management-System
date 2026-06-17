@@ -7,15 +7,22 @@ const socket = io(SOCKET_URL, {
   autoConnect: false,
 });
 
-export const useSocket = (restaurantId) => {
+export const useSocket = (rooms = []) => {
   useEffect(() => {
     socket.connect();
 
     socket.on('connect', () => {
       console.log('Socket conectado al Gateway');
-      if (restaurantId) {
-        socket.emit('join_room', `restaurant_${restaurantId}`);
-      }
+      
+      // Convertir a array si es un string
+      const roomsToJoin = Array.isArray(rooms) ? rooms : [rooms];
+      
+      roomsToJoin.forEach(room => {
+        if (room) {
+          socket.emit('join_room', room);
+          console.log(`Unido a sala: ${room}`);
+        }
+      });
     });
 
     socket.on('disconnect', () => {
@@ -27,7 +34,7 @@ export const useSocket = (restaurantId) => {
       socket.off('disconnect');
       socket.disconnect();
     };
-  }, [restaurantId]);
+  }, [JSON.stringify(rooms)]); // Re-conectar si cambian las salas
 
   const on = useCallback((event, callback) => {
     socket.on(event, callback);

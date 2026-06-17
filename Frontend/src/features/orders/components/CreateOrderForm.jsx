@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { toast } from 'react-hot-toast'
 import { useNavigate } from 'react-router-dom'
+import { XCircle } from 'lucide-react'
 import useOrderStore from '../store/orderStore'
 import api from '../../../shared/api/api'
 import Modal from '../../../shared/components/ui/Modal'
@@ -82,11 +83,31 @@ const handleSubmit = async () => {
         isMenu: i.isMenu || false
       }))
     })
-    toast.success('¡Pedido creado exitosamente!', { id: toastId })
+    
+    toast.success((t) => (
+      <div className="flex items-center justify-between gap-4 w-full">
+        <span>¡Pedido creado exitosamente!</span>
+        <button 
+          onClick={() => toast.dismiss(t.id)}
+          className="p-1 hover:bg-white/10 rounded-full transition-colors"
+        >
+          <XCircle size={14} className="text-zinc-500" />
+        </button>
+      </div>
+    ), { id: toastId, duration: 6000 })
+
     onClose()
     navigate('/my-orders')
   } catch (error) {
-    toast.error(error?.response?.data?.message || 'Error al crear el pedido', { id: toastId })
+    const message = error?.response?.data?.message || 'Error al crear el pedido'
+    toast.error((t) => (
+      <div className="flex items-center justify-between gap-4 w-full">
+        <span>{message}</span>
+        <button onClick={() => toast.dismiss(t.id)} className="p-1 hover:bg-white/10 rounded-full transition-colors">
+          <XCircle size={14} className="text-zinc-500" />
+        </button>
+      </div>
+    ), { id: toastId })
   }
 }
 
