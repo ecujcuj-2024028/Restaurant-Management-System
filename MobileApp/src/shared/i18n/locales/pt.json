@@ -20,19 +20,19 @@
     "lang_en": "Inglês",
     "lang_pt": "Português",
     "lang_zh": "Chinês Simplificado",
-    "appearanceDesc": "Personalize a aparência do aplicativo no seu dispositivo."
+    "appearanceDesc": "Personalize como o aplicativo aparece no seu dispositivo."
   },
   "home": {
     "greeting": "Olá",
     "guest": "Convidado",
-    "searchPlaceholder": "Pesquisar restaurantes, comida...",
+    "searchPlaceholder": "Buscar restaurantes, comidas...",
     "categories": "Categorias",
     "all": "Todas",
-    "featured": "Destaque perto de você",
+    "featured": "Destaques perto de você",
     "popular": "Pratos Populares",
-    "viewAll": "Ver tudo",
-    "noRestaurants": "Não há restaurantes nesta categoria.",
-    "noProducts": "Não há pratos disponíveis nesta categoria.",
+    "viewAll": "Ver todos",
+    "noRestaurants": "Sem restaurantes nesta categoria.",
+    "noProducts": "Sem pratos disponíveis nesta categoria.",
     "dishes": "pratos"
   },
   "tabs": {
@@ -40,5 +40,31 @@
     "restaurants": "Restaurantes",
     "reservations": "Reservas",
     "menu": "Menu"
+  },
+  "restaurants": {
+    "title": "Nossos Restaurantes",
+    "searchPlaceholder": "Restaurantes",
+    "categories": "Categorias",
+    "all": "Todos",
+    "viewSchedule": "Ver horários",
+    "noResults": "Nenhum restaurante encontrado"
+  },
+  "restaurantDetail": {
+    "searchPlaceholder": "Produto do Restaurante",
+    "categories": "Categorias",
+    "all": "Todos",
+    "starter": "Entrada",
+    "main": "Prato principal",
+    "dessert": "Sobremesa",
+    "beverage": "Bebida",
+    "side": "Acompanhamento",
+    "ourMenu": "Nossa carta",
+    "viewAll": "Ver todos",
+    "noProducts": "Sem pratos disponíveis",
+    "combos": "Combos",
+    "order": "Pedir",
+    "detail": "Detalhe",
+    "outOfStock": "Esgotado",
+    "comboItems": "Produtos incluídos"
   }
 }

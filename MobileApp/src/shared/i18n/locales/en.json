@@ -31,7 +31,7 @@
     "featured": "Featured near you",
     "popular": "Popular Dishes",
     "viewAll": "View all",
-    "noRestaurants": "No restaurants found in this category.",
+    "noRestaurants": "No restaurants in this category.",
     "noProducts": "No dishes available in this category.",
     "dishes": "dishes"
   },
@@ -40,5 +40,31 @@
     "restaurants": "Restaurants",
     "reservations": "Reservations",
     "menu": "Menu"
+  },
+  "restaurants": {
+    "title": "Our Restaurants",
+    "searchPlaceholder": "Restaurants",
+    "categories": "Categories",
+    "all": "All",
+    "viewSchedule": "View schedule",
+    "noResults": "No restaurants found"
+  },
+  "restaurantDetail": {
+    "searchPlaceholder": "Restaurant Product",
+    "categories": "Categories",
+    "all": "All",
+    "starter": "Starter",
+    "main": "Main course",
+    "dessert": "Dessert",
+    "beverage": "Beverage",
+    "side": "Side dish",
+    "ourMenu": "Our menu",
+    "viewAll": "View all",
+    "noProducts": "No dishes available",
+    "combos": "Combos",
+    "order": "Order",
+    "detail": "Detail",
+    "outOfStock": "Out of stock",
+    "comboItems": "Includes products"
   }
 }

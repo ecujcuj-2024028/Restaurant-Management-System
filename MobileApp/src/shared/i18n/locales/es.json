@@ -40,5 +40,31 @@
     "restaurants": "Restaurantes",
     "reservations": "Reservas",
     "menu": "Menú"
+  },
+  "restaurants": {
+    "title": "Nuestros Restaurantes",
+    "searchPlaceholder": "Restaurantes",
+    "categories": "Categorías",
+    "all": "Todos",
+    "viewSchedule": "Ver horarios",
+    "noResults": "No se encontraron restaurantes"
+  },
+  "restaurantDetail": {
+    "searchPlaceholder": "Producto del Restaurante",
+    "categories": "Categorías",
+    "all": "Todos",
+    "starter": "Entrada",
+    "main": "Plato principal",
+    "dessert": "Postre",
+    "beverage": "Bebida",
+    "side": "Acompañamiento",
+    "ourMenu": "Nuestra carta",
+    "viewAll": "Ver todos",
+    "noProducts": "No hay platos disponibles",
+    "combos": "Combos",
+    "order": "Pedir",
+    "detail": "Detalle",
+    "outOfStock": "Agotado",
+    "comboItems": "Productos que lleva"
   }
 }
