@@ -109,6 +109,10 @@ const convertDotNetHashToNodeFormat = (hash) => {
 
 export const verifyPassword = async (hashedPassword, plainPassword) => {
     try {
+        if (!hashedPassword || !plainPassword) {
+            return false;
+        }
+
         // Primero intentar verificación directa con argon2 (formato Node.js nativo)
         try {
             const result = await argon2.verify(hashedPassword, plainPassword);
