@@ -7,6 +7,7 @@ import {
     getReservationsByRestaurant,
     updateReservation,
     cancelReservation,
+    getAvailableHours,
 } from './reservation.controller.js';
 import { validateJWT } from '../../middlewares/validate-JWT.js';
 
@@ -18,6 +19,32 @@ const router = Router();
  *   name: Reservations
  *   description: Gestión de reservaciones de mesas en los restaurantes
  */
+
+/**
+ * @swagger
+ * /reservations/available-hours:
+ *   get:
+ *     summary: Obtener horarios disponibles para una mesa
+ *     tags: [Reservations]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: tableId
+ *         required: true
+ *         schema: { type: string }
+ *       - in: query
+ *         name: restaurantId
+ *         required: true
+ *         schema: { type: string }
+ *       - in: query
+ *         name: date
+ *         required: true
+ *         schema: { type: string, format: date }
+ *     responses:
+ *       200: { description: Slots generados }
+ */
+router.get('/available-hours', validateJWT, getAvailableHours);
 
 /**
  * @swagger

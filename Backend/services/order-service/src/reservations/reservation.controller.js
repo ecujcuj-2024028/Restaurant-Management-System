@@ -155,6 +155,11 @@ export const createReservation = async (req, res) => {
 
         await transaction.commit();
 
+        // Poblar datos de la mesa para el frontend
+        const populatedReservation = await Reservation.findByPk(reservation.id, {
+            include: [{ model: Table, as: 'table' }]
+        });
+
         if (reservation.status === 'confirmada') {
             const recipientEmail = customerEmail || req.user?.Email;
             if (recipientEmail) {
@@ -171,13 +176,13 @@ export const createReservation = async (req, res) => {
             }
         }
 
-        // Notificar vía WebSockets
-        notifyReservationEvent('reservation_created', reservation);
+        // Notificar vía WebSockets usando datos poblados
+        notifyReservationEvent('reservation_created', populatedReservation || reservation);
 
         return res.status(201).json({ 
             success: true, 
             message: isAdmin ? 'Confirmada.' : 'Solicitud pendiente.',
-            reservation 
+            reservation: populatedReservation || reservation
         });
     } catch (error) {
         if (transaction) await transaction.rollback();
@@ -358,5 +363,93 @@ export const cancelReservation = async (req, res) => {
         return res.json({ success: true, message: 'Cancelada' });
     } catch (error) {
         return res.status(500).json({ success: false, error: error.message });
+    }
+};
+
+/* ============================================================
+   GET /reservations/available-hours
+   Calcula los horarios disponibles para una mesa en una fecha
+   ============================================================ */
+export const getAvailableHours = async (req, res) => {
+    try {
+        const { tableId, restaurantId, date } = req.query;
+
+        if (!tableId || !restaurantId || !date) {
+            return res.status(400).json({
+                success: false,
+                message: 'Faltan parámetros: tableId, restaurantId y date son obligatorios.'
+            });
+        }
+
+        // 1. Obtener horario del restaurante
+        const restaurant = await Restaurant.findById(restaurantId).select('openingTime closingTime');
+        if (!restaurant) {
+            return res.status(404).json({ success: false, message: 'Restaurante no encontrado.' });
+        }
+
+        // 2. Obtener reservaciones existentes para ese día y mesa
+        const reservations = await Reservation.findAll({
+            where: {
+                tableId,
+                date,
+                status: { [Op.in]: ['pendiente', 'confirmada'] }
+            },
+            attributes: ['time'],
+            order: [['time', 'ASC']]
+        });
+
+        const occupiedTimes = reservations.map(r => r.time);
+
+        // 3. Generar slots (ejemplo: cada 1 hora o 30 min)
+        const availableSlots = [];
+        const [startHour, startMin] = restaurant.openingTime.split(':').map(Number);
+        const [endHour, endMin] = restaurant.closingTime.split(':').map(Number);
+
+        let current = new Date(2000, 0, 1, startHour, startMin);
+        const end = new Date(2000, 0, 1, endHour, endMin);
+
+        // Si la fecha es hoy, no mostrar horas pasadas
+        const today = new Date().toISOString().split('T')[0];
+        const now = new Date();
+        const isToday = date === today;
+
+        while (current < end) {
+            const timeStr = `${String(current.getHours()).padStart(2, '0')}:${String(current.getMinutes()).padStart(2, '0')}`;
+            
+            // Verificar si el slot está pasado (si es hoy)
+            let isPast = false;
+            if (isToday) {
+                const slotTime = new Date();
+                slotTime.setHours(current.getHours(), current.getMinutes(), 0, 0);
+                if (slotTime < now) isPast = true;
+            }
+
+            if (!isPast) {
+                // Verificar conflictos con ventana de 2 horas (mismo criterio que createReservation)
+                const [windowStart, windowEnd] = getTimeWindow(timeStr);
+                const isOccupied = occupiedTimes.some(occ => occ >= windowStart && occ <= windowEnd);
+
+                availableSlots.push({
+                    time: timeStr,
+                    available: !isOccupied
+                });
+            }
+
+            // Incrementar 1 hora (puedes ajustarlo a 30 min)
+            current.setHours(current.getHours() + 1);
+        }
+
+        return res.json({
+            success: true,
+            restaurantHours: {
+                opening: restaurant.openingTime,
+                closing: restaurant.closingTime
+            },
+            availableSlots
+        });
+
+    } catch (error) {
+        console.error('[AvailableHours] Error:', error);
+        return res.status(500).json({ success: false, message: error.message });
     }
 };

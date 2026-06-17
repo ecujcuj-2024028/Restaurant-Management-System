@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { 
   ArrowLeft, MapPin, Phone, Clock, Star, 
-  ShoppingCart, Plus, Info, ChevronRight, UtensilsCrossed 
+  ShoppingCart, Plus, Info, ChevronRight, UtensilsCrossed, CalendarCheck 
 } from 'lucide-react'
 import { toast } from 'react-hot-toast'
 import useRestaurantStore from '../store/restaurantStore'
@@ -11,6 +11,7 @@ import useProductStore from '../../product/store/productStore'
 import useMenuStore from '../../menu/store/menuStore'
 import Skeleton from '../../../shared/components/ui/Skeleton'
 import CreateOrderForm from '../../orders/components/CreateOrderForm'
+import ReservationForm from '../../reservations/components/ReservationForm'
 import useAuthStore from '../../auth/store/authStore'
 import ProductReviews from '../../reviews/components/ProductReviews'
 import ReviewModal from '../../reviews/components/ReviewModal'
@@ -40,6 +41,7 @@ const RestaurantDetail = () => {
   const [restaurant, setRestaurant] = useState(null)
   const [selectedMenuId, setSelectedMenuId] = useState('all')
   const [showOrderForm, setShowOrderForm] = useState(false)
+  const [showReservationForm, setShowReservationForm] = useState(false)
   const [initialOrderItems, setInitialOrderItems] = useState([])
   const [selectedProductForReview, setSelectedProductForReview] = useState(null)
   const [showWriteReview, setShowWriteReview] = useState(false)
@@ -113,6 +115,17 @@ const RestaurantDetail = () => {
         <button onClick={() => navigate(-1)} className="absolute top-6 left-6 p-3 bg-black/40 backdrop-blur-md rounded-2xl text-white hover:bg-orange-500 transition-all shadow-xl">
           <ArrowLeft size={20} />
         </button>
+
+        {isCliente && (
+          <button 
+            onClick={() => setShowReservationForm(true)} 
+            className="absolute top-6 right-6 px-6 py-3 bg-white text-zinc-950 font-black rounded-2xl flex items-center gap-2 hover:bg-orange-500 hover:text-white transition-all shadow-xl group/res"
+          >
+            <CalendarCheck size={18} className="text-orange-500 group-hover/res:text-white transition-colors" />
+            <span>Reservar Mesa</span>
+          </button>
+        )}
+
         <div className="absolute bottom-8 left-8 right-8">
           <div className="flex flex-wrap items-center gap-3 mb-3">
             <span className="bg-orange-500 text-white text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-full">{restaurant?.category}</span>
@@ -254,6 +267,14 @@ const RestaurantDetail = () => {
       )}
 
       {showOrderForm && <CreateOrderForm restaurantId={id} initialItems={initialOrderItems} onClose={() => setShowOrderForm(false)} />}
+      
+      {showReservationForm && (
+        <ReservationForm 
+          onClose={() => setShowReservationForm(false)} 
+          reservationToEdit={null}
+          defaultRestaurantId={id}
+        />
+      )}
     </motion.div>
   )
 }
