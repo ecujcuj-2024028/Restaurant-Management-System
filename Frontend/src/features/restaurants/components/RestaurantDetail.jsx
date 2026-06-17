@@ -131,7 +131,7 @@ const RestaurantDetail = () => {
             <span className="bg-orange-500 text-white text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-full">{restaurant?.category}</span>
             <div className="flex items-center gap-1 bg-white/10 backdrop-blur-md px-2 py-1 rounded-lg text-white">
               <Star size={12} className="text-yellow-400 fill-yellow-400" />
-              <span className="text-xs font-bold">{currentStats.promedioRating || 'Nuevo'} ({currentStats.totalReviews})</span>
+              <span className="text-xs font-bold">{currentStats.totalReviews > 0 ? currentStats.promedioRating : 'Nuevo'} ({currentStats.totalReviews})</span>
             </div>
           </div>
           <h1 className="text-4xl md:text-5xl font-black text-white">{restaurant?.name}</h1>

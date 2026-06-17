@@ -34,31 +34,22 @@ export const getMyNotifications = async (req, res) => {
             const userRestaurant = await Restaurant.findOne({ ownerId: userId, isActive: true });
             if (userRestaurant) {
                 restaurantId = userRestaurant._id.toString();
-                console.log("Resolved Restaurant ID from ownerId:", restaurantId);
             }
         }
 
-        console.log("Final Restaurant ID:", restaurantId);
-
         // ── AUTO-GENERACIÓN DE NOTIFICACIONES DE STOCK BAJO ──
+        // Solo intentamos generar alertas si detectamos un restaurante asociado
         if (restaurantId) {
             const allItems = await InventoryItem.findAll({
                 where: { RestaurantId: restaurantId, IsActive: true },
                 raw: true
             });
 
-            console.log(`Total items found in inventory for restaurant ${restaurantId}:`, allItems.length);
-            
             const lowStockBasics = allItems.filter(i => {
                 const isBasic = !i.MongoProductId;
                 const isLow = parseFloat(i.Quantity) <= parseFloat(i.MinStock);
-                if (isLow) {
-                    console.log(`Item "${i.Name}": Basic=${isBasic}, Qty=${i.Quantity}, Min=${i.MinStock}, MongoID=${i.MongoProductId}`);
-                }
                 return isBasic && isLow;
             });
-
-            console.log("Basic Low Stock Items detected:", lowStockBasics.length);
 
             for (const item of lowStockBasics) {
                 const today = new Date();
@@ -74,7 +65,6 @@ export const getMyNotifications = async (req, res) => {
                 });
 
                 if (!existing) {
-                    console.log("Creating new notification for:", item.Name);
                     const newNotif = await Notification.create({
                         userId,
                         restaurantId,
@@ -84,12 +74,8 @@ export const getMyNotifications = async (req, res) => {
                         link: '/inventory'
                     });
                     emitSocketNotification(newNotif);
-                } else {
-                    console.log("Notification already exists for today and is unread:", item.Name);
                 }
             }
-        } else {
-            console.log("WARNING: No restaurantId provided in request query");
         }
 
         const filter = { userId };
@@ -117,7 +103,7 @@ export const getMyNotifications = async (req, res) => {
 export const markAsRead = async (req, res) => {
     try {
         const { id } = req.params;
-        const userId = req.userId; // Cambiado de req.uid
+        const userId = req.userId;
 
         const notification = await Notification.findOneAndUpdate(
             { _id: id, userId },
@@ -140,7 +126,7 @@ export const markAsRead = async (req, res) => {
  */
 export const markAllAsRead = async (req, res) => {
     try {
-        const userId = req.userId; // Cambiado de req.uid
+        const userId = req.userId;
         await Notification.updateMany({ userId, isRead: false }, { isRead: true });
 
         return res.status(200).json({ success: true, message: 'Todas las notificaciones marcadas como leídas' });
@@ -155,7 +141,7 @@ export const markAllAsRead = async (req, res) => {
 export const deleteNotification = async (req, res) => {
     try {
         const { id } = req.params;
-        const userId = req.userId; // Cambiado de req.uid
+        const userId = req.userId;
 
         const result = await Notification.findOneAndDelete({ _id: id, userId });
 

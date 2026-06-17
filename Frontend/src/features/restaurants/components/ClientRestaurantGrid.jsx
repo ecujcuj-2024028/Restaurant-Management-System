@@ -16,15 +16,16 @@ const RestaurantCard = ({ restaurant, index, navigate }) => {
   const id = restaurant.id || restaurant._id
   const statsFromStore = restaurantStats[id]
 
-  // Usar datos del prop (cargados en restaurantStore) o del reviewStore
-  const rating = restaurant.rating || statsFromStore?.promedioRating
-  const totalReviews = restaurant.totalReviews || statsFromStore?.totalReviews
-
   useEffect(() => {
-    if (!rating && !statsFromStore) {
+    if (!statsFromStore) {
       fetchRestaurantStats(id)
     }
-  }, [id, rating, statsFromStore, fetchRestaurantStats])
+  }, [id, statsFromStore, fetchRestaurantStats])
+
+  const currentStats = statsFromStore || { 
+    promedioRating: restaurant.rating || 0, 
+    totalReviews: restaurant.totalReviews || 0 
+  }
 
   return (
     <motion.div
@@ -62,8 +63,8 @@ const RestaurantCard = ({ restaurant, index, navigate }) => {
             <div className="flex items-center gap-2">
               <Star size={14} className="text-yellow-400 fill-yellow-400" />
               <span className="text-white text-xs font-bold">
-                {rating > 0 ? rating : 'Nuevo'}
-                {totalReviews > 0 && <span className="text-zinc-500 font-medium ml-1">({totalReviews})</span>}
+                {currentStats.totalReviews > 0 ? currentStats.promedioRating : 'Nuevo'}
+                {currentStats.totalReviews > 0 && <span className="text-zinc-500 font-medium ml-1">({currentStats.totalReviews})</span>}
               </span>
             </div>
             <div className="flex items-center gap-1.5 text-zinc-500">
