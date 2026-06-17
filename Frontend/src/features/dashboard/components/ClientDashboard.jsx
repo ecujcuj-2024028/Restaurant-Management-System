@@ -60,7 +60,7 @@ const ClientDashboard = () => {
   
   const { restaurants, fetchRestaurants, loading: loadingRestaurants } = useRestaurantStore()
   const { products, fetchProducts, loading: loadingProducts } = useProductStore()
-  const { reviewsByProduct, fetchReviewsByProduct, fetchRestaurantStats } = useReviewStore()
+  const { reviewsByProduct, fetchReviewsByProduct, fetchRestaurantStats, restaurantStats } = useReviewStore()
   const { events, fetchEvents, loading: loadingEvents } = useEventStore()
   
   const [searchTerm, setSearchTerm] = useState('')
@@ -73,15 +73,6 @@ const ClientDashboard = () => {
     fetchProducts()
     fetchEvents() // Cargar eventos
   }, [fetchRestaurants, fetchProducts, fetchEvents])
-
-  // Cargar estadísticas de reseñas para cada restaurante una vez cargados
-  useEffect(() => {
-    if (restaurants.length > 0) {
-      restaurants.forEach(res => {
-        fetchRestaurantStats(res._id || res.id)
-      })
-    }
-  }, [restaurants, fetchRestaurantStats])
 
   // Filtrado inteligente de restaurantes
   const filteredRestaurants = useMemo(() => {
@@ -281,7 +272,15 @@ const ClientDashboard = () => {
                     />
                     <div className="absolute top-4 right-4 bg-black/40 backdrop-blur-md px-3 py-1.5 rounded-xl text-white text-[10px] font-black flex items-center gap-1">
                       <Star size={12} className="text-yellow-400 fill-yellow-400" />
-                      {reviewsByProduct[res.id || res._id]?.promedioRating || 'Nuevo'}
+                      {(() => {
+                        const s = restaurantStats[res.id || res._id] || { promedioRating: res.rating, totalReviews: res.totalReviews };
+                        return (
+                          <>
+                            {s.totalReviews > 0 ? s.promedioRating : 'Nuevo'}
+                            {s.totalReviews > 0 && <span className="text-zinc-400 ml-1">({s.totalReviews})</span>}
+                          </>
+                        );
+                      })()}
                     </div>
                   </div>
                   <div className="p-6">

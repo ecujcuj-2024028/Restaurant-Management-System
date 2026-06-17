@@ -1,6 +1,20 @@
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Calendar, Clock, MapPin, XCircle, AlertCircle, CheckCircle2, Plus, Utensils, Timer, Store } from 'lucide-react'
+import { 
+  Calendar, 
+  Clock, 
+  MapPin, 
+  XCircle, 
+  AlertCircle, 
+  CheckCircle2, 
+  Plus, 
+  Utensils, 
+  Timer, 
+  Store,
+  Search,
+  Filter,
+  CalendarClock
+} from 'lucide-react'
 import { toast } from 'react-hot-toast'
 import useReservationStore from '../store/reservationStore'
 import useAuthStore from '../../auth/store/authStore'
@@ -19,9 +33,15 @@ const STATUS_MAP = {
 const MyReservations = () => {
   const user = useAuthStore(state => state.user)
   const { reservations, loading, fetchReservations, cancelReservation, handleSocketUpdate } = useReservationStore()
+  
   const [showForm, setShowForm] = useState(false)
   const [reservationToCancel, setReservationToCancel] = useState(null)
   const [, setTick] = useState(0)
+
+  // Estados para filtros
+  const [searchTerm, setSearchTerm] = useState('')
+  const [statusFilter, setStatusFilter] = useState('')
+  const [dateFilter, setDateFilter] = useState('')
 
   // Conexión a WebSockets unida a la sala del usuario actual
   const userId = user?.id || user?._id
@@ -57,18 +77,12 @@ const MyReservations = () => {
   }, [fetchReservations])
 
   const canCancel = useCallback((res) => {
-    // Verificamos ambas posibilidades de nombre de campo debido a la configuración underscored del backend
     const createdTime = res.created_at || res.createdAt
     if (!createdTime) return false
-
     const start = new Date(createdTime).getTime()
     const now = Date.now()
     const diff = now - start
-    
-    // Log para debuguear en consola si es necesario
-    // console.log(`Reserva ${res.id} | Diff: ${diff}ms | New: ${diff < 60000}`)
-    
-    return diff < 60000 // 60 segundos (1 minuto)
+    return diff < 60000 
   }, [])
 
   const handleCancel = async () => {
@@ -82,6 +96,20 @@ const MyReservations = () => {
       toast.error(err.message || 'No se pudo cancelar', { id: toastId })
     }
   }
+
+  // Lógica de filtrado local
+  const filteredReservations = useMemo(() => {
+    return reservations.filter(res => {
+      const matchesSearch = !searchTerm || 
+        res.restaurant?.name?.toLowerCase().includes(searchTerm.toLowerCase());
+      
+      const matchesStatus = !statusFilter || res.status === statusFilter;
+      
+      const matchesDate = !dateFilter || res.date === dateFilter;
+
+      return matchesSearch && matchesStatus && matchesDate;
+    });
+  }, [reservations, searchTerm, statusFilter, dateFilter]);
 
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-8 pb-20">
@@ -110,17 +138,57 @@ const MyReservations = () => {
         </button>
       </div>
 
+      {/* Barra de Filtros */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 bg-zinc-900/50 p-4 rounded-[2.5rem] border border-white/5">
+        <div className="relative group">
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500" size={18} />
+          <input 
+            type="text" 
+            placeholder="Buscar por restaurante..." 
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full bg-zinc-800/50 border border-white/5 rounded-2xl py-3 pl-11 pr-4 text-white focus:ring-2 focus:ring-orange-500/50 outline-none text-xs font-bold" 
+          />
+        </div>
+
+        <div className="relative group">
+          <Filter className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500" size={18} />
+          <select 
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+            className="w-full bg-zinc-800/50 border border-white/5 rounded-2xl py-3 pl-11 pr-4 text-white appearance-none cursor-pointer focus:ring-2 focus:ring-orange-500/50 outline-none text-xs font-bold uppercase"
+          >
+            <option value="">Todos los estados</option>
+            <option value="pendiente">Pendiente</option>
+            <option value="confirmada">Confirmada</option>
+            <option value="cancelada">Cancelada</option>
+            <option value="completada">Completada</option>
+          </select>
+        </div>
+
+        <div className="relative group">
+          <CalendarClock className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500" size={18} />
+          <input 
+            type="date" 
+            value={dateFilter} 
+            onChange={(e) => setDateFilter(e.target.value)} 
+            className="w-full bg-zinc-800/50 border border-white/5 rounded-2xl py-3 pl-11 pr-4 text-white focus:ring-2 focus:ring-orange-500/50 outline-none text-xs font-bold" 
+            style={{ colorScheme: 'dark' }} 
+          />
+        </div>
+      </div>
+
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {loading && reservations.length === 0 ? (
           [1, 2, 3].map(i => <Skeleton key={i} className="h-64 w-full rounded-[2.5rem]" />)
-        ) : reservations.length === 0 ? (
+        ) : filteredReservations.length === 0 ? (
           <div className="col-span-full py-20 text-center bg-zinc-900/30 border border-dashed border-white/5 rounded-[2.5rem]">
             <Calendar size={40} className="mx-auto text-zinc-800 mb-4" />
-            <p className="text-zinc-500 font-bold">Aún no tienes reservaciones registradas.</p>
+            <p className="text-zinc-500 font-bold uppercase tracking-widest">Sin registros encontrados</p>
           </div>
         ) : (
           <AnimatePresence mode='popLayout'>
-            {reservations.map((res) => {
+            {filteredReservations.map((res) => {
               const status = STATUS_MAP[res.status] || STATUS_MAP.pendiente
               const StatusIcon = status.icon
               const isNew = canCancel(res)
@@ -131,7 +199,8 @@ const MyReservations = () => {
                   layout
                   initial={{ opacity: 0, scale: 0.95 }}
                   animate={{ opacity: 1, scale: 1 }}
-                  className="bg-zinc-900/50 border border-white/5 rounded-[2.5rem] p-8 hover:border-orange-500/30 transition-all group relative overflow-hidden"
+                  exit={{ opacity: 0, scale: 0.95 }}
+                  className="bg-zinc-900/50 border border-white/5 rounded-[2.5rem] p-8 hover:border-orange-500/30 transition-all group relative overflow-hidden shadow-xl"
                 >
                   {isNew && (
                     <div className="absolute top-0 right-0 p-4">
@@ -153,7 +222,7 @@ const MyReservations = () => {
                     <div className="p-2 bg-orange-500/10 rounded-xl text-orange-500">
                       <Store size={20} />
                     </div>
-                    <h3 className="text-xl font-bold text-white group-hover:text-orange-500 transition-colors">
+                    <h3 className="text-xl font-bold text-white group-hover:text-orange-500 transition-colors truncate">
                       {res.restaurant?.name || 'Restaurante'}
                     </h3>
                   </div>

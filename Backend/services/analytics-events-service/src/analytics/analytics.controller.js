@@ -132,12 +132,19 @@ export const getReviewsPorRestaurante = async (req, res) => {
         const overall = stats[0].overall[0] || { promedioRating: 0, totalReviews: 0 };
         const perProduct = stats[0].perProduct || [];
 
+        // Obtener todas las reseñas detalladas para el restaurante
+        const reviews = await Review.find({ 
+            restauranteId: new mongoose.Types.ObjectId(restauranteId), 
+            estado: 'activa' 
+        }).sort({ createdAt: -1 }).lean();
+
         return res.status(200).json({
             success: true,
             data: {
                 restauranteId,
                 totalReviews: overall.totalReviews,
                 promedioRating: parseFloat((overall.promedioRating || 0).toFixed(1)),
+                reviews,
                 products: perProduct.map(p => ({
                     platoId: p._id,
                     promedioRating: parseFloat((p.promedioRating || 0).toFixed(1)),

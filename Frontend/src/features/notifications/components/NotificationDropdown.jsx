@@ -8,7 +8,8 @@ import {
   AlertTriangle, 
   Info,
   Clock,
-  X
+  X,
+  CalendarCheck
 } from 'lucide-react'
 import useNotificationStore from '../store/notificationStore'
 import { formatRelativeTime } from '../../../shared/utils/date-utils'
@@ -48,6 +49,7 @@ const NotificationDropdown = ({ isOpen, onClose }) => {
       case 'inventory': return <Package size={16} className="text-amber-500" />
       case 'order': return <ShoppingCart size={16} className="text-blue-500" />
       case 'warning': return <AlertTriangle size={16} className="text-red-500" />
+      case 'reservation': return <CalendarCheck size={16} className="text-emerald-500" />
       default: return <Info size={16} className="text-orange-500" />
     }
   }
@@ -124,7 +126,7 @@ const NotificationDropdown = ({ isOpen, onClose }) => {
                       <Trash2 size={14} />
                     </button>
                   </div>
-                  <p className={`text-xs mt-1 leading-relaxed line-clamp-2 ${!notif.isRead ? 'text-zinc-300' : 'text-zinc-500'}`}>
+                  <p className={`text-xs mt-1 leading-relaxed ${!notif.isRead ? 'text-zinc-300' : 'text-zinc-500'}`}>
                     {notif.message}
                   </p>
                   <div className="flex items-center gap-2 mt-2">

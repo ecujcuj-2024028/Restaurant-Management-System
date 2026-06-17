@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import { getRestaurants, createRestaurant, updateRestaurant, deleteRestaurant } from '../../../shared/api/restaurants'
+import { getReviewsByRestaurant } from '../../../shared/api/reviews'
 
 const useRestaurantStore = create((set) => ({
   restaurants: [],
@@ -10,7 +11,26 @@ const useRestaurantStore = create((set) => ({
     set({ loading: true, error: null })
     try {
       const response = await getRestaurants()
-      set({ restaurants: response.data.restaurants, loading: false })
+      const restaurantList = response.data.restaurants
+
+      // Obtener reseñas para cada restaurante
+      const restaurantsWithStats = await Promise.all(
+        restaurantList.map(async (res) => {
+          try {
+            const statsRes = await getReviewsByRestaurant(res._id || res.id)
+            return {
+              ...res,
+              rating: statsRes.data?.data?.promedioRating || 0,
+              totalReviews: statsRes.data?.data?.totalReviews || 0
+            }
+          } catch (err) {
+            console.error(`Error loading stats for ${res.name}:`, err.message)
+            return { ...res, rating: 0, totalReviews: 0 }
+          }
+        })
+      )
+
+      set({ restaurants: restaurantsWithStats, loading: false })
     } catch (error) {
       set({ error: error.message, loading: false })
     }

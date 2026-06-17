@@ -20,7 +20,7 @@ const CreateOrderForm = ({ restaurantId, onClose, initialItems = [] }) => {
     const fetchData = async () => {
       try {
         const [tablesRes, productsRes] = await Promise.all([
-          api.get(`/tables?restaurantId=${restaurantId}`),
+          api.get(`/tables?restaurantId=${restaurantId}&onlyActiveReservation=true`),
           api.get(`/products?restaurant=${restaurantId}`)
         ])
         setTables(tablesRes.data?.tables || tablesRes.data || [])
@@ -126,14 +126,19 @@ const handleSubmit = async () => {
               onChange={(e) => setSelectedTable(e.target.value)}
               className="w-full bg-zinc-800 border border-zinc-700 text-white rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-orange-500"
             >
-              <option value="">-- Selecciona una mesa --</option>
-              {tables.map((t) => (
-                <option key={t._id || t.id} value={t._id || t.id}>
-                  Mesa #{t.number || t.tableNumber} — Cap. {t.capacity}
-                </option>
-              ))}
-            </select>
-          </div>
+              {tables.length === 0 ? (
+                <option value="">No tienes reservación activa</option>
+              ) : (
+                <>
+                  <option value="">-- Selecciona una mesa --</option>
+                  {tables.map((t) => (
+                    <option key={t._id || t.id} value={t._id || t.id}>
+                      Mesa #{t.number || t.tableNumber} — Cap. {t.capacity}
+                    </option>
+                  ))}
+                </>
+              )}
+            </select>          </div>
 
           <div>
             <label className="text-zinc-400 text-xs font-semibold uppercase tracking-wider mb-2 block">

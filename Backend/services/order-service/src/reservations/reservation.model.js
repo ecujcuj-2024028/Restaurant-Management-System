@@ -72,9 +72,8 @@ const Reservation = sequelize.define('Reservation', {
     tableName: 'reservations',
     indexes: [
         {
-            unique: true,
+            unique: false, // Cambiado a false para evitar conflictos de introspección y dejar que la lógica lo maneje
             fields: ['table_id', 'date', 'time'],
-            where: { status: { [Op.ne]: 'cancelada' } }
         }
     ]
 });

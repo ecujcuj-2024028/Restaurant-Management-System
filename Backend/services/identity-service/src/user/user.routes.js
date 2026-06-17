@@ -56,25 +56,6 @@ router.get(
 
 /**
  * @swagger
- * /users/{id}:
- *   get:
- *     summary: Obtener un usuario por su ID
- *     tags: [User]
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema: { type: string }
- *     responses:
- *       200: { description: Usuario encontrado }
- *       404: { description: Usuario no encontrado }
- */
-router.get('/:id', getUserById);
-
-/**
- * @swagger
  * /users/profile:
  *   get:
  *     summary: Obtener el perfil del usuario autenticado
@@ -140,5 +121,24 @@ router.patch(
 );
 
 router.patch('/profile/password', changePassword);
+
+/**
+ * @swagger
+ * /users/{id}:
+ *   get:
+ *     summary: Obtener un usuario por su ID
+ *     tags: [User]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string }
+ *     responses:
+ *       200: { description: Usuario encontrado }
+ *       404: { description: Usuario no encontrado }
+ */
+router.get('/:id', getUserById);
 
 export default router;
