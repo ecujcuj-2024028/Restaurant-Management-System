@@ -97,7 +97,7 @@ export const InventoryItem = sequelize.define(
         indexes: [
             {
                 unique: true,
-                fields: ['RestaurantId', 'Name'],
+                fields: ['restaurant_id', 'name'],
                 name: 'uq_inventory_restaurant_name',
             },
         ],
