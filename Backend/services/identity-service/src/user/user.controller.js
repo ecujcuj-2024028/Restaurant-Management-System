@@ -31,6 +31,44 @@ const buildPaginationMeta = (page, limit, total) => {
     };
 };
 
+/* =========================
+   GET /users/:id
+   Obtiene un usuario por su ID
+   ========================= */
+export const getUserById = async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        const user = await User.findByPk(id, {
+            attributes: ['Id', 'Name', 'Surname', 'Username', 'Email', 'Status'],
+            include: [
+                {
+                    model: UserProfile,
+                    as: 'UserProfile',
+                    attributes: ['Phone', 'ProfilePicture'],
+                },
+                {
+                    model: UserRole,
+                    as: 'UserRole',
+                    include: [{ model: Role, as: 'Role', attributes: ['Name'] }],
+                },
+            ],
+        });
+
+        if (!user) {
+            return res.status(404).json({ success: false, message: 'Usuario no encontrado.' });
+        }
+
+        return res.status(200).json({
+            success: true,
+            user: formatearUsuario(user)
+        });
+    } catch (error) {
+        console.error('[UserController] getUserById:', error);
+        return res.status(500).json({ success: false, message: error.message });
+    }
+};
+
 const formatearUsuario = (user) => ({
     id: user.Id,
     name: user.Name,

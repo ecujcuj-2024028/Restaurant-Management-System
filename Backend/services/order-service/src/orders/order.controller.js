@@ -443,11 +443,39 @@ export const getInvoice = async (req, res) => {
         }
 
         const restaurant = await Restaurant.findById(order.restaurantId);
-        const customer = isCustomerOwner ? req.user : { Name: 'Cliente', Surname: 'Registrado', Email: null };
+        
+        let customerData = { Name: 'Cliente', Surname: 'Registrado', Email: null };
+        
+        // Intentar obtener datos reales del cliente desde identity-service
+        if (order.userId) {
+            try {
+                const IDENTITY_SERVICE_URL = process.env.IDENTITY_SERVICE_URL || 'http://identity_service:3001/restaurantManagement/v1';
+                const response = await axios.get(`${IDENTITY_SERVICE_URL}/users/${order.userId}`, {
+                    headers: { 'Authorization': req.header('Authorization') }
+                });
+                if (response.data?.success) {
+                    customerData = {
+                        Name: response.data.user.name,
+                        Surname: response.data.user.surname,
+                        Email: response.data.user.email
+                    };
+                }
+            } catch (err) {
+                console.warn(`[InvoiceError] No se pudo obtener datos del cliente ${order.userId}:`, err.message);
+                // Si el que solicita es el dueño del pedido, usamos sus datos de la sesión
+                if (isCustomerOwner) {
+                    customerData = {
+                        Name: req.user.Name,
+                        Surname: req.user.Surname,
+                        Email: req.user.Email
+                    };
+                }
+            }
+        }
 
         const invoiceParams = {
-            customerEmail: customer?.Email,
-            customerName: customer ? `${customer.Name} ${customer.Surname}` : 'Cliente',
+            customerEmail: customerData.Email,
+            customerName: `${customerData.Name} ${customerData.Surname}`,
             invoiceNumber: order._id.toString().slice(-8).toUpperCase(),
             date: new Date(order.updatedAt).toLocaleString('es-GT', { dateStyle: 'long' }),
             restaurantName: restaurant?.name || 'GastroManager',
