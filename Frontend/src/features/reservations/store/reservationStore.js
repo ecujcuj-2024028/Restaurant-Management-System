@@ -103,6 +103,21 @@ const useReservationStore = create((set) => ({
     clearReservationError: () => {
         set({ error: null })
     },
+
+    // Handlers para WebSockets
+    handleSocketUpdate: (updatedRes) => {
+        set((state) => ({
+            reservations: state.reservations.map((r) =>
+                getReservationId(r) === getReservationId(updatedRes) ? updatedRes : r
+            ),
+        }))
+    },
+
+    handleSocketNewReservation: (newRes) => {
+        set((state) => ({
+            reservations: [newRes, ...state.reservations]
+        }))
+    },
 }))
 
 export default useReservationStore

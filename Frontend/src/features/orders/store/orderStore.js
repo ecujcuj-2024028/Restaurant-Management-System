@@ -73,6 +73,29 @@ const useOrderStore = create((set) => ({
       throw error
     }
   },
+
+  // Handlers para WebSockets
+  handleSocketUpdate: (updatedOrder) => {
+    set((state) => ({
+      orders: state.orders.map((o) =>
+        (o._id || o.id) === (updatedOrder._id || updatedOrder.id) ? updatedOrder : o
+      ),
+    }))
+  },
+
+  handleSocketNewOrder: (newOrder) => {
+    set((state) => ({
+      orders: [newOrder, ...state.orders]
+    }))
+  },
+
+  handleSocketHistoryUpdate: (updatedOrder) => {
+    set((state) => ({
+      history: state.history.map((o) =>
+        (o._id || o.id) === (updatedOrder._id || updatedOrder.id) ? updatedOrder : o
+      ),
+    }))
+  },
 }))
 
 export default useOrderStore

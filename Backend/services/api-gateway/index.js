@@ -4,31 +4,61 @@ import helmet from 'helmet';
 import morgan from 'morgan';
 import { createProxyMiddleware } from 'http-proxy-middleware';
 import dotenv from 'dotenv';
+import { createServer } from 'http';
+import { Server } from 'socket.io';
 
 dotenv.config();
 
 const app = express();
+const httpServer = createServer(app);
 const PORT = process.env.PORT || 3000;
 const BASE_PATH = '/restaurantManagement/v1';
 
-app.use(helmet());
+// Middlewares globales que no consumen el body
+app.use(helmet({
+    contentSecurityPolicy: false,
+}));
 app.use(cors());
 app.use(morgan('dev'));
 
-/**
- * CONFIGURACIÓN DE PROXIES
- * Usamos una función de filtro para que el proxy intercepte las rutas
- * sin que Express las "recorte".
- */
+// Socket.io setup
+const io = new Server(httpServer, {
+    cors: {
+        origin: "*",
+        methods: ["GET", "POST"]
+    }
+});
 
-// Proxy para el Identity Service
+io.on('connection', (socket) => {
+    console.log(`Cliente conectado: ${socket.id}`);
+    socket.on('join_room', (roomId) => {
+        socket.join(roomId);
+        console.log(`Socket ${socket.id} se unió a la sala: ${roomId}`);
+    });
+    socket.on('disconnect', () => {
+        console.log(`Cliente desconectado: ${socket.id}`);
+    });
+});
+
+/**
+ * ENDPOINT INTERNO PARA MICROSERVICIOS
+ * Solo aquí usamos express.json() para no romper los proxies
+ */
+app.post(`${BASE_PATH}/internal/emit`, express.json(), (req, res) => {
+    const { event, data, room } = req.body;
+    if (!event || !data) return res.status(400).json({ message: "Faltan campos event o data" });
+    if (room) io.to(room).emit(event, data);
+    else io.emit(event, data);
+    return res.status(200).json({ success: true });
+});
+
+// Proxies - Deben ir ANTES de cualquier express.json() global
 app.use(createProxyMiddleware({
     target: process.env.IDENTITY_SERVICE_URL || 'http://localhost:3001',
     changeOrigin: true,
     pathFilter: (path) => path.startsWith(`${BASE_PATH}/auth`) || path.startsWith(`${BASE_PATH}/users`)
 }));
 
-// Proxy para el Management Service
 app.use(createProxyMiddleware({
     target: process.env.MANAGEMENT_SERVICE_URL || 'http://localhost:3002',
     changeOrigin: true,
@@ -42,7 +72,6 @@ app.use(createProxyMiddleware({
         path.startsWith(`${BASE_PATH}/search`)
 }));
 
-// Proxy para el Order Service
 app.use(createProxyMiddleware({
     target: process.env.ORDER_SERVICE_URL || 'http://localhost:3003',
     changeOrigin: true,
@@ -53,7 +82,6 @@ app.use(createProxyMiddleware({
         path.startsWith(`${BASE_PATH}/customer`)
 }));
 
-// Proxy para el Analytics & Events Service
 app.use(createProxyMiddleware({
     target: process.env.ANALYTICS_SERVICE_URL || 'http://localhost:3004',
     changeOrigin: true,
@@ -64,6 +92,6 @@ app.use(createProxyMiddleware({
         path.startsWith(`${BASE_PATH}/reports`)
 }));
 
-app.listen(PORT, () => {
-    console.log(`API Gateway funcionando en http://localhost:${PORT}${BASE_PATH}`);
+httpServer.listen(PORT, () => {
+    console.log(`API Gateway con WebSockets en http://localhost:${PORT}${BASE_PATH}`);
 });

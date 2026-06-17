@@ -1,14 +1,16 @@
 import { useEffect, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Eye, Star, ChevronDown, ChevronUp, Store, Clock, ShoppingBag } from 'lucide-react'
+import { Eye, Star, ChevronDown, ChevronUp, Store, Clock, ShoppingBag, Bell, XCircle } from 'lucide-react'
 import useOrderStore from '../store/orderStore'
 import useAuthStore from '../../auth/store/authStore'
 import useRestaurantStore from '../../restaurants/store/restaurantStore'
+import useSocket from '../../../shared/hooks/useSocket'
 import OrderStatusBadge from './OrderStatusBadge'
 import OrderDetailModal from './OrderDetailModal'
 import ReviewModal from '../../reviews/components/ReviewModal'
 import ProductReviews from '../../reviews/components/ProductReviews'
 import Skeleton from '../../../shared/components/ui/Skeleton'
+import { toast } from 'react-hot-toast'
 
 // ── Fila expandible con items reseñables ─────────────────────────────────────
 const OrderRow = ({ order, onViewDetail, onOpenReview }) => {
@@ -156,12 +158,77 @@ const OrderRow = ({ order, onViewDetail, onOpenReview }) => {
 
 // ── Componente principal ──────────────────────────────────────────────────────
 const MyOrders = () => {
-  const { history, loading, fetchOrderHistory } = useOrderStore()
+  const user = useAuthStore(state => state.user)
+  const { history, loading, fetchOrderHistory, handleSocketHistoryUpdate } = useOrderStore()
   const { restaurants, fetchRestaurants } = useRestaurantStore()
 
   const [selectedOrder, setSelectedOrder] = useState(null)
   const [reviewTarget, setReviewTarget] = useState(null)
   const [selectedRestaurant, setSelectedRestaurant] = useState('')
+  const [startDate, setStartDate] = useState('')
+  const [endDate, setEndDate] = useState('')
+
+  // Conexión a WebSockets
+  const userId = user?.id || user?._id
+  const socketRooms = [`user_${userId}`]
+  if (selectedRestaurant) socketRooms.push(`restaurant_${selectedRestaurant}`)
+
+  const { on } = useSocket(socketRooms)
+
+  useEffect(() => {
+    const unsubscribeUpdated = on('order_status_updated', (updatedOrder) => {
+      handleSocketHistoryUpdate(updatedOrder)
+      
+      const statusMessages = {
+        recibido: "¡Recibimos tu pedido! Pronto empezaremos a prepararlo.",
+        en_preparacion: "Tu pedido está en la cocina. ¡Ya se siente el aroma!",
+        listo: "¡Prepárate! Ya casi llega tu pedido a la mesa.",
+        entregado: "¡Buen provecho! Esperamos que te haya gustado.",
+        cancelado: "Lo sentimos, tu pedido ha sido cancelado."
+      }
+
+      const statusIcons = {
+        recibido: <Bell className="text-blue-400" size={20} />,
+        en_preparacion: <Clock className="text-yellow-500" size={20} />,
+        listo: <Bell className="text-orange-500" size={20} />,
+        entregado: <Star className="text-emerald-500" size={20} />,
+        cancelado: <XCircle className="text-red-500" size={20} />
+      }
+
+      toast.success((t) => (
+        <div className="flex items-center justify-between gap-4 w-full">
+          <span>{statusMessages[updatedOrder.status] || `Tu pedido está: ${updatedOrder.status}`}</span>
+          <button onClick={() => toast.dismiss(t.id)} className="p-1 hover:bg-white/10 rounded-full transition-colors">
+            <XCircle size={14} className="text-zinc-500" />
+          </button>
+        </div>
+      ), {
+        icon: statusIcons[updatedOrder.status] || <Bell size={20} />,
+        duration: 8000,
+        id: `order-${updatedOrder._id}`,
+      })
+    })
+
+    const unsubscribeCancelled = on('order_cancelled', (cancelledOrder) => {
+      handleSocketHistoryUpdate(cancelledOrder)
+      toast.error((t) => (
+        <div className="flex items-center justify-between gap-4 w-full">
+          <span>Tu pedido ha sido cancelado</span>
+          <button onClick={() => toast.dismiss(t.id)} className="p-1 hover:bg-white/10 rounded-full transition-colors">
+            <XCircle size={14} className="text-zinc-500" />
+          </button>
+        </div>
+      ), {
+        icon: <XCircle className="text-red-500" size={20} />,
+        id: `cancel-${cancelledOrder._id}`
+      })
+    })
+
+    return () => {
+      unsubscribeUpdated()
+      unsubscribeCancelled()
+    }
+  }, [on, handleSocketHistoryUpdate])
 
   useEffect(() => {
     fetchRestaurants()
@@ -170,8 +237,10 @@ const MyOrders = () => {
   useEffect(() => {
     const params = {}
     if (selectedRestaurant) params.restaurantId = selectedRestaurant
+    if (startDate) params.startDate = startDate
+    if (endDate) params.endDate = endDate
     fetchOrderHistory(params)
-  }, [selectedRestaurant, fetchOrderHistory])
+  }, [selectedRestaurant, startDate, endDate, fetchOrderHistory])
 
   return (
     <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="pb-10">
@@ -194,32 +263,55 @@ const MyOrders = () => {
         />
       )}
 
-      <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6 mb-8">
-        <div>
+      <div className="flex flex-col lg:flex-row items-start lg:items-end justify-between gap-6 mb-8">
+        <div className="flex-1">
           <h1 className="text-3xl font-black text-white tracking-tight">Mis Visitas</h1>
           <p className="text-zinc-500 text-sm mt-1 font-medium">
             Revive tus mejores experiencias gastronómicas.
           </p>
         </div>
 
-        <div className="relative w-full md:w-72 group">
-          <div className="absolute left-4 top-1/2 -translate-y-1/2 text-orange-500 transition-transform group-hover:scale-110 z-10 pointer-events-none">
-            <Store size={18} />
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 w-full lg:w-auto">
+          {/* Filtro Restaurante */}
+          <div className="relative group">
+            <div className="absolute left-4 top-1/2 -translate-y-1/2 text-orange-500 z-10 pointer-events-none">
+              <Store size={18} />
+            </div>
+            <select
+              value={selectedRestaurant}
+              onChange={(e) => setSelectedRestaurant(e.target.value)}
+              className="w-full lg:w-64 bg-zinc-900 border border-white/10 text-white pl-12 pr-10 py-3 rounded-2xl text-xs font-bold uppercase tracking-widest focus:outline-none focus:ring-2 focus:ring-orange-500/50 appearance-none transition-all hover:bg-zinc-800"
+            >
+              <option value="">Todas las visitas</option>
+              {restaurants.map((res) => (
+                <option key={res.id || res._id} value={res.id || res._id}>{res.name}</option>
+              ))}
+            </select>
+            <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-500 pointer-events-none" size={16} />
           </div>
-          <select
-            value={selectedRestaurant}
-            onChange={(e) => setSelectedRestaurant(e.target.value)}
-            className="w-full bg-zinc-900/80 backdrop-blur-md border border-white/10 text-white pl-12 pr-10 py-3.5 rounded-[1.25rem] text-sm font-black uppercase tracking-widest focus:outline-none focus:ring-2 focus:ring-orange-500/50 appearance-none transition-all cursor-pointer hover:bg-zinc-800 relative z-0"
-          >
-            <option value="">Todas mis visitas</option>
-            {restaurants.map((res) => (
-              <option key={res.id || res._id} value={res.id || res._id}>
-                {res.name}
-              </option>
-            ))}
-          </select>
-          <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-zinc-500 z-10">
-            <ChevronDown size={16} />
+
+          {/* Filtro Fecha Inicio */}
+          <div className="relative group">
+            <Clock className="absolute left-4 top-1/2 -translate-y-1/2 text-orange-500 z-10 pointer-events-none" size={18} />
+            <input
+              type="date"
+              value={startDate}
+              onChange={(e) => setStartDate(e.target.value)}
+              className="w-full bg-zinc-900 border border-white/10 text-white pl-12 pr-4 py-3 rounded-2xl text-xs font-bold focus:outline-none focus:ring-2 focus:ring-orange-500/50 transition-all hover:bg-zinc-800"
+              style={{ colorScheme: 'dark' }}
+            />
+          </div>
+
+          {/* Filtro Fecha Fin */}
+          <div className="relative group">
+            <Clock className="absolute left-4 top-1/2 -translate-y-1/2 text-orange-500 z-10 pointer-events-none" size={18} />
+            <input
+              type="date"
+              value={endDate}
+              onChange={(e) => setEndDate(e.target.value)}
+              className="w-full bg-zinc-900 border border-white/10 text-white pl-12 pr-4 py-3 rounded-2xl text-xs font-bold focus:outline-none focus:ring-2 focus:ring-orange-500/50 transition-all hover:bg-zinc-800"
+              style={{ colorScheme: 'dark' }}
+            />
           </div>
         </div>
       </div>

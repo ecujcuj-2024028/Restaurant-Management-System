@@ -1,7 +1,7 @@
 'use strict';
 
 import { Router } from 'express';
-import { getProfile, getUsers, updateProfile, updateProfilePicture, changePassword } from './user.controller.js';
+import { getProfile, getUsers, getUserById, updateProfile, updateProfilePicture, changePassword } from './user.controller.js';
 import { uploadUserProfileImage } from '../../middlewares/restaurant-uploader.js';
 import { hasRole } from '../../middlewares/hasRole.js';
 import { ADMIN_SISTEMA } from '../../helpers/role-constants.js';
@@ -53,6 +53,25 @@ router.get(
     hasRole(ADMIN_SISTEMA),
     getUsers
 );
+
+/**
+ * @swagger
+ * /users/{id}:
+ *   get:
+ *     summary: Obtener un usuario por su ID
+ *     tags: [User]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string }
+ *     responses:
+ *       200: { description: Usuario encontrado }
+ *       404: { description: Usuario no encontrado }
+ */
+router.get('/:id', getUserById);
 
 /**
  * @swagger

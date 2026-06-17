@@ -3,8 +3,10 @@ import { Link, useNavigate } from 'react-router-dom'
 import useAuthStore from '../../../features/auth/store/authStore'
 import useUserStore from '../../../features/users/store/userStore'
 import useNotificationStore from '../../../features/notifications/store/notificationStore'
+import useSocket from '../../../shared/hooks/useSocket'
 import { User as UserIcon, Bell, LogOut, Settings, ChevronDown, Menu } from 'lucide-react'
 import NotificationDropdown from '../../../features/notifications/components/NotificationDropdown'
+import { toast } from 'react-hot-toast'
 
 const Navbar = ({ onMenuClick }) => {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false)
@@ -15,7 +17,30 @@ const Navbar = ({ onMenuClick }) => {
   const logout = useAuthStore((state) => state.logout)
   const user = useAuthStore((state) => state.user)
   const { profile, fetchProfile } = useUserStore()
-  const { unreadCount, fetchNotifications } = useNotificationStore()
+  const { unreadCount, fetchNotifications, handleSocketNewNotification } = useNotificationStore()
+
+  // Conexión a sala privada de usuario para notificaciones
+  const { on } = useSocket(user?.id ? [`user_${user.id}`] : [])
+
+  useEffect(() => {
+    const unsubscribe = on('new_notification', (notif) => {
+      handleSocketNewNotification(notif)
+      // Mostrar un toast informativo si el dropdown está cerrado
+      if (!isNotificationsOpen) {
+        toast(notif.title, {
+          icon: <Bell className="text-blue-500" size={20} />,
+          duration: 6000,
+          style: {
+            borderRadius: '1.5rem',
+            background: '#18181b',
+            color: '#fff',
+            border: '1px solid rgba(59,130,246,0.2)'
+          }
+        })
+      }
+    })
+    return () => unsubscribe()
+  }, [on, handleSocketNewNotification, isNotificationsOpen])
 
   useEffect(() => {
     if (!profile) {

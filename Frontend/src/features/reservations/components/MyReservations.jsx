@@ -4,6 +4,7 @@ import { Calendar, Clock, MapPin, XCircle, AlertCircle, CheckCircle2, Plus, Uten
 import { toast } from 'react-hot-toast'
 import useReservationStore from '../store/reservationStore'
 import useAuthStore from '../../auth/store/authStore'
+import useSocket from '../../../shared/hooks/useSocket'
 import ReservationForm from './ReservationForm'
 import Skeleton from '../../../shared/components/ui/Skeleton'
 import ConfirmDialog from '../../../shared/components/ui/ConfirmDialog'
@@ -17,10 +18,37 @@ const STATUS_MAP = {
 
 const MyReservations = () => {
   const user = useAuthStore(state => state.user)
-  const { reservations, loading, fetchReservations, cancelReservation } = useReservationStore()
+  const { reservations, loading, fetchReservations, cancelReservation, handleSocketUpdate } = useReservationStore()
   const [showForm, setShowForm] = useState(false)
   const [reservationToCancel, setReservationToCancel] = useState(null)
   const [, setTick] = useState(0)
+
+  // Conexión a WebSockets unida a la sala del usuario actual
+  const userId = user?.id || user?._id
+  const { on } = useSocket(userId ? [`user_${userId}`] : [])
+
+  useEffect(() => {
+    const unsubscribeUpdated = on('reservation_updated', (updatedRes) => {
+      handleSocketUpdate(updatedRes)
+      toast.success(`Tu reserva ha sido actualizada a: ${updatedRes.status}`, {
+        icon: <Calendar size={20} className="text-orange-500" />,
+        duration: 5000,
+        style: { borderRadius: '1.5rem', background: '#18181b', color: '#fff' }
+      })
+    })
+
+    const unsubscribeCancelled = on('reservation_cancelled', (cancelledRes) => {
+      handleSocketUpdate(cancelledRes)
+      toast.error(`Tu reserva ha sido cancelada`, {
+        icon: <XCircle size={20} className="text-red-500" />
+      })
+    })
+
+    return () => {
+      unsubscribeUpdated()
+      unsubscribeCancelled()
+    }
+  }, [on, handleSocketUpdate])
 
   useEffect(() => {
     fetchReservations()
