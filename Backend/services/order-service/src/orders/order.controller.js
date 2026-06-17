@@ -366,12 +366,20 @@ export const updateOrderStatus = async (req, res) => {
       cancelado: "Lo sentimos, tu pedido ha sido cancelado."
     }
 
+    const statusTitles = {
+      recibido: "¡Recibimos tu pedido!",
+      en_preparacion: "Tu pedido está en la cocina",
+      listo: "¡Prepárate! Ya casi llega",
+      entregado: "¡Buen provecho!",
+      cancelado: "Pedido Cancelado"
+    }
+
     // Persistir notificación para el cliente
     createPersistentNotification({
       userId: order.userId,
       restaurantId: order.restaurantId,
       type: 'order',
-      title: 'Actualización de Pedido',
+      title: statusTitles[status] || 'Actualización de Pedido',
       message: statusMessages[status] || `Tu pedido está: ${status}`,
       link: '/orders'
     });
