@@ -52,21 +52,43 @@ export const createOrder = async (req, res) => {
 
     // ── VALIDACIÓN DE RESERVA PARA CLIENTES ──────────────────────────────────
     if (isClient) {
-      const restaurant = await Restaurant.findById(restaurantId);
-      const restaurantPhone = restaurant?.phone || 'el establecimiento';
       const today = new Date().toISOString().split('T')[0]; 
       
-      const activeReservation = await Reservation.findOne({
+      // Obtener todas las reservaciones confirmadas del usuario para hoy en este restaurante y mesa
+      const activeReservations = await Reservation.findAll({
         where: { userId, restaurantId, tableId, date: today, status: 'confirmada' },
         transaction: t
       });
 
-      if (!activeReservation) {
+      if (!activeReservations || activeReservations.length === 0) {
         await t.rollback();
         return res.status(403).json({
           success: false,
-          message: `Primero debes tener una reservación confirmada en esta mesa para hoy.`
+          message: `No tienes una reservación confirmada en esta mesa para hoy.`
         });
+      }
+
+      // Validar ventana de tiempo (2 horas desde la hora de la reserva)
+      const now = new Date();
+      const currentHHMM = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+      
+      const isWithinWindow = activeReservations.some(res => {
+          const [resH, resM] = res.time.split(':').map(Number);
+          const resTime = new Date();
+          resTime.setHours(resH, resM, 0, 0);
+          
+          const endTime = new Date(resTime.getTime() + 120 * 60000); // +2 horas
+          const endHHMM = `${String(endTime.getHours()).padStart(2, '0')}:${String(endTime.getMinutes()).padStart(2, '0')}`;
+          
+          return currentHHMM >= res.time && currentHHMM <= endHHMM;
+      });
+
+      if (!isWithinWindow) {
+          await t.rollback();
+          return res.status(403).json({
+              success: false,
+              message: `Tu reservación no está activa en este momento. Solo puedes pedir durante las 2 horas de tu reserva (${activeReservations[0].time}).`
+          });
       }
     }
 
