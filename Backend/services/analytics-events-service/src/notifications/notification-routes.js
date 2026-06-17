@@ -5,11 +5,17 @@ import {
     getMyNotifications,
     markAsRead,
     markAllAsRead,
-    deleteNotification
+    deleteNotification,
+    createNotification
 } from './notification-controller.js';
 import { validateJWT } from '../../middlewares/validate-JWT.js';
 
 const router = Router();
+
+/**
+ * ENDPOINT INTERNO (Usado por otros microservicios vía Gateway)
+ */
+router.post('/internal/create', createNotification);
 
 /**
  * @swagger

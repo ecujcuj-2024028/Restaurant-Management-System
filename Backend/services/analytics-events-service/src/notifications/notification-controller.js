@@ -4,6 +4,22 @@ import Notification from './notification-model.js';
 import { InventoryItem } from '../inventory/inventory.model.js';
 import Restaurant from '../restaurants/restaurant.model.js';
 import { Op } from 'sequelize';
+import axios from 'axios';
+
+const GATEWAY_INTERNAL_URL = process.env.GATEWAY_INTERNAL_URL || 'http://api_gateway:3000/restaurantManagement/v1/internal/emit';
+
+// Helper para emitir via socket
+const emitSocketNotification = async (notification) => {
+    try {
+        await axios.post(GATEWAY_INTERNAL_URL, {
+            event: 'new_notification',
+            data: notification,
+            room: `user_${notification.userId}`
+        });
+    } catch (err) {
+        console.error('[SocketError] Error emitting notification:', err.message);
+    }
+};
 
 /**
  * Obtener notificaciones del usuario autenticado
@@ -59,7 +75,7 @@ export const getMyNotifications = async (req, res) => {
 
                 if (!existing) {
                     console.log("Creating new notification for:", item.Name);
-                    await Notification.create({
+                    const newNotif = await Notification.create({
                         userId,
                         restaurantId,
                         type: 'inventory',
@@ -67,6 +83,7 @@ export const getMyNotifications = async (req, res) => {
                         message: `El insumo básico "${item.Name}" tiene un stock de ${item.Quantity} ${item.Unit}. El mínimo es ${item.MinStock}.`,
                         link: '/inventory'
                     });
+                    emitSocketNotification(newNotif);
                 } else {
                     console.log("Notification already exists for today and is unread:", item.Name);
                 }
@@ -147,6 +164,23 @@ export const deleteNotification = async (req, res) => {
         }
 
         return res.status(200).json({ success: true, message: 'Notificación eliminada' });
+    } catch (error) {
+        return res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+/**
+ * Crear una nueva notificación (invocado internamente por otros servicios)
+ */
+export const createNotification = async (req, res) => {
+    try {
+        const notification = new Notification(req.body);
+        await notification.save();
+
+        // Emitir por socket
+        emitSocketNotification(notification);
+
+        return res.status(201).json({ success: true, notification });
     } catch (error) {
         return res.status(500).json({ success: false, message: error.message });
     }

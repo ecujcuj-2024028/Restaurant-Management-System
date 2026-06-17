@@ -7,6 +7,19 @@ import { sendReservationConfirmationEmail } from '../../helpers/email-service.js
 import { sequelize } from '../../configs/db-postgres.js';
 import { Op } from 'sequelize';
 import { ADMIN_RESTAURANTE, ADMIN_SISTEMA } from '../../helpers/role-constants.js';
+import axios from 'axios';
+
+const GATEWAY_INTERNAL_URL = process.env.GATEWAY_INTERNAL_URL || 'http://api_gateway:3000/restaurantManagement/v1/internal/emit';
+const NOTIFICATIONS_INTERNAL_URL = process.env.NOTIFICATIONS_INTERNAL_URL || 'http://api_gateway:3000/restaurantManagement/v1/notifications/internal/create';
+
+// Helper para crear notificaciones persistentes
+const createPersistentNotification = async (data) => {
+    try {
+        await axios.post(NOTIFICATIONS_INTERNAL_URL, data);
+    } catch (err) {
+        console.error('[NotificationError] Error creating persistent notification:', err.message);
+    }
+};
 
 /* ─────────────────────────────────────────────
    Helper: obtener IDs de restaurantes propios
@@ -38,6 +51,51 @@ const getTimeWindow = (time) => {
     const windowEnd = new Date(end.getTime() + 119 * 60000);
     const format = (d) => `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
     return [format(windowStart), format(windowEnd)];
+};
+
+// Helper interno para notificar reservaciones con datos poblados
+const notifyReservationEvent = async (event, reservation) => {
+    try {
+        const resData = reservation.toJSON ? reservation.toJSON() : reservation;
+        
+        // Intentar poblar el nombre del restaurante desde MongoDB si no existe
+        if (!resData.restaurant || !resData.restaurant.name) {
+            try {
+                const restaurant = await Restaurant.findById(resData.restaurantId).select('name photos');
+                if (restaurant) resData.restaurant = restaurant;
+            } catch (e) {
+                resData.restaurant = { name: 'Restaurante' };
+            }
+        }
+
+        // Persistir notificación para el cliente si es actualización o cancelación
+        if (['reservation_updated', 'reservation_cancelled'].includes(event)) {
+            createPersistentNotification({
+                userId: resData.userId,
+                restaurantId: resData.restaurantId,
+                type: 'reservation',
+                title: 'Actualización de Reserva',
+                message: `Tu reserva en ${resData.restaurant?.name || 'el restaurante'} está ahora: ${resData.status}`,
+                link: '/reservations'
+            });
+        }
+
+        // Notificar al restaurante vía Sockets
+        await axios.post(GATEWAY_INTERNAL_URL, {
+            event,
+            data: resData,
+            room: `restaurant_${resData.restaurantId}`
+        });
+        
+        // Notificar al usuario vía Sockets
+        await axios.post(GATEWAY_INTERNAL_URL, {
+            event,
+            data: resData,
+            room: `user_${resData.userId}`
+        });
+    } catch (err) {
+        console.error(`[SocketError] Error notifying ${event}:`, err.message);
+    }
 };
 
 export const createReservation = async (req, res) => {
@@ -113,6 +171,9 @@ export const createReservation = async (req, res) => {
             }
         }
 
+        // Notificar vía WebSockets
+        notifyReservationEvent('reservation_created', reservation);
+
         return res.status(201).json({ 
             success: true, 
             message: isAdmin ? 'Confirmada.' : 'Solicitud pendiente.',
@@ -170,6 +231,9 @@ export const updateReservation = async (req, res) => {
 
         reservation.status = status;
         await reservation.save();
+
+        // Notificar vía WebSockets
+        notifyReservationEvent('reservation_updated', reservation);
         
         return res.json({ success: true, reservation });
     } catch (error) {
@@ -181,17 +245,29 @@ export const getMyReservations = async (req, res) => {
     try {
         const userId = getUserIdFromRequest(req);
         const ownedIds = await getOwnedRestaurantIds(req);
+        const { startDate, endDate, status } = req.query;
         
         let filter;
         if (ownedIds === null) {
-            // ADMIN_SISTEMA: Ve todas
             filter = {};
         } else if (ownedIds.length > 0) {
-            // ADMIN_RESTAURANTE: Ve las de sus restaurantes
             filter = { restaurantId: { [Op.in]: ownedIds } };
         } else {
-            // CLIENTE: Solo las suyas
             filter = { userId };
+        }
+
+        // Filtro por estado
+        if (status) {
+            filter.status = status;
+        }
+
+        // Filtro por fecha
+        if (startDate && endDate) {
+            filter.date = { [Op.between]: [startDate, endDate] };
+        } else if (startDate) {
+            filter.date = { [Op.gte]: startDate };
+        } else if (endDate) {
+            filter.date = { [Op.lte]: endDate };
         }
 
         const { count, rows } = await Reservation.findAndCountAll({
@@ -221,6 +297,7 @@ export const getMyReservations = async (req, res) => {
 export const getReservationsByRestaurant = async (req, res) => {
     try {
         const { restaurantId } = req.params;
+        const { startDate, endDate, status } = req.query;
 
         // SEGURIDAD: Validar propiedad
         const ownedIds = await getOwnedRestaurantIds(req);
@@ -228,8 +305,22 @@ export const getReservationsByRestaurant = async (req, res) => {
             return res.status(403).json({ success: false, message: 'No tienes permiso para ver reservaciones de este restaurante' });
         }
 
+        const filter = { restaurantId };
+        
+        // Filtro por estado
+        if (status) filter.status = status;
+
+        // Filtro por fecha
+        if (startDate && endDate) {
+            filter.date = { [Op.between]: [startDate, endDate] };
+        } else if (startDate) {
+            filter.date = { [Op.gte]: startDate };
+        } else if (endDate) {
+            filter.date = { [Op.lte]: endDate };
+        }
+
         const { count, rows } = await Reservation.findAndCountAll({
-            where: { restaurantId },
+            where: filter,
             include: [{ model: Table, as: 'table' }],
             order: [['date', 'DESC'], ['time', 'ASC']]
         });
@@ -260,6 +351,9 @@ export const cancelReservation = async (req, res) => {
         await reservation.save();
 
         await Table.update({ availability: 'disponible' }, { where: { id: reservation.tableId } });
+
+        // Notificar vía WebSockets
+        notifyReservationEvent('reservation_cancelled', reservation);
 
         return res.json({ success: true, message: 'Cancelada' });
     } catch (error) {
