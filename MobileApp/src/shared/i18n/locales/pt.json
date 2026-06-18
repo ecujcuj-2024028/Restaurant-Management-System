@@ -31,6 +31,7 @@
     "featured": "Destaques perto de você",
     "popular": "Pratos Populares",
     "viewAll": "Ver todos",
+    "viewLess": "Ver menos",
     "noRestaurants": "Sem restaurantes nesta categoria.",
     "noProducts": "Sem pratos disponíveis nesta categoria.",
     "dishes": "pratos"
@@ -66,7 +67,13 @@
     "detail": "Detalhe",
     "outOfStock": "Esgotado",
     "comboItems": "Produtos incluídos",
-    "reserve": "Reserva"
+    "reserve": "Reserva",
+    "locationInfo": "Informações do Local",
+    "locationInfoSubtitle": "Detalhes de contato e localização",
+    "address": "Endereço",
+    "phone": "Telefone",
+    "businessHours": "Horário de atendimento",
+    "understood": "Entendido"
   },
   "reservations": {
     "title": "Reservas",

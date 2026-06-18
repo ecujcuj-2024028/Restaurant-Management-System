@@ -60,13 +60,20 @@
     "side": "Side dish",
     "ourMenu": "Our menu",
     "viewAll": "View all",
+    "viewLess": "View less",
     "noProducts": "No dishes available",
     "combos": "Combos",
     "order": "Order",
     "detail": "Detail",
     "outOfStock": "Out of stock",
     "comboItems": "Includes products",
-    "reserve": "Reservation"
+    "reserve": "Reservation",
+    "locationInfo": "Location Information",
+    "locationInfoSubtitle": "Contact and location details",
+    "address": "Address",
+    "phone": "Phone",
+    "businessHours": "Business hours",
+    "understood": "Got it"
   },
   "reservations": {
     "title": "Reservations",
