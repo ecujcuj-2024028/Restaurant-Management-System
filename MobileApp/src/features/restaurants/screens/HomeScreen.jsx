@@ -216,7 +216,7 @@ const HomeScreen = ({ navigation }) => {
             <Typography variant="h3" color={textColor}>
               {activeCategory === t('home.all') ? t('home.featured') : `${activeCategory}`}
             </Typography>
-            <TouchableOpacity>
+            <TouchableOpacity onPress={() => navigation.navigate('RestaurantesTab')}>
               <Typography variant="caption" color={COLORS.primary}>{t('home.viewAll')} &rarr;</Typography>
             </TouchableOpacity>
           </View>
