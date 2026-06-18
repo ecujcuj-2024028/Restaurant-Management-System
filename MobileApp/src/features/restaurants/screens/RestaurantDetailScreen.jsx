@@ -157,47 +157,92 @@ const CarouselProductCard = ({ item, isDark, onPress, t }) => {
 };
 
 // ── Tarjeta de combo ──
-const ComboCard = ({ item, isDark, t, onOrder }) => {
+const ComboCard = ({ item, isDark, t, onOrder, onItemPress }) => {
+  const [showItems, setShowItems] = useState(false);
   const bgCard = isDark ? COLORS.darkSurface : COLORS.white;
   const textColor = isDark ? COLORS.darkText : COLORS.text;
   const textSecondary = isDark ? COLORS.darkTextSecondary : COLORS.textSecondary;
 
   const bannerColors = ['#B8860B', '#FF6B00', '#1A237E', '#2E7D32'];
   const colorIndex = (item.name?.charCodeAt(0) || 0) % bannerColors.length;
-  const itemCount = item.items?.length || 0;
+  const itemsList = item.items || [];
+  const itemCount = itemsList.length;
 
   return (
-    <View style={[styles.productCard, { backgroundColor: bgCard }, !isDark && COMMON_STYLES.shadow]}>
-      <View style={[styles.productImageContainer, { backgroundColor: bannerColors[colorIndex] }]}>
-        {item.image ? (
-          <Image source={{ uri: item.image }} style={styles.productImage} resizeMode="cover" />
-        ) : (
-          <Ionicons name="fast-food-outline" size={36} color="rgba(255,255,255,0.7)" />
-        )}
-      </View>
-      <View style={styles.productInfo}>
-        <View style={styles.productTopRow}>
-          <Typography variant="bodyBold" color={textColor} style={{ flex: 1 }} numberOfLines={1}>
-            {item.name}
-          </Typography>
-          <Typography variant="bodyBold" color={COLORS.primary}>
-            Q {item.price?.toFixed(2)}
-          </Typography>
+    <View style={[styles.comboCardContainer, { backgroundColor: bgCard }, !isDark && COMMON_STYLES.shadow]}>
+      <View style={styles.comboMainInfo}>
+        <View style={[styles.productImageContainer, { backgroundColor: bannerColors[colorIndex] }]}>
+          {item.image ? (
+            <Image source={{ uri: item.image }} style={styles.productImage} resizeMode="cover" />
+          ) : (
+            <Ionicons name="fast-food-outline" size={36} color="rgba(255,255,255,0.7)" />
+          )}
         </View>
-        <Typography variant="small" color={textSecondary} numberOfLines={2}>
-          {itemCount > 0 ? `${t('restaurantDetail.comboItems')}: ${itemCount}` : item.description || 'Combo especial'}
-        </Typography>
-        {/* Botón Pedir — esquina inferior derecha */}
-        <View style={styles.comboBottomRow}>
-          <View />
-          <TouchableOpacity style={styles.comboPedirBtn} onPress={onOrder}>
-            <Ionicons name="cart-outline" size={15} color={COLORS.white} />
-            <Typography variant="small" color={COLORS.white} style={{ fontWeight: '700' }}>
-              {t('restaurantDetail.order') || 'Pedir'}
+        <View style={styles.productInfo}>
+          <View style={styles.productTopRow}>
+            <Typography variant="bodyBold" color={textColor} style={{ flex: 1 }} numberOfLines={1}>
+              {item.name}
             </Typography>
-          </TouchableOpacity>
+            <Typography variant="bodyBold" color={COLORS.primary}>
+              Q {item.price?.toFixed(2)}
+            </Typography>
+          </View>
+          <Typography variant="small" color={textSecondary} numberOfLines={2}>
+            {item.description || 'Combo especial'}
+          </Typography>
+          
+          <View style={styles.comboBottomRow}>
+            {itemCount > 0 ? (
+              <TouchableOpacity 
+                style={styles.showItemsBtn} 
+                onPress={() => setShowItems(!showItems)}
+              >
+                <Typography variant="small" color={COLORS.primary} style={{ fontWeight: '600' }}>
+                  {showItems ? t('restaurantDetail.viewLess') : t('restaurantDetail.comboItems')} ({itemCount})
+                </Typography>
+                <Ionicons 
+                  name={showItems ? 'chevron-up' : 'chevron-down'} 
+                  size={14} 
+                  color={COLORS.primary} 
+                />
+              </TouchableOpacity>
+            ) : <View />}
+            
+            <TouchableOpacity style={styles.comboPedirBtn} onPress={onOrder}>
+              <Ionicons name="cart-outline" size={15} color={COLORS.white} />
+              <Typography variant="small" color={COLORS.white} style={{ fontWeight: '700' }}>
+                {t('restaurantDetail.order') || 'Pedir'}
+              </Typography>
+            </TouchableOpacity>
+          </View>
         </View>
       </View>
+
+      {showItems && itemCount > 0 && (
+        <View style={[styles.itemsListContainer, { borderTopColor: isDark ? COLORS.darkBorder : COLORS.border }]}>
+          {itemsList.map((itemObj, idx) => {
+            // Manejamos si el item es el producto directo o un objeto envoltorio
+            const productName = itemObj.name || itemObj.product?.name || (typeof itemObj === 'string' ? itemObj : 'Producto');
+            const productData = itemObj.product || itemObj;
+
+            return (
+              <TouchableOpacity 
+                key={itemObj._id || itemObj.id || idx} 
+                style={styles.itemRow}
+                onPress={() => onItemPress && onItemPress(productData)}
+              >
+                <Ionicons name="checkmark-circle" size={16} color={COLORS.primary} />
+                <Typography variant="small" color={textColor} style={{ marginLeft: 8, flex: 1 }}>
+                  {productName}
+                </Typography>
+                <Typography variant="small" color={COLORS.primary} style={{ fontWeight: '600' }}>
+                  {t('restaurantDetail.detail')} &rarr;
+                </Typography>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+      )}
     </View>
   );
 };
@@ -210,11 +255,24 @@ const RestaurantDetailScreen = ({ route, navigation }) => {
   const [restaurant, setRestaurant] = useState(null);
   const [products, setProducts] = useState([]);
   const [menus, setMenus] = useState([]);
+  const [activeMenuId, setActiveMenuId] = useState(null);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [activeCategory, setActiveCategory] = useState(t('restaurantDetail.all'));
   const [infoModalVisible, setInfoModalVisible] = useState(false);
   const [showAllProducts, setShowAllProducts] = useState(false);
+  const [selectedProduct, setSelectedProduct] = useState(null);
+  const [productModalVisible, setProductModalVisible] = useState(false);
+
+  const handleOpenProductDetail = (product) => {
+    // Si viene de un combo, puede que no traiga la descripción completa.
+    // Buscamos el producto completo en nuestra lista principal de productos.
+    const productId = product._id || product.id;
+    const fullProduct = products.find(p => (p._id || p.id) === productId) || product;
+    
+    setSelectedProduct(fullProduct);
+    setProductModalVisible(true);
+  };
 
   useEffect(() => {
   setActiveCategory(t('restaurantDetail.all'));
@@ -239,7 +297,12 @@ const RestaurantDetailScreen = ({ route, navigation }) => {
       setRestaurant(resData.restaurant || resData);
       const prods = Array.isArray(productsData) ? productsData : productsData?.products ?? [];
       setProducts(prods);
-      setMenus(Array.isArray(menusData) ? menusData : menusData?.menus ?? []);
+      
+      const fetchedMenus = Array.isArray(menusData) ? menusData : menusData?.menus ?? [];
+      setMenus(fetchedMenus);
+      if (fetchedMenus.length > 0) {
+        setActiveMenuId(fetchedMenus[0]._id || fetchedMenus[0].id);
+      }
     } catch (error) {
       console.error('Error fetching restaurant detail:', error);
     } finally {
@@ -315,8 +378,7 @@ const RestaurantDetailScreen = ({ route, navigation }) => {
             value={search}
             onChangeText={setSearch}
             style={{ marginBottom: 0 }}
-            inputStyle={{ backgroundColor: surfaceColor, borderColor: 'transparent' }}
-            placeholderTextColor={textSecondary}
+            inputStyle={{ borderColor: 'transparent' }}
             leftIcon={<Ionicons name="search-outline" size={20} color={textSecondary} />}
           />
         </View>
@@ -378,7 +440,7 @@ const RestaurantDetailScreen = ({ route, navigation }) => {
                     key={item._id || item.id}
                     item={item}
                     isDark={isDarkMode}
-                    onPress={() => {}}
+                    onPress={() => handleOpenProductDetail(item)}
                     t={t}
                   />
                 ))}
@@ -395,7 +457,7 @@ const RestaurantDetailScreen = ({ route, navigation }) => {
                     key={item._id || item.id}
                     item={item}
                     isDark={isDarkMode}
-                    onPress={() => {}}
+                    onPress={() => handleOpenProductDetail(item)}
                     t={t}
                   />
                 ))}
@@ -411,21 +473,53 @@ const RestaurantDetailScreen = ({ route, navigation }) => {
           )}
         </View>
 
-        {/* Combos */}
-        {filteredCombos.length > 0 && (
-          <View style={{ paddingHorizontal: 16, marginBottom: 100 }}>
-            <Typography variant="h3" color={textColor} style={{ marginBottom: 12 }}>
-              {t('restaurantDetail.combos')}
-            </Typography>
-            {filteredCombos.map((item) => (
-              <ComboCard
-                key={item._id || item.id}
-                item={item}
-                isDark={isDarkMode}
-                t={t}
-                onOrder={() => console.log('Pedir combo:', item.name)}
-              />
-            ))}
+        {/* ── Menús (Combos) ── */}
+        {menus.length > 0 && (
+          <View style={{ marginBottom: 24 }}>
+            <View style={{ paddingHorizontal: 16, marginBottom: 12 }}>
+              <Typography variant="h3" color={textColor}>
+                {t('restaurantDetail.combos')}
+              </Typography>
+            </View>
+            
+            {/* Chips de Menús */}
+            <ScrollView 
+              horizontal 
+              showsHorizontalScrollIndicator={false} 
+              contentContainerStyle={{ paddingHorizontal: 16, gap: 10, marginBottom: 16 }}
+            >
+              {menus.map((menu) => {
+                const isActive = (menu._id || menu.id) === activeMenuId;
+                return (
+                  <TouchableOpacity
+                    key={menu._id || menu.id}
+                    onPress={() => setActiveMenuId(menu._id || menu.id)}
+                    style={[
+                      styles.categoryChip, 
+                      { backgroundColor: isActive ? COLORS.primary : surfaceColor }
+                    ]}
+                  >
+                    <Typography variant="small" color={isActive ? COLORS.white : textSecondary}>
+                      {menu.name}
+                    </Typography>
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
+
+            {/* Carta del Menú Activo */}
+            <View style={{ paddingHorizontal: 16 }}>
+              {menus.filter(m => (m._id || m.id) === activeMenuId).map((item) => (
+                <ComboCard
+                  key={item._id || item.id}
+                  item={item}
+                  isDark={isDarkMode}
+                  t={t}
+                  onOrder={() => console.log('Pedir menu:', item.name)}
+                  onItemPress={handleOpenProductDetail}
+                />
+              ))}
+            </View>
           </View>
         )}
 
@@ -508,6 +602,72 @@ const RestaurantDetailScreen = ({ route, navigation }) => {
             <TouchableOpacity style={styles.understoodBtn} onPress={() => setInfoModalVisible(false)}>
               <Typography variant="bodyBold" color={COLORS.white}>{t('restaurantDetail.understood')}</Typography>
             </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Modal Detalle de Producto */}
+      <Modal
+        visible={productModalVisible}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setProductModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={[styles.productModalCard, { backgroundColor: surfaceColor }]}>
+            <TouchableOpacity 
+              style={styles.closeModalBtn} 
+              onPress={() => setProductModalVisible(false)}
+            >
+              <Ionicons name="close" size={24} color={COLORS.white} />
+            </TouchableOpacity>
+
+            {selectedProduct && (
+              <View>
+                <View style={[styles.modalProductImageContainer, { backgroundColor: COLORS.primary + '20' }]}>
+                  {selectedProduct.image ? (
+                    <Image 
+                      source={{ uri: selectedProduct.image }} 
+                      style={styles.modalProductImage} 
+                      resizeMode="cover" 
+                    />
+                  ) : (
+                    <Ionicons name="fast-food-outline" size={80} color={COLORS.primary} />
+                  )}
+                </View>
+
+                <View style={{ padding: 20 }}>
+                  <View style={styles.productTopRow}>
+                    <Typography variant="h2" color={textColor} style={{ flex: 1 }}>
+                      {selectedProduct.name}
+                    </Typography>
+                    <Typography variant="h2" color={COLORS.primary}>
+                      Q {selectedProduct.price?.toFixed(2)}
+                    </Typography>
+                  </View>
+
+                  <Typography variant="body" color={textSecondary} style={{ marginTop: 12 }}>
+                    {selectedProduct.description || 'Sin descripción detallada disponible.'}
+                  </Typography>
+
+                  <View style={{ marginTop: 24, gap: 12 }}>
+                    <View style={styles.itemRow}>
+                      <Ionicons name="restaurant-outline" size={18} color={COLORS.primary} />
+                      <Typography variant="small" color={textSecondary} style={{ marginLeft: 8 }}>
+                        Categoría: {CATEGORY_KEYS[selectedProduct.type] ? t(CATEGORY_KEYS[selectedProduct.type]) : (selectedProduct.category?.name || 'General')}
+                      </Typography>
+                    </View>
+                  </View>
+
+                  <TouchableOpacity 
+                    style={[styles.understoodBtn, { marginTop: 32 }]} 
+                    onPress={() => setProductModalVisible(false)}
+                  >
+                    <Typography variant="bodyBold" color={COLORS.white}>Cerrar</Typography>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            )}
           </View>
         </View>
       </Modal>
@@ -614,6 +774,28 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 8,
     borderRadius: 20,
+  },
+  comboCardContainer: {
+    borderRadius: 16,
+    marginBottom: 12,
+    overflow: 'hidden',
+  },
+  comboMainInfo: {
+    flexDirection: 'row',
+  },
+  showItemsBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  itemsListContainer: {
+    padding: 12,
+    borderTopWidth: 1,
+    gap: 8,
+  },
+  itemRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
 
   // ── Tarjeta carrusel ──
@@ -733,6 +915,35 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     alignItems: 'center',
     marginTop: 4,
+  },
+  // ── Product Modal Styles ──
+  productModalCard: {
+    width: '100%',
+    borderRadius: 24,
+    overflow: 'hidden',
+    paddingBottom: 20,
+  },
+  closeModalBtn: {
+    position: 'absolute',
+    top: 16,
+    right: 16,
+    zIndex: 10,
+    backgroundColor: 'rgba(0,0,0,0.2)',
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalProductImageContainer: {
+    width: '100%',
+    height: 250,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalProductImage: {
+    width: '100%',
+    height: '100%',
   },
 });
 

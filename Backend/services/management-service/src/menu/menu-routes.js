@@ -8,7 +8,8 @@ import {
     updateMenu,
     addMenuItem,
     removeMenuItem,
-    deleteMenu
+    deleteMenu,
+    toggleMenuStatus
 } from '../menu/menu-controller.js';
 
 import { validateJWT }    from '../../middlewares/validate-JWT.js';
@@ -92,6 +93,24 @@ router.post('/',    [validateJWT, hasRole(ADMIN_RESTAURANTE, ADMIN_SISTEMA), upl
  *       200: { description: Menú actualizado }
  */
 router.put('/:id',  [validateJWT, hasRole(ADMIN_RESTAURANTE, ADMIN_SISTEMA), uploadRestaurantImage.single('image')], updateMenu);
+
+/**
+ * @swagger
+ * /menu/{id}/toggle-status:
+ *   patch:
+ *     summary: Alternar disponibilidad del menú
+ *     tags: [Menu]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string }
+ *     responses:
+ *       200: { description: Estado actualizado }
+ */
+router.patch('/:id/toggle-status', [validateJWT, hasRole(ADMIN_RESTAURANTE, ADMIN_SISTEMA)], toggleMenuStatus);
 
 /**
  * @swagger

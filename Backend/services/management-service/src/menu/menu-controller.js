@@ -3,6 +3,7 @@
 import Menu    from '../menu/menu-models.js';
 import Product from '../product/products-model.js';
 import Restaurant from '../restaurants/restaurant.model.js';
+import { cloudinary, extractPublicId } from '../../middlewares/restaurant-uploader.js';
 import { ADMIN_SISTEMA, ADMIN_RESTAURANTE } from '../../helpers/role-constants.js';
 
 /* ─────────────────────────────────────────────
@@ -18,7 +19,7 @@ const getOwnedRestaurantIds = async (req) => {
     if (isSystemAdmin) return null; // Acceso total
     
     if (isRestauranteAdmin) {
-        const myRestaurants = await Restaurant.find({ ownerId: req.userId, isActive: true }, '_id');
+        const myRestaurants = await Restaurant.find({ ownerId: req.userId }, '_id');
         const ids = myRestaurants.map(r => r._id);
         console.log(`[MenuService] Found ${ids.length} owned restaurants for admin ${req.userId}`);
         return ids;
@@ -44,9 +45,14 @@ export const getMenus = async (req, res) => {
         const { restaurant, menuType, isActive } = req.query;
         const filter = {};
 
+        const roles = req.userRoles || [];
+        const isSystemAdmin = roles.includes(ADMIN_SISTEMA);
+        const isRestauranteAdmin = roles.includes(ADMIN_RESTAURANTE);
+
         // SEGURIDAD: Filtrar por propiedad
         const ownedIds = await getOwnedRestaurantIds(req);
         if (ownedIds) {
+            // ADMIN_RESTAURANTE: ve sus restaurantes
             if (restaurant) {
                 if (!ownedIds.some(id => id.toString() === restaurant)) {
                     return res.status(403).json({ success: false, message: 'No tienes permiso para ver este restaurante' });
@@ -56,7 +62,13 @@ export const getMenus = async (req, res) => {
                 filter.restaurant = { $in: ownedIds };
             }
         } else if (restaurant) {
+            // CLIENTE o ADMIN_SISTEMA filtrando por restaurante específico
             filter.restaurant = restaurant;
+        }
+
+        // Restricción para CLIENTES: solo ven menús activos
+        if (!isSystemAdmin && !isRestauranteAdmin) {
+            filter.isActive = true;
         }
 
         if (menuType)   filter.menuType   = menuType;
@@ -95,7 +107,19 @@ export const getMenu = async (req, res) => {
                 message: `Menú no encontrado con id ${req.params.id}`
             });
 
-        // SEGURIDAD: Validar propiedad
+        const roles = req.userRoles || [];
+        const isSystemAdmin = roles.includes(ADMIN_SISTEMA);
+        const isRestauranteAdmin = roles.includes(ADMIN_RESTAURANTE);
+
+        // Si es cliente y el menú está inactivo, no debe verlo
+        if (!isSystemAdmin && !isRestauranteAdmin && !menu.isActive) {
+            return res.status(404).json({
+                success: false,
+                message: 'El menú solicitado no está disponible'
+            });
+        }
+
+        // SEGURIDAD: Validar propiedad para Admin Restaurante
         const ownedIds = await getOwnedRestaurantIds(req);
         if (ownedIds && !ownedIds.some(id => id.toString() === menu.restaurant._id.toString())) {
             return res.status(403).json({ success: false, message: 'No tienes permiso para ver este menú' });
@@ -248,6 +272,47 @@ export const deleteMenu = async (req, res) => {
         return res.status(200).json({ success: true, message: 'Menú desactivado' });
     } catch (error) {
         return res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+export const toggleMenuStatus = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const menu = await Menu.findById(id);
+
+        if (!menu) {
+            return res.status(404).json({
+                success: false,
+                message: 'Menú no encontrado'
+            });
+        }
+
+        // SEGURIDAD: Validar propiedad
+        const ownedIds = await getOwnedRestaurantIds(req);
+        if (ownedIds && !ownedIds.some(ownedId => ownedId.toString() === menu.restaurant.toString())) {
+            return res.status(403).json({
+                success: false,
+                message: 'No autorizado para modificar este menú'
+            });
+        }
+menu.isActive = !menu.isActive;
+await menu.save();
+
+const updatedMenu = await Menu.findById(id)
+    .populate('restaurant',    'name')
+    .populate('items.product', 'name price type image');
+
+return res.status(200).json({
+    success: true,
+    message: `Menú ${menu.isActive ? 'activado' : 'desactivado'} correctamente`,
+    isActive: menu.isActive,
+    menu: updatedMenu
+});
+    } catch (error) {
+        return res.status(500).json({
+            success: false,
+            message: error.message
+        });
     }
 };
 

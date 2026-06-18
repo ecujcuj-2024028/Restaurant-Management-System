@@ -152,7 +152,7 @@ const MenuList = () => {
                                             {menu.description && <p className="text-zinc-500 text-sm line-clamp-1">{menu.description}</p>}
                                         </td>
                                         <td className="px-8 py-5 text-zinc-300">
-                                            {menu.restaurant?.name || menu.restaurant || 'N/A'}
+                                            {menu.restaurant?.name || (typeof menu.restaurant === 'string' ? menu.restaurant : 'N/A')}
                                         </td>
                                         <td className="px-8 py-5">
                                             <span className="capitalize px-3 py-1 bg-zinc-800 rounded-full text-sm">

@@ -16,7 +16,8 @@ const getOwnedRestaurantIds = async (req) => {
     // Si es Admin de Sistema o CLIENTE, no restringimos por propiedad en las búsquedas (null)
     if (isSystemAdmin || !isRestauranteAdmin) return null;
     
-    const myRestaurants = await Restaurant.find({ ownerId: req.userId, isActive: true }, '_id');
+    // Los administradores de restaurante deben ver sus propios restaurantes, incluso si están inactivos para gestión
+    const myRestaurants = await Restaurant.find({ ownerId: req.userId }, '_id');
     return myRestaurants.map(r => r._id);
 };
 
@@ -82,8 +83,12 @@ export const createProduct = async (req, res) => {
 ───────────────────────────────────────────────────────────────────────────── */
 export const getProducts = async (req, res) => {
     try {
-        const { type, category, isAvailable, restaurant } = req.query;
-        const filter = { isActive: true };
+        const { type, category, isAvailable, restaurant, isActive } = req.query;
+        const filter = {};
+
+        const roles = req.userRoles || [];
+        const isSystemAdmin = roles.includes(ADMIN_SISTEMA);
+        const isRestauranteAdmin = roles.includes(ADMIN_RESTAURANTE);
 
         // SEGURIDAD: Filtrar por propiedad
         const ownedIds = await getOwnedRestaurantIds(req);
@@ -100,10 +105,16 @@ export const getProducts = async (req, res) => {
             filter.restaurant = restaurant;
         }
 
+        // Restricción para CLIENTES: solo ven productos activos
+        if (!isSystemAdmin && !isRestauranteAdmin) {
+            filter.isActive = true;
+        }
+
         if (type) filter.type = type;
         if (category) filter.category = category;
         if (isAvailable !== undefined)
             filter.isAvailable = isAvailable === 'true';
+        if (isActive !== undefined) filter.isActive = isActive === 'true';
 
         const products = await Product.find(filter)
             .populate('category', 'name')
@@ -128,7 +139,19 @@ export const getProduct = async (req, res) => {
         if (!product)
             return res.status(404).json({ success: false, message: 'Producto no encontrado' });
 
-        // SEGURIDAD: Validar propiedad
+        const roles = req.userRoles || [];
+        const isSystemAdmin = roles.includes(ADMIN_SISTEMA);
+        const isRestauranteAdmin = roles.includes(ADMIN_RESTAURANTE);
+
+        // Si es cliente y el producto está inactivo, ocultarlo
+        if (!isSystemAdmin && !isRestauranteAdmin && !product.isActive) {
+            return res.status(404).json({
+                success: false,
+                message: 'Producto no disponible'
+            });
+        }
+
+        // SEGURIDAD: Validar propiedad para Admin Restaurante
         const ownedIds = await getOwnedRestaurantIds(req);
         if (ownedIds !== null && !ownedIds.some(id => id.toString() === product.restaurant._id.toString())) {
             return res.status(403).json({ success: false, message: 'No tienes permiso para ver este producto' });

@@ -50,6 +50,16 @@ export const createOrder = async (req, res) => {
       return res.status(400).json({ message: "Debe enviar al menos un producto o menú" });
     }
 
+    // Validar que el restaurante exista y esté activo
+    const restaurant = await Restaurant.findById(restaurantId);
+    if (!restaurant || !restaurant.isActive) {
+        await t.rollback();
+        return res.status(400).json({
+            success: false,
+            message: 'El restaurante no está disponible para recibir pedidos.'
+        });
+    }
+
     // ── VALIDACIÓN DE RESERVA PARA CLIENTES ──────────────────────────────────
     if (isClient) {
       const today = new Date().toISOString().split('T')[0]; 

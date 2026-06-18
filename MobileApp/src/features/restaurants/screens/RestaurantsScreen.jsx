@@ -94,6 +94,9 @@ const RestaurantListCard = ({ restaurant, onPress, isDark }) => {
                         {restaurant.category || 'Restaurante'}
                     </Typography>
                 </View>
+                <TouchableOpacity style={styles.arrowBtnOnImage} onPress={onPress}>
+                    <Ionicons name="arrow-forward" size={18} color={COLORS.white} />
+                </TouchableOpacity>
             </View>
 
             <View style={styles.listCardInfo}>
@@ -118,9 +121,6 @@ const RestaurantListCard = ({ restaurant, onPress, isDark }) => {
                             {address}
                         </Typography>
                     </View>
-                    <TouchableOpacity style={styles.arrowBtn} onPress={onPress}>
-                        <Ionicons name="arrow-forward" size={18} color={COLORS.white} />
-                    </TouchableOpacity>
                 </View>
             </View>
         </TouchableOpacity>
@@ -200,8 +200,7 @@ const RestaurantsScreen = ({ navigation }) => {
                     value={search}
                     onChangeText={setSearch}
                     style={{ marginBottom: 0 }}
-                    inputStyle={{ backgroundColor: surfaceColor, borderColor: 'transparent' }}
-                    placeholderTextColor={textSecondary}
+                    inputStyle={{ borderColor: 'transparent' }}
                     leftIcon={<Ionicons name="search-outline" size={20} color={textSecondary} />}
                 />
             </View>
@@ -334,14 +333,16 @@ const styles = StyleSheet.create({
         borderRadius: 1.5,
         marginHorizontal: 6,
     },
-    arrowBtn: {
+    arrowBtnOnImage: {
+        position: 'absolute',
+        bottom: 10,
+        right: 10,
         backgroundColor: COLORS.primary,
         width: 34,
         height: 34,
         borderRadius: 17,
         justifyContent: 'center',
         alignItems: 'center',
-        marginLeft: 8,
     },
     emptyContainer: {
         alignItems: 'center',
