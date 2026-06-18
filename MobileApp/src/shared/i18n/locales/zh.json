@@ -82,5 +82,65 @@
     "all": "全部",
     "viewSchedule": "查看时间表",
     "noResults": "未找到餐厅"
+  },
+  "reservationForm": {
+    "title": "预订餐桌",
+    "guests": "用餐人数",
+    "selectDate": "选择日期",
+    "timeSlots": "可用时段",
+    "data": "详细信息",
+    "phone": "电话",
+    "table": "桌号",
+    "name": "姓名",
+    "notes": "备注",
+    "notesPlaceholder": "特殊要求或备注...",
+    "confirm": "确认预订",
+    "error": "错误",
+    "errorDate": "请选择日期。",
+    "errorTime": "请选择时段。",
+    "errorGeneric": "无法创建预订。",
+    "success": "预订成功！",
+    "successMsg": "您的餐桌已成功预订。"
+  },
+  "orders": {
+    "title": "我的订单",
+    "searchPlaceholder": "搜索餐厅查看订单",
+    "noOrders": "您还没有订单。",
+    "noResults": "该餐厅没有找到订单。",
+    "order": "订单",
+    "detail": "详情",
+    "noDescription": "无描述",
+    "unknownRestaurant": "餐厅",
+    "status": {
+      "recibido": "已收到",
+      "en_preparacion": "准备中",
+      "listo": "已就绪",
+      "entregado": "已送达",
+      "cancelado": "已取消",
+      "confirmado": "已确认",
+      "en_camino": "配送中"
+    }
+  },
+  "productDetail": {
+    "product": "菜品",
+    "restaurant": "餐厅",
+    "reviews": "条评价",
+    "review": "评价",
+    "write": "写评价",
+    "noReviews": "成为第一个评价的人。",
+    "addReview": "添加评价",
+    "editReview": "编辑评价",
+    "yourRating": "您的评分",
+    "comment": "评论",
+    "commentPlaceholder": "写下您对这道菜的体验...",
+    "publish": "发布",
+    "save": "保存",
+    "deleteTitle": "删除评价",
+    "deleteMsg": "确定要删除您的评价吗？",
+    "delete": "删除",
+    "cancel": "取消",
+    "deleteError": "无法删除评价。",
+    "anonymous": "用户"
   }
+
 }

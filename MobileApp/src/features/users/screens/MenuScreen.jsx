@@ -51,7 +51,7 @@ const MenuScreen = ({ navigation }) => {
   const MENU_OPTIONS = [
     { id: 'perfil', title: t('menu.myProfile'), icon: 'person-outline' },
     { id: 'reservas', title: t('menu.myReservations'), icon: 'calendar-outline' },
-    { id: 'pedidos', title: t('menu.myOrders'), icon: 'list-outline' },
+    { id: 'pedidos', title: t('menu.myOrders'), icon: 'list-outline', action: () => navigation.navigate('MyOrders') },
     { id: 'eventos', title: t('menu.events'), icon: 'star-outline' },
     { id: 'notificaciones', title: t('menu.notifications'), icon: 'notifications-outline' },
     { id: 'carrito', title: t('menu.cart'), icon: 'cart-outline' },
