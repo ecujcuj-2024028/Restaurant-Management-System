@@ -251,6 +251,47 @@ export const deleteMenu = async (req, res) => {
     }
 };
 
+export const toggleMenuStatus = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const menu = await Menu.findById(id);
+
+        if (!menu) {
+            return res.status(404).json({
+                success: false,
+                message: 'Menú no encontrado'
+            });
+        }
+
+        // SEGURIDAD: Validar propiedad
+        const ownedIds = await getOwnedRestaurantIds(req);
+        if (ownedIds && !ownedIds.some(ownedId => ownedId.toString() === menu.restaurant.toString())) {
+            return res.status(403).json({
+                success: false,
+                message: 'No autorizado para modificar este menú'
+            });
+        }
+menu.isActive = !menu.isActive;
+await menu.save();
+
+const updatedMenu = await Menu.findById(id)
+    .populate('restaurant',    'name')
+    .populate('items.product', 'name price type image');
+
+return res.status(200).json({
+    success: true,
+    message: `Menú ${menu.isActive ? 'activado' : 'desactivado'} correctamente`,
+    isActive: menu.isActive,
+    menu: updatedMenu
+});
+    } catch (error) {
+        return res.status(500).json({
+            success: false,
+            message: error.message
+        });
+    }
+};
+
 export const addMenuItem = async (req, res) => {
     try {
         const menu = await Menu.findById(req.params.id);
