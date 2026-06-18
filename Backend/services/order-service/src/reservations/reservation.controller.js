@@ -103,6 +103,16 @@ export const createReservation = async (req, res) => {
             return res.status(401).json({ success: false, message: 'Usuario no autenticado.' });
         }
 
+        // Validar que el restaurante esté activo
+        const restaurant = await Restaurant.findById(restaurantId);
+        if (!restaurant || !restaurant.isActive) {
+            await transaction.rollback();
+            return res.status(400).json({
+                success: false,
+                message: 'El restaurante no está disponible para recibir reservaciones.'
+            });
+        }
+
         const table = await Table.findOne({
             where: { id: tableId, restaurant: restaurantId, isActive: true },
             lock: true, transaction
