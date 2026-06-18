@@ -174,8 +174,7 @@ const HomeScreen = ({ navigation }) => {
             value={search}
             onChangeText={setSearch}
             style={styles.searchContainer}
-            inputStyle={[styles.searchInput, { backgroundColor: surfaceColor, color: textColor }]}
-            placeholderTextColor={textSecondary}
+            inputStyle={styles.searchInput}
             leftIcon={<Ionicons name="search-outline" size={20} color={textSecondary} />}
           />
         </View>

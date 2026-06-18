@@ -358,8 +358,7 @@ const RestaurantDetailScreen = ({ route, navigation }) => {
             value={search}
             onChangeText={setSearch}
             style={{ marginBottom: 0 }}
-            inputStyle={{ backgroundColor: surfaceColor, borderColor: 'transparent' }}
-            placeholderTextColor={textSecondary}
+            inputStyle={{ borderColor: 'transparent' }}
             leftIcon={<Ionicons name="search-outline" size={20} color={textSecondary} />}
           />
         </View>

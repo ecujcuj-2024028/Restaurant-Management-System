@@ -3,6 +3,7 @@ import { View, Text, TextInput, StyleSheet, TouchableOpacity } from 'react-nativ
 import { FontAwesome6 } from '@expo/vector-icons';
 import { COLORS } from '../../constants/colors';
 import { THEME } from '../../constants/theme';
+import useAuthStore from '../../../store/useAuthStore';
 
 /**
  * Custom Input Component
@@ -27,6 +28,7 @@ const Input = ({
 }) => {
   const [isFocused, setIsFocused] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const { isDarkMode } = useAuthStore();
 
   const handleFocus = (e) => {
     setIsFocused(true);
@@ -47,11 +49,16 @@ const Input = ({
   // Si no es password, respeta la prop secureTextEntry (si existe)
   const isSecure = isPassword ? !showPassword : secureTextEntry;
 
+  const textColor = isDarkMode ? COLORS.darkText : COLORS.text;
+  const placeholderColor = isDarkMode ? COLORS.darkTextSecondary : COLORS.textSecondary;
+  const labelColor = isDarkMode ? COLORS.darkText : COLORS.text;
+
   return (
     <View style={[styles.container, style]}>
-      {label && <Text style={styles.label}>{label}</Text>}
+      {label && <Text style={[styles.label, { color: labelColor }]}>{label}</Text>}
       <View style={[
         styles.inputWrapper,
+        { backgroundColor: isDarkMode ? COLORS.darkSurface : 'white', borderColor: isDarkMode ? COLORS.darkBorder : COLORS.border },
         isFocused && styles.inputFocused,
         error && styles.inputError,
         inputStyle
@@ -59,8 +66,8 @@ const Input = ({
         {leftIcon && <View style={styles.iconLeft}>{leftIcon}</View>}
         
         <TextInput
-          style={styles.textInput}
-          placeholderTextColor={COLORS.textSecondary}
+          style={[styles.textInput, { color: textColor }]}
+          placeholderTextColor={props.placeholderTextColor || placeholderColor}
           onFocus={handleFocus}
           onBlur={handleBlur}
           secureTextEntry={isSecure}
@@ -72,7 +79,7 @@ const Input = ({
             <FontAwesome6 
               name={showPassword ? "eye-slash" : "eye"} 
               size={18} 
-              color={COLORS.textSecondary} 
+              color={placeholderColor} 
             />
           </TouchableOpacity>
         ) : rightIcon ? (
