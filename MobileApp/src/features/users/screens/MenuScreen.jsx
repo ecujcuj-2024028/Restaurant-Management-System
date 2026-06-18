@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, TouchableOpacity, Alert, ScrollView, Switch, Animated, Easing, Image } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useFocusEffect } from '@react-navigation/native';
 import { COLORS } from '../../../shared/constants/colors';
 import useAuthStore from '../../../store/useAuthStore';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
@@ -9,8 +10,15 @@ import { useTranslation } from 'react-i18next';
 
 const MenuScreen = ({ navigation }) => {
   const { t, i18n } = useTranslation();
-  const { user, logout, isDarkMode, toggleTheme } = useAuthStore();
+  const { user, logout, isDarkMode, toggleTheme, fetchProfile } = useAuthStore();
   const [view, setView] = useState('menu'); // 'menu' o 'preferences'
+
+  // Refrescar el perfil cuando la pantalla gana el foco
+  useFocusEffect(
+    React.useCallback(() => {
+      fetchProfile();
+    }, [])
+  );
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [isLangDropdownOpen, setIsLangDropdownOpen] = useState(false);
 
@@ -205,7 +213,12 @@ const MenuScreen = ({ navigation }) => {
           <View style={styles.profileInfo}>
             <View style={styles.avatarContainer}>
               {profileImage ? (
-                <Image source={{ uri: profileImage }} style={styles.avatar} />
+                <Image 
+                  key={profileImage}
+                  source={{ uri: profileImage }} 
+                  style={styles.avatar} 
+                  resizeMode="cover"
+                />
               ) : (
                 <Ionicons name="person-circle-outline" size={80} color="white" />
               )}

@@ -91,6 +91,9 @@ const useAuthStore = create((set, get) => ({
     token,
     isAuthenticated: true,
   });
+
+  // Fetch full profile to get details like profilePicture which are not in login response
+  get().fetchProfile();
 },
 
   logout: async () => {
