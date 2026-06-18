@@ -256,7 +256,7 @@ const HomeScreen = ({ navigation }) => {
                   key={item._id || item.id}
                   product={item}
                   isDark={isDarkMode}
-                  onPress={() => { }}
+                  onPress={() => navigation.navigate('RestaurantDetail', { id: item.restaurant?._id || item.restaurant })}
                 />
               ))
             ) : (

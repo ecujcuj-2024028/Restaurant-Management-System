@@ -60,13 +60,20 @@
     "side": "Acompañamiento",
     "ourMenu": "Nuestra carta",
     "viewAll": "Ver todos",
+    "viewLess": "Ver menos",
     "noProducts": "No hay platos disponibles",
     "combos": "Combos",
     "order": "Pedir",
     "detail": "Detalle",
     "outOfStock": "Agotado",
     "comboItems": "Productos que lleva",
-    "reserve": "Reservación"
+    "reserve": "Reservación",
+    "locationInfo": "Información del Local",
+    "locationInfoSubtitle": "Detalles de contacto y ubicación",
+    "address": "Dirección",
+    "phone": "Teléfono",
+    "businessHours": "Horario de atención",
+    "understood": "Entendido"
   },
   "reservations": {
     "title": "Reservaciones",

@@ -16,7 +16,7 @@ const HomeStack = () => {
       <Stack.Screen 
         name="RestaurantDetail" 
         component={RestaurantDetailScreen} 
-        options={{ title: 'Detalle' }}
+        options={{ headerShown: false }}
       />
     </Stack.Navigator>
   );

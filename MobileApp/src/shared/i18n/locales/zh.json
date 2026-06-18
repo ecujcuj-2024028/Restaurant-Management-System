@@ -60,13 +60,20 @@
     "side": "配菜",
     "ourMenu": "我们的菜单",
     "viewAll": "查看全部",
+    "viewLess": "查看更少",
     "noProducts": "没有可用菜品",
     "combos": "套餐",
     "order": "点餐",
     "detail": "详情",
     "outOfStock": "已售罄",
     "comboItems": "包含产品",
-    "reserve": "预订"
+    "reserve": "预订",
+    "locationInfo": "门店信息",
+    "locationInfoSubtitle": "联系方式和位置详情",
+    "address": "地址",
+    "phone": "电话",
+    "businessHours": "营业时间",
+    "understood": "知道了"
   },
   "reservations": {
     "title": "预订",

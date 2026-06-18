@@ -7,6 +7,7 @@ import {
   StatusBar,
   ScrollView,
   TouchableOpacity,
+  Modal,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -33,7 +34,7 @@ const CATEGORY_KEYS = {
   'side_dish': 'restaurantDetail.side',
 };
 
-// ── Tarjeta de producto horizontal ──
+// ── Tarjeta de producto horizontal (lista) ──
 const ProductCard = ({ item, isDark, onPress, t }) => {
   const bgCard = isDark ? COLORS.darkSurface : COLORS.white;
   const textColor = isDark ? COLORS.darkText : COLORS.text;
@@ -97,8 +98,66 @@ const ProductCard = ({ item, isDark, onPress, t }) => {
   );
 };
 
+// ── Tarjeta de producto para carrusel ──
+const CarouselProductCard = ({ item, isDark, onPress, t }) => {
+  const bgCard = isDark ? COLORS.darkSurface : COLORS.white;
+  const textColor = isDark ? COLORS.darkText : COLORS.text;
+  const textSecondary = isDark ? COLORS.darkTextSecondary : COLORS.textSecondary;
+
+  const bannerColors = ['#FF6B00', '#B8860B', '#1A237E', '#2E7D32', '#6A1B9A'];
+  const colorIndex = (item.name?.charCodeAt(0) || 0) % bannerColors.length;
+
+  const categoryLabel = CATEGORY_KEYS[item.type]
+    ? t(CATEGORY_KEYS[item.type])
+    : item.category?.name || item.category || 'Plato';
+
+  return (
+    <View style={[styles.carouselCard, { backgroundColor: bgCard }, !isDark && COMMON_STYLES.shadow]}>
+      {/* Imagen superior */}
+      <View style={[styles.carouselImageContainer, { backgroundColor: bannerColors[colorIndex] }]}>
+        {item.image ? (
+          <Image source={{ uri: item.image }} style={StyleSheet.absoluteFillObject} resizeMode="cover" />
+        ) : null}
+        <View style={styles.categoryBadgeOnImage}>
+          <Typography variant="small" color={COLORS.white} style={{ fontWeight: '700' }}>
+            {categoryLabel}
+          </Typography>
+        </View>
+        {!item.isAvailable && (
+          <View style={styles.carouselOutOfStock}>
+            <Typography variant="small" color={COLORS.white} style={{ fontWeight: '600' }}>
+              {t('restaurantDetail.outOfStock')}
+            </Typography>
+          </View>
+        )}
+      </View>
+
+      {/* Info inferior */}
+      <View style={styles.carouselInfo}>
+        <Typography variant="bodyBold" color={textColor} numberOfLines={1}>
+          {item.name}
+        </Typography>
+        <Typography variant="small" color={textSecondary} numberOfLines={2} style={{ marginTop: 4 }}>
+          {item.description || 'Sin descripción disponible.'}
+        </Typography>
+        <View style={styles.carouselBottom}>
+          <Typography variant="bodyBold" color={COLORS.primary}>
+            Q {item.price?.toFixed(2)}
+          </Typography>
+          <TouchableOpacity style={styles.detalleBtn} onPress={onPress}>
+            <Typography variant="small" color={COLORS.primary} style={{ fontWeight: '700' }}>
+              {t('restaurantDetail.detail')}
+            </Typography>
+            <Ionicons name="arrow-forward" size={14} color={COLORS.primary} />
+          </TouchableOpacity>
+        </View>
+      </View>
+    </View>
+  );
+};
+
 // ── Tarjeta de combo ──
-const ComboCard = ({ item, isDark, t }) => {
+const ComboCard = ({ item, isDark, t, onOrder }) => {
   const bgCard = isDark ? COLORS.darkSurface : COLORS.white;
   const textColor = isDark ? COLORS.darkText : COLORS.text;
   const textSecondary = isDark ? COLORS.darkTextSecondary : COLORS.textSecondary;
@@ -128,6 +187,16 @@ const ComboCard = ({ item, isDark, t }) => {
         <Typography variant="small" color={textSecondary} numberOfLines={2}>
           {itemCount > 0 ? `${t('restaurantDetail.comboItems')}: ${itemCount}` : item.description || 'Combo especial'}
         </Typography>
+        {/* Botón Pedir — esquina inferior derecha */}
+        <View style={styles.comboBottomRow}>
+          <View />
+          <TouchableOpacity style={styles.comboPedirBtn} onPress={onOrder}>
+            <Ionicons name="cart-outline" size={15} color={COLORS.white} />
+            <Typography variant="small" color={COLORS.white} style={{ fontWeight: '700' }}>
+              {t('restaurantDetail.order') || 'Pedir'}
+            </Typography>
+          </TouchableOpacity>
+        </View>
       </View>
     </View>
   );
@@ -144,6 +213,12 @@ const RestaurantDetailScreen = ({ route, navigation }) => {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [activeCategory, setActiveCategory] = useState(t('restaurantDetail.all'));
+  const [infoModalVisible, setInfoModalVisible] = useState(false);
+  const [showAllProducts, setShowAllProducts] = useState(false);
+
+  useEffect(() => {
+  setActiveCategory(t('restaurantDetail.all'));
+}, [t]);
 
   const bgColor = isDarkMode ? COLORS.darkBackground : COLORS.background;
   const textColor = isDarkMode ? COLORS.darkText : COLORS.text;
@@ -165,7 +240,6 @@ const RestaurantDetailScreen = ({ route, navigation }) => {
       const prods = Array.isArray(productsData) ? productsData : productsData?.products ?? [];
       setProducts(prods);
       setMenus(Array.isArray(menusData) ? menusData : menusData?.menus ?? []);
-
     } catch (error) {
       console.error('Error fetching restaurant detail:', error);
     } finally {
@@ -228,6 +302,9 @@ const RestaurantDetailScreen = ({ route, navigation }) => {
             {restaurant?.category || 'Restaurante'}
           </Typography>
         </View>
+        <TouchableOpacity onPress={() => setInfoModalVisible(true)} style={[styles.infoBtn, { backgroundColor: surfaceColor }]}>
+          <Ionicons name="information-circle-outline" size={24} color={textColor} />
+        </TouchableOpacity>
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false}>
@@ -267,19 +344,63 @@ const RestaurantDetailScreen = ({ route, navigation }) => {
           </ScrollView>
         </View>
 
-        {/* Nuestra Carta */}
-        <View style={{ paddingHorizontal: 16, marginBottom: 8 }}>
-          <View style={styles.sectionHeader}>
-            <Typography variant="h3" color={textColor}>{t('restaurantDetail.ourMenu')}</Typography>
-            <TouchableOpacity onPress={() => setActiveCategory(t('restaurantDetail.all'))}>
-              <Typography variant="small" color={COLORS.primary}>{t('restaurantDetail.viewAll')} →</Typography>
+        {/* ── Nuestra Carta ── */}
+        <View style={{ marginBottom: 8 }}>
+          {/* Header de sección con botón Ver todos */}
+          <View style={[styles.sectionHeader, { paddingHorizontal: 16 }]}>
+            <Typography variant="h3" color={textColor}>
+              {t('restaurantDetail.ourMenu')}
+            </Typography>
+            <TouchableOpacity
+              onPress={() => {
+                setActiveCategory(t('restaurantDetail.all'));
+                setShowAllProducts((prev) => !prev);
+              }}
+              style={[styles.verTodosBtn, { backgroundColor: `${COLORS.primary}15` }]}
+            >
+              <Typography variant="small" color={COLORS.primary} style={{ fontWeight: '700' }}>
+                {showAllProducts ? t('restaurantDetail.viewLess') || 'Ver menos' : t('restaurantDetail.viewAll') || 'Ver todos'}
+              </Typography>
+              <Ionicons
+                name={showAllProducts ? 'chevron-up' : 'chevron-forward'}
+                size={14}
+                color={COLORS.primary}
+              />
             </TouchableOpacity>
           </View>
 
           {filteredProducts.length > 0 ? (
-            filteredProducts.map((item) => (
-              <ProductCard key={item._id || item.id} item={item} isDark={isDarkMode} onPress={() => { }} t={t} />
-            ))
+            showAllProducts ? (
+              // Vista de lista completa
+              <View style={{ paddingHorizontal: 16 }}>
+                {filteredProducts.map((item) => (
+                  <ProductCard
+                    key={item._id || item.id}
+                    item={item}
+                    isDark={isDarkMode}
+                    onPress={() => {}}
+                    t={t}
+                  />
+                ))}
+              </View>
+            ) : (
+              // Vista carrusel
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 8, gap: 12 }}
+              >
+                {filteredProducts.map((item) => (
+                  <CarouselProductCard
+                    key={item._id || item.id}
+                    item={item}
+                    isDark={isDarkMode}
+                    onPress={() => {}}
+                    t={t}
+                  />
+                ))}
+              </ScrollView>
+            )
           ) : (
             <View style={styles.emptyContainer}>
               <Ionicons name="restaurant-outline" size={36} color={textSecondary} />
@@ -290,16 +411,26 @@ const RestaurantDetailScreen = ({ route, navigation }) => {
           )}
         </View>
 
+        {/* Combos */}
         {filteredCombos.length > 0 && (
           <View style={{ paddingHorizontal: 16, marginBottom: 100 }}>
             <Typography variant="h3" color={textColor} style={{ marginBottom: 12 }}>
               {t('restaurantDetail.combos')}
             </Typography>
             {filteredCombos.map((item) => (
-              <ProductCard key={item._id || item.id} item={item} isDark={isDarkMode} onPress={() => { }} t={t} />
+              <ComboCard
+                key={item._id || item.id}
+                item={item}
+                isDark={isDarkMode}
+                t={t}
+                onOrder={() => console.log('Pedir combo:', item.name)}
+              />
             ))}
           </View>
         )}
+
+        {/* Espacio para botones flotantes */}
+        <View style={{ height: 100 }} />
       </ScrollView>
 
       {/* Botones flotantes: Reservación + Pedir */}
@@ -314,6 +445,72 @@ const RestaurantDetailScreen = ({ route, navigation }) => {
           <Typography variant="bodyBold" color={COLORS.white}>{t('restaurantDetail.order')}</Typography>
         </TouchableOpacity>
       </View>
+
+      {/* Modal Información del Local */}
+      <Modal
+        visible={infoModalVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setInfoModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalCard, { backgroundColor: surfaceColor }]}>
+            <View style={styles.modalHeader}>
+              <View style={{ flex: 1 }}>
+                <Typography variant="h3" color={textColor}>{t('restaurantDetail.locationInfo')}</Typography>
+                <Typography variant="small" color={textSecondary}>{t('restaurantDetail.locationInfoSubtitle')}</Typography>
+              </View>
+              <TouchableOpacity onPress={() => setInfoModalVisible(false)} style={[styles.closeBtn, { backgroundColor: bgColor }]}>
+                <Ionicons name="close" size={18} color={textColor} />
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.modalInfoRow}>
+              <View style={styles.modalIconCircle}>
+                <Ionicons name="location-outline" size={20} color={COLORS.primary} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Typography variant="bodyBold" color={textColor}>{t('restaurantDetail.address')}</Typography>
+                <Typography variant="small" color={textSecondary}>
+                  {typeof restaurant?.address === 'object'
+                    ? `${restaurant.address.street || ''}, ${restaurant.address.city || ''}`
+                    : restaurant?.address || '—'}
+                </Typography>
+              </View>
+            </View>
+
+            <View style={styles.modalInfoRow}>
+              <View style={styles.modalIconCircle}>
+                <Ionicons name="call-outline" size={20} color={COLORS.primary} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Typography variant="bodyBold" color={textColor}>{t('restaurantDetail.phone')}</Typography>
+                <Typography variant="small" color={textSecondary}>
+                  {restaurant?.phone || '—'}
+                </Typography>
+              </View>
+            </View>
+
+            <View style={styles.modalInfoRow}>
+              <View style={styles.modalIconCircle}>
+                <Ionicons name="time-outline" size={20} color={COLORS.primary} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Typography variant="bodyBold" color={textColor}>{t('restaurantDetail.businessHours')}</Typography>
+                <Typography variant="small" color={textSecondary}>
+                  {restaurant?.openingTime && restaurant?.closingTime
+                    ? `${restaurant.openingTime} - ${restaurant.closingTime}`
+                    : restaurant?.openingHours || '—'}
+                </Typography>
+              </View>
+            </View>
+
+            <TouchableOpacity style={styles.understoodBtn} onPress={() => setInfoModalVisible(false)}>
+              <Typography variant="bodyBold" color={COLORS.white}>{t('restaurantDetail.understood')}</Typography>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 };
@@ -329,6 +526,10 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   backBtn: { padding: 4 },
+  infoBtn: {
+    padding: 8,
+    borderRadius: 20,
+  },
   categoryChip: {
     paddingHorizontal: 20,
     paddingVertical: 8,
@@ -340,6 +541,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 12,
   },
+  verTodosBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+  },
+
+  // ── Tarjeta lista ──
   productCard: {
     borderRadius: 16,
     marginBottom: 12,
@@ -389,22 +600,70 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 32,
   },
+  comboBottomRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: 10,
+  },
+  comboPedirBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: COLORS.primary,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 20,
+  },
+
+  // ── Tarjeta carrusel ──
+  carouselCard: {
+    width: 200,
+    borderRadius: 16,
+    overflow: 'hidden',
+  },
+  carouselImageContainer: {
+    width: '100%',
+    height: 130,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  carouselInfo: {
+    padding: 12,
+  },
+  carouselBottom: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: 8,
+  },
+  carouselOutOfStock: {
+    position: 'absolute',
+    bottom: 8,
+    right: 8,
+    backgroundColor: 'rgba(220,53,69,0.8)',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 8,
+  },
+
+  // ── Botones flotantes ──
   floatingButtonsRow: {
-  position: 'absolute',
-  bottom: 24,
-  left: 24,
-  right: 24,
-  flexDirection: 'row',
-  justifyContent: 'flex-end',
-  gap: 12,
-},
+    position: 'absolute',
+    bottom: 24,
+    left: 24,
+    right: 24,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
   reservarBtn: {
+    flex: 1,
     backgroundColor: COLORS.primary,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    paddingHorizontal: 20,
     paddingVertical: 14,
     borderRadius: 30,
     elevation: 6,
@@ -414,12 +673,12 @@ const styles = StyleSheet.create({
     shadowRadius: 6,
   },
   pedirBtn: {
+    flex: 1,
     backgroundColor: COLORS.primary,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    paddingHorizontal: 20,
     paddingVertical: 14,
     borderRadius: 30,
     elevation: 6,
@@ -427,6 +686,53 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.2,
     shadowRadius: 6,
+  },
+
+  // ── Modal ──
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 24,
+  },
+  modalCard: {
+    width: '100%',
+    borderRadius: 24,
+    padding: 24,
+    gap: 18,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+  },
+  closeBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalInfoRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 14,
+  },
+  modalIconCircle: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: `${COLORS.primary}15`,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  understoodBtn: {
+    backgroundColor: COLORS.text,
+    paddingVertical: 16,
+    borderRadius: 16,
+    alignItems: 'center',
+    marginTop: 4,
   },
 });
 
