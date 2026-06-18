@@ -65,6 +65,15 @@
     "order": "Pedir",
     "detail": "Detalle",
     "outOfStock": "Agotado",
-    "comboItems": "Productos que lleva"
+    "comboItems": "Productos que lleva",
+    "reserve": "Reservación"
+  },
+  "reservations": {
+    "title": "Reservaciones",
+    "searchPlaceholder": "Busca un Restaurante para reservación",
+    "categories": "Categorías",
+    "all": "Todos",
+    "viewSchedule": "Ver horarios",
+    "noResults": "No se encontraron restaurantes"
   }
 }

@@ -65,6 +65,15 @@
     "order": "Order",
     "detail": "Detail",
     "outOfStock": "Out of stock",
-    "comboItems": "Includes products"
+    "comboItems": "Includes products",
+    "reserve": "Reservation"
+  },
+  "reservations": {
+    "title": "Reservations",
+    "searchPlaceholder": "Search a Restaurant to reserve",
+    "categories": "Categories",
+    "all": "All",
+    "viewSchedule": "View schedule",
+    "noResults": "No restaurants found"
   }
 }

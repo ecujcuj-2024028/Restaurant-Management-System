@@ -291,7 +291,7 @@ const RestaurantDetailScreen = ({ route, navigation }) => {
         </View>
 
         {filteredCombos.length > 0 && (
-          <View style={{ paddingHorizontal: 16, marginBottom: 40 }}>
+          <View style={{ paddingHorizontal: 16, marginBottom: 100 }}>
             <Typography variant="h3" color={textColor} style={{ marginBottom: 12 }}>
               {t('restaurantDetail.combos')}
             </Typography>
@@ -302,11 +302,18 @@ const RestaurantDetailScreen = ({ route, navigation }) => {
         )}
       </ScrollView>
 
-      {/* Botón flotante Pedir */}
-      <TouchableOpacity style={styles.pedirBtn}>
-        <Ionicons name="cart-outline" size={20} color={COLORS.white} />
-        <Typography variant="bodyBold" color={COLORS.white}>{t('restaurantDetail.order')}</Typography>
-      </TouchableOpacity>
+      {/* Botones flotantes: Reservación + Pedir */}
+      <View style={styles.floatingButtonsRow}>
+        <TouchableOpacity style={styles.reservarBtn}>
+          <Ionicons name="calendar-outline" size={20} color={COLORS.white} />
+          <Typography variant="bodyBold" color={COLORS.white}>{t('restaurantDetail.reserve')}</Typography>
+        </TouchableOpacity>
+
+        <TouchableOpacity style={styles.pedirBtn}>
+          <Ionicons name="cart-outline" size={20} color={COLORS.white} />
+          <Typography variant="bodyBold" color={COLORS.white}>{t('restaurantDetail.order')}</Typography>
+        </TouchableOpacity>
+      </View>
     </SafeAreaView>
   );
 };
@@ -382,13 +389,35 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 32,
   },
-  pedirBtn: {
-    position: 'absolute',
-    bottom: 24,
-    right: 24,
+  floatingButtonsRow: {
+  position: 'absolute',
+  bottom: 24,
+  left: 24,
+  right: 24,
+  flexDirection: 'row',
+  justifyContent: 'flex-end',
+  gap: 12,
+},
+  reservarBtn: {
     backgroundColor: COLORS.primary,
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingHorizontal: 20,
+    paddingVertical: 14,
+    borderRadius: 30,
+    elevation: 6,
+    shadowColor: COLORS.black,
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.2,
+    shadowRadius: 6,
+  },
+  pedirBtn: {
+    backgroundColor: COLORS.primary,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
     gap: 8,
     paddingHorizontal: 20,
     paddingVertical: 14,

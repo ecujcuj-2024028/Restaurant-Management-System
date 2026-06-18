@@ -5,6 +5,7 @@ import { COLORS } from '../shared/constants/colors';
 import HomeStack from './HomeStack';
 import MenuScreen from '../features/users/screens/MenuScreen';
 import RestaurantsStack from './RestaurantsStack';
+import ReservationsStack from './ReservationsStack';
 import { View, Text } from 'react-native';
 import useAuthStore from '../store/useAuthStore';
 import { useTranslation } from 'react-i18next';
@@ -69,10 +70,9 @@ const MainTab = () => {
       />
       <Tab.Screen 
         name="ReservacionesTab"
+        component={ReservationsStack}
         options={{ tabBarLabel: t('tabs.reservations') }}
-      >
-        {(props) => <Placeholder {...props} name={t('tabs.reservations')} isDark={isDarkMode} />}
-      </Tab.Screen>
+      />
       <Tab.Screen 
         name="MenuTab" 
         component={MenuScreen} 

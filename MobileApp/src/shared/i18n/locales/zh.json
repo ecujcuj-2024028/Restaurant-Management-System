@@ -65,6 +65,15 @@
     "order": "点餐",
     "detail": "详情",
     "outOfStock": "已售罄",
-    "comboItems": "包含产品"
+    "comboItems": "包含产品",
+    "reserve": "预订"
+  },
+  "reservations": {
+    "title": "预订",
+    "searchPlaceholder": "搜索要预订的餐厅",
+    "categories": "分类",
+    "all": "全部",
+    "viewSchedule": "查看时间表",
+    "noResults": "未找到餐厅"
   }
 }
