@@ -34,7 +34,11 @@
     "viewLess": "Ver menos",
     "noRestaurants": "Sem restaurantes nesta categoria.",
     "noProducts": "Sem pratos disponíveis nesta categoria.",
-    "dishes": "pratos"
+    "dishes": "pratos",
+    "allProducts": "Todos",
+    "filterCategory": "Filtrar por Categoria",
+    "filterRating": "Filtrar por Classificação",
+    "allRatings": "Todas"
   },
   "tabs": {
     "home": "Início",

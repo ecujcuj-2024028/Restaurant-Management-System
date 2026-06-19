@@ -33,7 +33,11 @@
     "viewAll": "查看全部",
     "noRestaurants": "该分类下没有餐厅。",
     "noProducts": "该分类下没有可用菜品。",
-    "dishes": "道菜"
+    "dishes": "道菜",
+    "allProducts": "全部",
+    "filterCategory": "按类别过滤",
+    "filterRating": "按评分过滤",
+    "allRatings": "所有评分"
   },
   "tabs": {
     "home": "首页",

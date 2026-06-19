@@ -33,7 +33,11 @@
     "viewAll": "View all",
     "noRestaurants": "No restaurants in this category.",
     "noProducts": "No dishes available in this category.",
-    "dishes": "dishes"
+    "dishes": "dishes",
+    "allProducts": "All",
+    "filterCategory": "Filter by Category",
+    "filterRating": "Filter by Rating",
+    "allRatings": "All"
   },
   "tabs": {
     "home": "Home",

@@ -33,7 +33,11 @@
     "viewAll": "Ver todos",
     "noRestaurants": "No hay restaurantes en esta categoría.",
     "noProducts": "No hay platos disponibles en esta categoría.",
-    "dishes": "platos"
+    "dishes": "platos",
+    "allProducts": "Todos",
+    "filterCategory": "Filtrar por Categoría",
+    "filterRating": "Filtrar por Calificación",
+    "allRatings": "Todas"
   },
   "tabs": {
     "home": "Inicio",
