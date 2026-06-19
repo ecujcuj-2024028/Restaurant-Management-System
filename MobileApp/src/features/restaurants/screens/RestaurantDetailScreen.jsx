@@ -497,6 +497,17 @@ const RestaurantDetailScreen = ({ route, navigation }) => {
     fetchData();
   }, [id]);
 
+  useEffect(() => {
+    const initialProductId = route.params?.productId;
+    if (initialProductId && products.length > 0) {
+      const targetProd = products.find(p => (p._id || p.id) === initialProductId);
+      if (targetProd) {
+        handleOpenProductDetail(targetProd);
+        navigation.setParams({ productId: undefined });
+      }
+    }
+  }, [route.params?.productId, products]);
+
   const fetchData = async () => {
     try {
       const [resData, productsData, menusData] = await Promise.all([

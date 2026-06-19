@@ -329,7 +329,13 @@ const HomeScreen = ({ navigation }) => {
                   key={item._id || item.id}
                   product={item}
                   isDark={isDarkMode}
-                  onPress={() => navigation.navigate('RestaurantDetail', { id: item.restaurant?._id || item.restaurant })}
+                  onPress={() => {
+                    const restaurantId = item.restaurant?._id || item.restaurant;
+                    navigation.navigate('RestaurantDetail', { 
+                      id: restaurantId, 
+                      productId: item._id || item.id 
+                    });
+                  }}
                 />
               ))
             ) : (
