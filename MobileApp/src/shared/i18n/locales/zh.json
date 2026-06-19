@@ -1,4 +1,10 @@
 {
+  "common": {
+    "close": "关闭",
+    "cancel": "取消",
+    "confirm": "确认",
+    "success": "成功"
+  },
   "menu": {
     "myProfile": "我的个人资料",
     "myReservations": "我的预订",
@@ -33,7 +39,11 @@
     "viewAll": "查看全部",
     "noRestaurants": "该分类下没有餐厅。",
     "noProducts": "该分类下没有可用菜品。",
-    "dishes": "道菜"
+    "dishes": "道菜",
+    "allProducts": "全部",
+    "filterCategory": "按类别过滤",
+    "filterRating": "按评分过滤",
+    "allRatings": "所有评分"
   },
   "tabs": {
     "home": "首页",
@@ -73,7 +83,8 @@
     "address": "地址",
     "phone": "电话",
     "businessHours": "营业时间",
-    "understood": "知道了"
+    "understood": "知道了",
+    "addedToOrder": "已添加到订单中。"
   },
   "reservations": {
     "title": "预订",
@@ -81,6 +92,104 @@
     "categories": "分类",
     "all": "全部",
     "viewSchedule": "查看时间表",
-    "noResults": "未找到餐厅"
+    "noResults": "未找到餐厅",
+    "filterDate": "按日期筛选",
+    "updatedTitle": "预订已更新",
+    "updatedMsg": "您的预订已更新为：",
+    "cancelledTitle": "预订已取消",
+    "cancelledMsg": "您的预订已被取消。",
+    "confirmCancelTitle": "取消预订",
+    "confirmCancelMsg": "确定要取消此预订请求吗？（此操作不可逆）",
+    "cancelSuccess": "预订已取消。",
+    "cancelError": "无法取消预订。"
+  },
+  "reservationForm": {
+    "title": "预订餐桌",
+    "guests": "用餐人数",
+    "selectDate": "选择日期",
+    "timeSlots": "可用时段",
+    "data": "详细信息",
+    "selectTable": "选择餐桌",
+    "tableLabel": "桌号",
+    "noTables": "该餐厅暂无可用餐桌。",
+    "other": "其他",
+    "customGuestsPlaceholder": "用餐人数",
+    "selectTableAndDateFirst": "请先选择餐桌和日期以查看时段。",
+    "noSlots": "该日期没有可用时段。",
+    "errorTable": "请选择一张餐桌。",
+    "errorGuests": "请输入用餐人数。",
+    "phone": "电话",
+    "table": "桌号",
+    "name": "姓名",
+    "notes": "备注",
+    "notesPlaceholder": "特殊要求或备注...",
+    "confirm": "确认预订",
+    "error": "错误",
+    "errorDate": "请选择日期。",
+    "errorTime": "请选择时段。",
+    "errorGeneric": "无法创建预订。",
+    "success": "预订成功！",
+    "successMsg": "您的餐桌已成功预订。"
+  },
+  "orders": {
+    "title": "我的订单",
+    "searchPlaceholder": "搜索餐厅查看订单",
+    "noOrders": "您还没有订单。",
+    "noResults": "该餐厅没有找到订单。",
+    "order": "订单",
+    "detail": "详情",
+    "noDescription": "无描述",
+    "unknownRestaurant": "餐厅",
+    "status": {
+      "recibido": "已收到",
+      "en_preparacion": "准备中",
+      "listo": "已就绪",
+      "entregado": "已送达",
+      "cancelado": "已取消",
+      "confirmado": "已确认",
+      "en_camino": "配送中"
+    }
+  },
+  "productDetail": {
+    "product": "菜品",
+    "restaurant": "餐厅",
+    "reviews": "条评价",
+    "review": "评价",
+    "write": "写评价",
+    "noReviews": "成为第一个评价的人。",
+    "addReview": "添加评价",
+    "editReview": "编辑评价",
+    "yourRating": "您的评分",
+    "comment": "评论",
+    "commentPlaceholder": "写下您对这道菜的体验...",
+    "publish": "发布",
+    "save": "保存",
+    "deleteTitle": "删除评价",
+    "deleteMsg": "确定要删除您的评价吗？",
+    "delete": "删除",
+    "cancel": "取消",
+    "deleteError": "无法删除评价。",
+    "anonymous": "用户"
+  },
+  "help": {
+    "search_placeholder": "搜索帮助或问题...",
+    "faq_title": "常见问题",
+    "faq_order_q": "如何下单？",
+    "faq_order_a": "前往首页，选择一家餐厅，将菜品加入购物车，然后点击“去结算”。",
+    "faq_reservation_q": "如何取消预订？",
+    "faq_reservation_a": "在您的个人资料中前往“我的预订”，选择您要取消的预订，然后点击“取消预订”按钮。",
+    "faq_payment_q": "支持哪些付款方式？",
+    "faq_payment_a": "我们支持信用卡/借记卡（Visa，Mastercard）、本地银行转账和货到付款。",
+    "faq_refund_q": "退款需要多长时间？",
+    "faq_refund_a": "退款通常在 3 到 5 个工作日内处理，具体取决于您的银行。",
+    "no_results": "未找到与您的搜索相匹配的结果。",
+    "contact_channels": "直接联系",
+    "form_title": "给我们发送消息",
+    "form_subject": "主题/反馈类型",
+    "form_message": "请在此详细写下您的问题或疑问...",
+    "form_submit": "提交反馈",
+    "empty_fields": "请填写所有字段。",
+    "success_title": "消息已发送",
+    "success_msg": "我们已收到您的支持请求。我们会尽快与您联系。"
   }
 }

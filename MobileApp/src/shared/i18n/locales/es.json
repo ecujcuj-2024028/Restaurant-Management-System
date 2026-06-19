@@ -1,4 +1,10 @@
 {
+  "common": {
+    "close": "Cerrar",
+    "cancel": "Cancelar",
+    "confirm": "Confirmar",
+    "success": "Éxito"
+  },
   "menu": {
     "myProfile": "Mi Perfil",
     "myReservations": "Mis Reservas",
@@ -33,7 +39,11 @@
     "viewAll": "Ver todos",
     "noRestaurants": "No hay restaurantes en esta categoría.",
     "noProducts": "No hay platos disponibles en esta categoría.",
-    "dishes": "platos"
+    "dishes": "platos",
+    "allProducts": "Todos",
+    "filterCategory": "Filtrar por Categoría",
+    "filterRating": "Filtrar por Calificación",
+    "allRatings": "Todas"
   },
   "tabs": {
     "home": "Inicio",
@@ -73,7 +83,8 @@
     "address": "Dirección",
     "phone": "Teléfono",
     "businessHours": "Horario de atención",
-    "understood": "Entendido"
+    "understood": "Entendido",
+    "addedToOrder": "ha sido agregado al pedido."
   },
   "reservations": {
     "title": "Reservaciones",
@@ -81,6 +92,104 @@
     "categories": "Categorías",
     "all": "Todos",
     "viewSchedule": "Ver horarios",
-    "noResults": "No se encontraron restaurantes"
+    "noResults": "No se encontraron restaurantes",
+    "filterDate": "Filtrar por Fecha",
+    "updatedTitle": "Reserva Actualizada",
+    "updatedMsg": "Tu reserva ha sido actualizada a:",
+    "cancelledTitle": "Reserva Cancelada",
+    "cancelledMsg": "Tu reserva ha sido cancelada.",
+    "confirmCancelTitle": "Cancelar Reserva",
+    "confirmCancelMsg": "¿Seguro que deseas cancelar esta solicitud? (Esta acción es irreversible)",
+    "cancelSuccess": "Reservación cancelada.",
+    "cancelError": "No se pudo cancelar la reservación."
+  },
+  "reservationForm": {
+    "title": "Reservar Mesa",
+    "guests": "Número de personas",
+    "selectDate": "Seleccionar Fecha",
+    "timeSlots": "Horarios disponibles",
+    "data": "Datos",
+    "selectTable": "Seleccionar Mesa",
+    "tableLabel": "Mesa",
+    "noTables": "No hay mesas disponibles en este restaurante.",
+    "other": "Otro",
+    "customGuestsPlaceholder": "Número de personas",
+    "selectTableAndDateFirst": "Selecciona una mesa y una fecha para ver horarios.",
+    "noSlots": "No hay horarios disponibles para esta fecha.",
+    "errorTable": "Por favor selecciona una mesa.",
+    "errorGuests": "Por favor indica el número de personas.",
+    "phone": "Teléfono",
+    "table": "Mesa",
+    "name": "Nombre",
+    "notes": "Notas",
+    "notesPlaceholder": "Comentarios o solicitudes especiales...",
+    "confirm": "Confirmar Reserva",
+    "error": "Error",
+    "errorDate": "Por favor selecciona una fecha.",
+    "errorTime": "Por favor selecciona un horario.",
+    "errorGeneric": "No se pudo crear la reservación.",
+    "success": "¡Reservación creada!",
+    "successMsg": "Tu mesa ha sido reservada exitosamente."
+  },
+  "orders": {
+    "title": "Mis Pedidos",
+    "searchPlaceholder": "Busca un Restaurante para ver sus pedidos",
+    "noOrders": "Aún no tienes pedidos.",
+    "noResults": "No se encontraron pedidos para ese restaurante.",
+    "order": "Pedido",
+    "detail": "Detalle",
+    "noDescription": "Sin descripción",
+    "unknownRestaurant": "Restaurante",
+    "status": {
+      "recibido": "Recibido",
+      "en_preparacion": "En preparación",
+      "listo": "Listo",
+      "entregado": "Entregado",
+      "cancelado": "Cancelado",
+      "confirmado": "Confirmado",
+      "en_camino": "En camino"
+    }
+  },
+  "productDetail": {
+    "product": "Plato",
+    "restaurant": "Restaurante",
+    "reviews": "reseñas",
+    "review": "Reseñas",
+    "write": "Escribir",
+    "noReviews": "Sé el primero en dejar una reseña.",
+    "addReview": "Agregar Reseña",
+    "editReview": "Editar Reseña",
+    "yourRating": "Tu calificación",
+    "comment": "Comentario",
+    "commentPlaceholder": "Escribe tu experiencia con este plato...",
+    "publish": "Publicar",
+    "save": "Guardar",
+    "deleteTitle": "Eliminar Reseña",
+    "deleteMsg": "¿Estás seguro de que deseas eliminar tu reseña?",
+    "delete": "Eliminar",
+    "cancel": "Cancelar",
+    "deleteError": "No se pudo eliminar la reseña.",
+    "anonymous": "Usuario"
+  },
+  "help": {
+    "search_placeholder": "Buscar ayuda o preguntas...",
+    "faq_title": "Preguntas Frecuentes",
+    "faq_order_q": "¿Cómo realizo un pedido?",
+    "faq_order_a": "Ve a la pestaña de inicio, selecciona un restaurante, añade platos a tu carrito y presiona 'Proceder al Pago'.",
+    "faq_reservation_q": "¿Cómo cancelo una reserva?",
+    "faq_reservation_a": "Ve a 'Mis Reservas' desde tu perfil, selecciona la reserva que deseas cancelar y presiona el botón 'Cancelar Reserva'.",
+    "faq_payment_q": "¿Qué métodos de pago aceptan?",
+    "faq_payment_a": "Aceptamos tarjetas de crédito/débito (Visa, Mastercard), transferencias locales y efectivo al momento de entrega.",
+    "faq_refund_q": "¿Cuánto tiempo tarda un reembolso?",
+    "faq_refund_a": "Los reembolsos suelen procesarse de 3 a 5 días hábiles dependiendo de tu entidad bancaria.",
+    "no_results": "No encontramos respuestas para tu búsqueda.",
+    "contact_channels": "Contacto Directo",
+    "form_title": "Envíanos un mensaje",
+    "form_subject": "Asunto / Tema",
+    "form_message": "Escribe tu duda o problema aquí detalladamente...",
+    "form_submit": "Enviar Ticket",
+    "empty_fields": "Por favor completa todos los campos.",
+    "success_title": "Mensaje Enviado",
+    "success_msg": "Hemos recibido tu solicitud de ayuda. Nos comunicaremos contigo pronto."
   }
 }

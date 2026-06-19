@@ -1,4 +1,10 @@
 {
+  "common": {
+    "close": "Close",
+    "cancel": "Cancel",
+    "confirm": "Confirm",
+    "success": "Success"
+  },
   "menu": {
     "myProfile": "My Profile",
     "myReservations": "My Reservations",
@@ -33,7 +39,11 @@
     "viewAll": "View all",
     "noRestaurants": "No restaurants in this category.",
     "noProducts": "No dishes available in this category.",
-    "dishes": "dishes"
+    "dishes": "dishes",
+    "allProducts": "All",
+    "filterCategory": "Filter by Category",
+    "filterRating": "Filter by Rating",
+    "allRatings": "All"
   },
   "tabs": {
     "home": "Home",
@@ -73,7 +83,8 @@
     "address": "Address",
     "phone": "Phone",
     "businessHours": "Business hours",
-    "understood": "Got it"
+    "understood": "Got it",
+    "addedToOrder": "has been added to the order."
   },
   "reservations": {
     "title": "Reservations",
@@ -81,6 +92,74 @@
     "categories": "Categories",
     "all": "All",
     "viewSchedule": "View schedule",
-    "noResults": "No restaurants found"
+    "noResults": "No restaurants found",
+    "filterDate": "Filter by Date",
+    "updatedTitle": "Reservation Updated",
+    "updatedMsg": "Your reservation has been updated to:",
+    "cancelledTitle": "Reservation Cancelled",
+    "cancelledMsg": "Your reservation has been cancelled.",
+    "confirmCancelTitle": "Cancel Reservation",
+    "confirmCancelMsg": "Are you sure you want to cancel this request? (This action is irreversible)",
+    "cancelSuccess": "Reservation cancelled.",
+    "cancelError": "Could not cancel reservation."
+  },
+  "reservationForm": {
+  "title": "Reservar Mesa",
+  "guests": "Número de personas",
+  "selectDate": "Seleccionar Fecha",
+  "timeSlots": "Horarios disponibles",
+  "data": "Datos",
+  "phone": "Teléfono",
+  "table": "Mesa",
+  "name": "Nombre",
+  "notes": "Notas",
+  "notesPlaceholder": "Comentarios o solicitudes especiales...",
+  "confirm": "Confirmar Reserva",
+  "error": "Error",
+  "errorDate": "Por favor selecciona una fecha.",
+  "errorTime": "Por favor selecciona un horario.",
+  "errorGeneric": "No se pudo crear la reservación.",
+  "success": "¡Reservación creada!",
+  "successMsg": "Tu mesa ha sido reservada exitosamente."
+},
+"orders": {
+  "title": "Mis Pedidos",
+  "searchPlaceholder": "Busca un Restaurante para ver sus pedidos",
+  "noOrders": "Aún no tienes pedidos.",
+  "noResults": "No se encontraron pedidos para ese restaurante.",
+  "order": "Pedido",
+  "detail": "Detalle",
+  "noDescription": "Sin descripción",
+  "unknownRestaurant": "Restaurante",
+  "status": {
+    "recibido": "Recibido",
+    "en_preparacion": "En preparación",
+    "listo": "Listo",
+    "entregado": "Entregado",
+    "cancelado": "Cancelado",
+    "confirmado": "Confirmado",
+    "en_camino": "En camino"
   }
+},
+"productDetail": {
+  "product": "Plato",
+  "restaurant": "Restaurante",
+  "reviews": "reseñas",
+  "review": "Reseñas",
+  "write": "Escribir",
+  "noReviews": "Sé el primero en dejar una reseña.",
+  "addReview": "Agregar Reseña",
+  "editReview": "Editar Reseña",
+  "yourRating": "Tu calificación",
+  "comment": "Comentario",
+  "commentPlaceholder": "Escribe tu experiencia con este plato...",
+  "publish": "Publicar",
+  "save": "Guardar",
+  "deleteTitle": "Eliminar Reseña",
+  "deleteMsg": "¿Estás seguro de que deseas eliminar tu reseña?",
+  "delete": "Eliminar",
+  "cancel": "Cancelar",
+  "deleteError": "No se pudo eliminar la reseña.",
+  "anonymous": "Usuario"
+}
 }

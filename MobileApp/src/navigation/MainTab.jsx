@@ -1,29 +1,35 @@
 import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS } from '../shared/constants/colors';
 import HomeStack from './HomeStack';
 import MenuScreen from '../features/users/screens/MenuScreen';
+import HelpSupportScreen from '../features/users/screens/HelpSupportScreen';
+import MyReservationsScreen from '../features/reservations/screens/MyReservationsScreen';
 import RestaurantsStack from './RestaurantsStack';
 import ReservationsStack from './ReservationsStack';
+import MyOrdersScreen from '../features/orders/screens/MyOrdersScreen';
 import { View, Text } from 'react-native';
 import useAuthStore from '../store/useAuthStore';
 import { useTranslation } from 'react-i18next';
 
 const Tab = createBottomTabNavigator();
+const RootStack = createNativeStackNavigator();
 
 const Placeholder = ({ name, isDark }) => (
-  <View style={{ 
-    flex: 1, 
-    justifyContent: 'center', 
-    alignItems: 'center', 
-    backgroundColor: isDark ? COLORS.darkBackground : COLORS.background 
+  <View style={{
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: isDark ? COLORS.darkBackground : COLORS.background
   }}>
     <Text style={{ color: isDark ? COLORS.white : COLORS.text }}>{name} Screen</Text>
   </View>
 );
 
-const MainTab = () => {
+// Bottom tabs
+const BottomTabs = () => {
   const { isDarkMode } = useAuthStore();
   const { t } = useTranslation();
 
@@ -58,27 +64,38 @@ const MainTab = () => {
         headerShown: false,
       })}
     >
-      <Tab.Screen 
-        name="InicioTab" 
-        component={HomeStack} 
+      <Tab.Screen
+        name="InicioTab"
+        component={HomeStack}
         options={{ tabBarLabel: t('tabs.home') }}
       />
-      <Tab.Screen 
+      <Tab.Screen
         name="RestaurantesTab"
         component={RestaurantsStack}
         options={{ tabBarLabel: t('tabs.restaurants') }}
       />
-      <Tab.Screen 
+      <Tab.Screen
         name="ReservacionesTab"
         component={ReservationsStack}
         options={{ tabBarLabel: t('tabs.reservations') }}
       />
-      <Tab.Screen 
-        name="MenuTab" 
-        component={MenuScreen} 
+      <Tab.Screen
+        name="MenuTab"
+        component={MenuScreen}
         options={{ tabBarLabel: t('tabs.menu') }}
       />
     </Tab.Navigator>
+  );
+};
+
+const MainTab = () => {
+  return (
+    <RootStack.Navigator screenOptions={{ headerShown: false }}>
+      <RootStack.Screen name="Tabs" component={BottomTabs} />
+      <RootStack.Screen name="MyOrders" component={MyOrdersScreen} />
+      <RootStack.Screen name="HelpSupport" component={HelpSupportScreen} />
+      <RootStack.Screen name="MyReservations" component={MyReservationsScreen} />
+    </RootStack.Navigator>
   );
 };
 

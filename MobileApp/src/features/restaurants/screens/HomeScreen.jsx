@@ -8,6 +8,7 @@ import {
   RefreshControl,
   FlatList,
   StatusBar,
+  Modal,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
@@ -16,6 +17,7 @@ import { THEME, COMMON_STYLES } from '../../../shared/constants/theme';
 import { getRestaurants } from '../../../api/restaurants';
 import { getProducts } from '../../../api/products';
 import useAuthStore from '../../../store/useAuthStore';
+import useReviewStore from '../../../store/useReviewStore';
 import RestaurantCard from '../components/RestaurantCard';
 import ProductCard from '../../../shared/components/common/ProductCard';
 import Input from '../../../shared/components/common/Input';
@@ -60,12 +62,20 @@ const HomeSkeleton = ({ isDark }) => (
 const HomeScreen = ({ navigation }) => {
   const { t } = useTranslation();
   const { user, isDarkMode } = useAuthStore();
+  const { productStats, fetchRestaurantStats } = useReviewStore();
+
   const [restaurants, setRestaurants] = useState([]);
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [search, setSearch] = useState('');
   const [activeCategory, setActiveCategory] = useState(t('home.all'));
+
+  // Product category and rating filters state
+  const [selectedProductCategory, setSelectedProductCategory] = useState('ALL');
+  const [selectedProductRating, setSelectedProductRating] = useState(0);
+  const [categoryModalVisible, setCategoryModalVisible] = useState(false);
+  const [ratingModalVisible, setRatingModalVisible] = useState(false);
 
   const bgColor = isDarkMode ? COLORS.darkBackground : COLORS.background;
   const textColor = isDarkMode ? COLORS.darkText : COLORS.text;
@@ -89,8 +99,17 @@ const HomeScreen = ({ navigation }) => {
         getProducts()
       ]);
 
-      setRestaurants(restaurantsRes.restaurants || []);
+      const fetchedRestaurants = restaurantsRes.restaurants || [];
+      setRestaurants(fetchedRestaurants);
       setProducts(productsRes.products || []);
+
+      // Pre-fetch reviews/stats for all restaurants to have product ratings ready
+      fetchedRestaurants.forEach(r => {
+        const id = r._id || r.id;
+        if (id) {
+          fetchRestaurantStats(id);
+        }
+      });
     } catch (error) {
       console.error('Error fetching data:', error);
       setRestaurants([]);
@@ -116,6 +135,24 @@ const HomeScreen = ({ navigation }) => {
     return [{ id: '0', name: t('home.all'), icon: 'apps' }, ...catsArray];
   }, [restaurants, t]);
 
+  const productCategories = useMemo(() => {
+    const uniqueCats = new Set();
+    products.forEach(p => {
+      if (p.category?.name) {
+        uniqueCats.add(p.category.name);
+      }
+    });
+    return ['ALL', ...Array.from(uniqueCats)];
+  }, [products]);
+
+  const ratingOptions = useMemo(() => [
+    { value: 0, label: t('home.allRatings') || 'Todas' },
+    { value: 5, label: '5 ★' },
+    { value: 4, label: '4★ +' },
+    { value: 3, label: '3★ +' },
+    { value: 2, label: '2★ +' },
+  ], [t]);
+
   const filteredRestaurants = useMemo(() => {
     return (restaurants || []).filter((r) => {
       const matchesSearch = r?.name?.toLowerCase().includes(search.toLowerCase());
@@ -129,13 +166,25 @@ const HomeScreen = ({ navigation }) => {
     return (products || []).filter((p) => {
       const matchesSearch = p?.name?.toLowerCase().includes(search.toLowerCase()) ||
         p?.description?.toLowerCase().includes(search.toLowerCase());
+      
       const restaurantCategory = p?.restaurant?.category ||
         restaurants.find(r => (r._id || r.id) === (p.restaurant?._id || p.restaurant))?.category;
+      
       const matchesCategory = activeCategory === t('home.all') ||
         restaurantCategory?.toLowerCase() === activeCategory.toLowerCase();
-      return matchesSearch && matchesCategory;
+
+      // Product category filter
+      const matchesProductCategory = selectedProductCategory === 'ALL' ||
+        p?.category?.name?.toLowerCase() === selectedProductCategory.toLowerCase();
+
+      // Product rating filter
+      const id = p?._id || p?.id;
+      const rating = productStats[id]?.promedioRating || 0;
+      const matchesRating = selectedProductRating === 0 || rating >= selectedProductRating;
+
+      return matchesSearch && matchesCategory && matchesProductCategory && matchesRating;
     });
-  }, [products, restaurants, search, activeCategory, t]);
+  }, [products, restaurants, search, activeCategory, selectedProductCategory, selectedProductRating, productStats, t]);
 
   if (loading) {
     return <HomeSkeleton isDark={isDarkMode} />;
@@ -244,9 +293,34 @@ const HomeScreen = ({ navigation }) => {
         {/* Platos Populares */}
         <View style={styles.sectionContainer}>
           <View style={styles.sectionHeader}>
-            <Typography variant="h3" color={textColor}>
+            <Typography variant="h3" color={textColor} style={{ flex: 1 }}>
               {activeCategory === t('home.all') ? t('home.popular') : `${t('home.popular')} (${activeCategory})`}
             </Typography>
+            <View style={styles.filtersRow}>
+              {/* Product Category Filter Pill */}
+              <TouchableOpacity
+                onPress={() => setCategoryModalVisible(true)}
+                style={[styles.filterPill, { backgroundColor: surfaceColor }]}
+              >
+                <Ionicons name="funnel-outline" size={12} color={COLORS.primary} style={{ marginRight: 4 }} />
+                <Typography variant="caption" color={textColor} numberOfLines={1} style={{ maxWidth: 75 }}>
+                  {selectedProductCategory === 'ALL' ? t('home.allProducts') || 'Todos' : selectedProductCategory}
+                </Typography>
+                <Ionicons name="chevron-down" size={10} color={textSecondary} style={{ marginLeft: 4 }} />
+              </TouchableOpacity>
+
+              {/* Product Rating Filter Pill */}
+              <TouchableOpacity
+                onPress={() => setRatingModalVisible(true)}
+                style={[styles.filterPill, { backgroundColor: surfaceColor }]}
+              >
+                <Ionicons name="star" size={12} color={COLORS.accent} style={{ marginRight: 4 }} />
+                <Typography variant="caption" color={textColor}>
+                  {selectedProductRating === 0 ? t('home.allRatings') || 'Todas' : `${selectedProductRating}★`}
+                </Typography>
+                <Ionicons name="chevron-down" size={10} color={textSecondary} style={{ marginLeft: 4 }} />
+              </TouchableOpacity>
+            </View>
           </View>
           <View style={styles.productsList}>
             {filteredProducts.length > 0 ? (
@@ -255,7 +329,13 @@ const HomeScreen = ({ navigation }) => {
                   key={item._id || item.id}
                   product={item}
                   isDark={isDarkMode}
-                  onPress={() => navigation.navigate('RestaurantDetail', { id: item.restaurant?._id || item.restaurant })}
+                  onPress={() => {
+                    const restaurantId = item.restaurant?._id || item.restaurant;
+                    navigation.navigate('RestaurantDetail', { 
+                      id: restaurantId, 
+                      productId: item._id || item.id 
+                    });
+                  }}
                 />
               ))
             ) : (
@@ -266,6 +346,131 @@ const HomeScreen = ({ navigation }) => {
           </View>
         </View>
       </ScrollView>
+
+      {/* Category Filter Modal */}
+      <Modal
+        visible={categoryModalVisible}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setCategoryModalVisible(false)}
+      >
+        <TouchableOpacity
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPress={() => setCategoryModalVisible(false)}
+        >
+          <View style={[styles.bottomSheet, { backgroundColor: surfaceColor }]}>
+            <View style={styles.sheetHeader}>
+              <Typography variant="bodyBold" color={textColor}>
+                {t('home.filterCategory') || 'Filtrar por Categoría'}
+              </Typography>
+              <TouchableOpacity onPress={() => setCategoryModalVisible(false)} style={styles.closeSheetBtn}>
+                <Ionicons name="close" size={24} color={textColor} />
+              </TouchableOpacity>
+            </View>
+            <ScrollView style={styles.sheetContent}>
+              {productCategories.map((cat) => {
+                const isSelected = cat === selectedProductCategory;
+                return (
+                  <TouchableOpacity
+                    key={cat}
+                    onPress={() => {
+                      setSelectedProductCategory(cat);
+                      setCategoryModalVisible(false);
+                    }}
+                    style={[
+                      styles.optionRow,
+                      isSelected && { backgroundColor: COLORS.primary + '15' }
+                    ]}
+                  >
+                    <Typography
+                      variant={isSelected ? 'bodyBold' : 'body'}
+                      color={isSelected ? COLORS.primary : textColor}
+                    >
+                      {cat === 'ALL' ? t('home.allProducts') || 'Todos' : cat}
+                    </Typography>
+                    {isSelected && <Ionicons name="checkmark" size={20} color={COLORS.primary} />}
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
+          </View>
+        </TouchableOpacity>
+      </Modal>
+
+      {/* Rating Filter Modal */}
+      <Modal
+        visible={ratingModalVisible}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setRatingModalVisible(false)}
+      >
+        <TouchableOpacity
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPress={() => setRatingModalVisible(false)}
+        >
+          <View style={[styles.bottomSheet, { backgroundColor: surfaceColor }]}>
+            <View style={styles.sheetHeader}>
+              <Typography variant="bodyBold" color={textColor}>
+                {t('home.filterRating') || 'Filtrar por Calificación'}
+              </Typography>
+              <TouchableOpacity onPress={() => setRatingModalVisible(false)} style={styles.closeSheetBtn}>
+                <Ionicons name="close" size={24} color={textColor} />
+              </TouchableOpacity>
+            </View>
+            <View style={styles.sheetContent}>
+              {ratingOptions.map((opt) => {
+                const isSelected = opt.value === selectedProductRating;
+                return (
+                  <TouchableOpacity
+                    key={opt.value}
+                    onPress={() => {
+                      setSelectedProductRating(opt.value);
+                      setRatingModalVisible(false);
+                    }}
+                    style={[
+                      styles.optionRow,
+                      isSelected && { backgroundColor: COLORS.primary + '15' }
+                    ]}
+                  >
+                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                      {opt.value > 0 ? (
+                        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                          {[1, 2, 3, 4, 5].map((starIndex) => (
+                            <Ionicons
+                              key={starIndex}
+                              name={starIndex <= opt.value ? "star" : "star-outline"}
+                              size={16}
+                              color={starIndex <= opt.value ? COLORS.accent : textSecondary}
+                              style={{ marginRight: 2 }}
+                            />
+                          ))}
+                          <Typography
+                            variant={isSelected ? 'bodyBold' : 'body'}
+                            color={isSelected ? COLORS.primary : textColor}
+                            style={{ marginLeft: 8 }}
+                          >
+                            {opt.label}
+                          </Typography>
+                        </View>
+                      ) : (
+                        <Typography
+                          variant={isSelected ? 'bodyBold' : 'body'}
+                          color={isSelected ? COLORS.primary : textColor}
+                        >
+                          {opt.label}
+                        </Typography>
+                      )}
+                    </View>
+                    {isSelected && <Ionicons name="checkmark" size={20} color={COLORS.primary} />}
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          </View>
+        </TouchableOpacity>
+      </Modal>
     </SafeAreaView>
   );
 };
@@ -337,6 +542,62 @@ const styles = StyleSheet.create({
   productsList: {
     gap: 16,
     paddingBottom: 40,
+  },
+  filtersRow: {
+    flexDirection: 'row',
+    gap: 8,
+    alignItems: 'center',
+  },
+  filterPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: 'transparent',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 1.5,
+    elevation: 2,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'flex-end',
+  },
+  bottomSheet: {
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    paddingTop: 20,
+    paddingHorizontal: 20,
+    paddingBottom: 40,
+    maxHeight: '60%',
+  },
+  sheetHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f1f5f9',
+    paddingBottom: 12,
+  },
+  closeSheetBtn: {
+    padding: 4,
+  },
+  sheetContent: {
+    marginVertical: 8,
+  },
+  optionRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    marginBottom: 4,
   },
 });
 

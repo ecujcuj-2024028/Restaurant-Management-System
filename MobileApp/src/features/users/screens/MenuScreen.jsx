@@ -50,13 +50,13 @@ const MenuScreen = ({ navigation }) => {
 
   const MENU_OPTIONS = [
     { id: 'perfil', title: t('menu.myProfile'), icon: 'person-outline' },
-    { id: 'reservas', title: t('menu.myReservations'), icon: 'calendar-outline' },
-    { id: 'pedidos', title: t('menu.myOrders'), icon: 'list-outline' },
+    { id: 'reservas', title: t('menu.myReservations'), icon: 'calendar-outline', action: () => navigation.navigate('MyReservations') },
+    { id: 'pedidos', title: t('menu.myOrders'), icon: 'list-outline', action: () => navigation.navigate('MyOrders') },
     { id: 'eventos', title: t('menu.events'), icon: 'star-outline' },
     { id: 'notificaciones', title: t('menu.notifications'), icon: 'notifications-outline' },
     { id: 'carrito', title: t('menu.cart'), icon: 'cart-outline' },
     { id: 'preferencias', title: t('menu.preferences'), icon: 'settings-outline', action: () => setView('preferences') },
-    { id: 'ayuda', title: t('menu.help'), icon: 'help-circle-outline' },
+    { id: 'ayuda', title: t('menu.help'), icon: 'help-circle-outline', action: () => navigation.navigate('HelpSupport') },
   ];
 
   const bgColor = isDarkMode ? COLORS.darkBackground : '#F5F5F5';
@@ -262,6 +262,18 @@ const MenuScreen = ({ navigation }) => {
           <Ionicons name="chevron-forward" size={16} color={COLORS.error} />
         </TouchableOpacity>
       </ScrollView>
+
+      {/* Botón flotante: volver a Mis Pedidos */}
+      <TouchableOpacity
+        style={styles.ordersFab}
+        onPress={() => navigation.navigate('MyOrders')}
+        activeOpacity={0.85}
+      >
+        <Ionicons name="receipt-outline" size={22} color={COLORS.white} />
+        <Typography variant="small" color={COLORS.white} style={{ fontWeight: '700', marginLeft: 6 }}>
+          {t('menu.myOrders')}
+        </Typography>
+      </TouchableOpacity>
     </View>
   );
 };
@@ -389,6 +401,22 @@ const styles = StyleSheet.create({
   },
   dropdownItemActive: {
     backgroundColor: 'rgba(255, 107, 0, 0.05)',
+  },
+  ordersFab: {
+    position: 'absolute',
+    bottom: 24,
+    right: 20,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.primary,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 28,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.2,
+    shadowRadius: 6,
+    elevation: 5,
   },
 });
 

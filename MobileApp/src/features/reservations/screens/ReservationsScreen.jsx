@@ -146,6 +146,10 @@ const ReservationsScreen = ({ navigation }) => {
         fetchData();
     }, []);
 
+    useEffect(() => {
+        setActiveCategory(t('reservations.all'));
+    }, [t]);
+
     const fetchData = async (isRefresh = false) => {
         if (isRefresh) setRefreshing(true);
         else setLoading(true);
@@ -190,9 +194,17 @@ const ReservationsScreen = ({ navigation }) => {
                     <Typography variant="h2" color={textColor}>
                         {t('reservations.title')}
                     </Typography>
-                    <TouchableOpacity style={[styles.bellBtn, { backgroundColor: surfaceColor }]}>
-                        <Ionicons name="notifications" size={22} color={textColor} />
-                    </TouchableOpacity>
+                    <View style={{ flexDirection: 'row', gap: 10 }}>
+                        <TouchableOpacity 
+                            style={[styles.bellBtn, { backgroundColor: surfaceColor }]}
+                            onPress={() => navigation.navigate('MyReservations')}
+                        >
+                            <Ionicons name="calendar-outline" size={22} color={textColor} />
+                        </TouchableOpacity>
+                        <TouchableOpacity style={[styles.bellBtn, { backgroundColor: surfaceColor }]}>
+                            <Ionicons name="notifications" size={22} color={textColor} />
+                        </TouchableOpacity>
+                    </View>
                 </View>
 
                 <Input
