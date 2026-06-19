@@ -10,6 +10,10 @@ import {
   Modal,
   Platform,
   ScrollView,
+  Alert,
+  ActivityIndicator,
+  TextInput,
+  KeyboardAvoidingView,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -20,7 +24,9 @@ import useAuthStore from '../../../store/useAuthStore';
 import Typography from '../../../shared/components/common/Typography';
 import Input from '../../../shared/components/common/Input';
 import Skeleton from '../../../shared/components/common/Skeleton';
+import Button from '../../../shared/components/common/Button';
 import { getMyOrders, sendOrderInvoice } from '../../../api/orders';
+import api from '../../../api/api';
 
 // ── Status helpers ────────────────────────────────────────────────────────────
 const STATUS_COLORS = {
@@ -403,8 +409,180 @@ const OrderDetailModal = ({ visible, onClose, order, isDark, t, onProductPress, 
   );
 };
 
+// ── Auxiliares de Calificación y Comentarios ─────────────────────────────────
+const StarRating = ({ rating, size = 16, editable = false, onRate }) => (
+  <View style={{ flexDirection: 'row', gap: 4 }}>
+    {[1,2,3,4,5].map(i => (
+      <TouchableOpacity
+        key={i}
+        onPress={() => editable && onRate && onRate(i)}
+        disabled={!editable}
+        activeOpacity={editable ? 0.7 : 1}
+      >
+        <Ionicons
+          name={i <= Math.round(rating) ? 'star' : 'star-outline'}
+          size={size}
+          color={i <= Math.round(rating) ? COLORS.accent : COLORS.border}
+        />
+      </TouchableOpacity>
+    ))}
+  </View>
+);
+
+const ProductReviewModal = ({ visible, onClose, onSubmit, isDark, editingReview, t }) => {
+  const [rating, setRating] = useState(5);
+  const [comment, setComment] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (visible) {
+      setRating(editingReview?.rating || 5);
+      setComment(editingReview?.comentario || '');
+    }
+  }, [visible, editingReview]);
+
+  const bgModal = isDark ? COLORS.darkSurface : COLORS.white;
+  const textColor = isDark ? COLORS.darkText : COLORS.text;
+  const textSecondary = isDark ? COLORS.darkTextSecondary : COLORS.textSecondary;
+  const bgOverlay = isDark ? 'rgba(0,0,0,0.75)' : 'rgba(0,0,0,0.45)';
+
+  const handleSubmit = async () => {
+    if (!comment.trim()) return;
+    setLoading(true);
+    try {
+      await onSubmit({ rating, comentario: comment.trim() });
+      onClose();
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
+      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
+        <TouchableOpacity style={[rmStyles.overlay, { backgroundColor: bgOverlay }]} onPress={onClose} activeOpacity={1} />
+        <View style={[rmStyles.sheet, { backgroundColor: bgModal }]}>
+          <View style={rmStyles.handle} />
+          <Typography variant="h3" color={textColor} style={{ marginBottom: 16 }}>
+            {editingReview ? t('productDetail.editReview', 'Editar Reseña') : t('productDetail.addReview', 'Agregar Reseña')}
+          </Typography>
+
+          <Typography variant="caption" color={textSecondary} style={{ marginBottom: 8 }}>
+            {t('productDetail.yourRating', 'Tu calificación')}
+          </Typography>
+          <StarRating rating={rating} size={32} editable onRate={setRating} />
+
+          <Typography variant="caption" color={textSecondary} style={{ marginTop: 16, marginBottom: 8 }}>
+            {t('productDetail.comment', 'Comentario')}
+          </Typography>
+          <TextInput
+            style={[rmStyles.textArea, {
+              color: isDark ? COLORS.darkText : COLORS.text,
+              backgroundColor: isDark ? COLORS.darkBackground : '#F1F5F9',
+              borderColor: isDark ? COLORS.darkBorder : COLORS.border,
+            }]}
+            placeholder={t('productDetail.commentPlaceholder', 'Escribe tu experiencia con este plato...')}
+            placeholderTextColor={isDark ? COLORS.darkTextSecondary : COLORS.textSecondary}
+            value={comment}
+            onChangeText={setComment}
+            multiline
+            numberOfLines={4}
+            textAlignVertical="top"
+          />
+
+          <Button
+            title={editingReview ? t('productDetail.save', 'Guardar') : t('productDetail.publish', 'Publicar')}
+            onPress={handleSubmit}
+            loading={loading}
+            style={{ marginTop: 20 }}
+          />
+        </View>
+      </KeyboardAvoidingView>
+    </Modal>
+  );
+};
+
+const rmStyles = StyleSheet.create({
+  overlay: { ...StyleSheet.absoluteFillObject },
+  sheet: {
+    position: 'absolute',
+    bottom: 0, left: 0, right: 0,
+    borderTopLeftRadius: 24, borderTopRightRadius: 24,
+    padding: 24, paddingBottom: 40,
+  },
+  handle: {
+    width: 40, height: 4, borderRadius: 2,
+    backgroundColor: COLORS.border,
+    alignSelf: 'center',
+    marginBottom: 20,
+  },
+  textArea: {
+    borderWidth: 1,
+    borderRadius: 12,
+    padding: 12,
+    fontSize: 15,
+    minHeight: 100,
+  },
+});
+
 // ── Detalle de Producto Modal ────────────────────────────────────────────────
 const ProductDetailModal = ({ visible, onClose, product, isDark, t }) => {
+  const { user } = useAuthStore();
+  const [fullProduct, setFullProduct] = useState(null);
+  const [reviews, setReviews] = useState([]);
+  const [averageRating, setAverageRating] = useState(0);
+  const [loading, setLoading] = useState(false);
+  const [writeModalVisible, setWriteModalVisible] = useState(false);
+  const [editingReview, setEditingReview] = useState(null);
+
+  const productId = product?._id || product?.id || product?.productId;
+
+  const fetchReviews = async () => {
+    if (!productId) return;
+    try {
+      const r = await api.get(`/analytics/reviews/plato/${productId}`);
+      const data = r.data || {};
+      setReviews(data.reviews || data.data?.reviews || []);
+      setAverageRating(data.promedioRating || data.data?.promedioRating || 0);
+    } catch (err) {
+      console.warn('Error fetching reviews:', err.message);
+    }
+  };
+
+  useEffect(() => {
+    if (visible && product) {
+      if (!productId) return;
+
+      setLoading(true);
+      setFullProduct(null);
+      setReviews([]);
+      setAverageRating(0);
+
+      // Fetch product details
+      api.get(`/products/${productId}`)
+        .then(r => {
+          setFullProduct(r.data?.product || r.data);
+        })
+        .catch(err => {
+          console.warn('Error fetching product details:', err.message);
+        });
+
+      // Fetch reviews
+      api.get(`/analytics/reviews/plato/${productId}`)
+        .then(r => {
+          const data = r.data || {};
+          setReviews(data.reviews || data.data?.reviews || []);
+          setAverageRating(data.promedioRating || data.data?.promedioRating || 0);
+        })
+        .catch(err => {
+          console.warn('Error fetching reviews:', err.message);
+        })
+        .finally(() => {
+          setLoading(false);
+        });
+    }
+  }, [visible, product]);
+
   if (!product) return null;
 
   const bgModal = isDark ? COLORS.darkSurface : COLORS.white;
@@ -412,13 +590,77 @@ const ProductDetailModal = ({ visible, onClose, product, isDark, t }) => {
   const textSecondary = isDark ? COLORS.darkTextSecondary : COLORS.textSecondary;
   const borderColor = isDark ? COLORS.darkBorder : COLORS.border;
 
-  const prodName = product.name || t('orders.product', 'Producto');
-  const price = product.price || 0;
-  const image = product.image || null;
-  const desc = product.description || t('orders.noDescription', 'Sin descripción');
+  const resolvedProduct = fullProduct || product;
+  const prodName = resolvedProduct.name || t('orders.product', 'Producto');
+  const price = resolvedProduct.price || 0;
+  const image = resolvedProduct.image || null;
+  const desc = resolvedProduct.description || t('orders.noDescription', 'Sin descripción');
+  const categoryName = resolvedProduct.category?.name || resolvedProduct.category || null;
 
   const bannerColors = ['#FF6B00', '#B8860B', '#1A237E', '#2E7D32', '#6A1B9A'];
   const colorIndex = (prodName?.charCodeAt(0) || 0) % bannerColors.length;
+
+  const handleOrderProduct = () => {
+    Alert.alert(
+      t('common.success', 'Éxito'),
+      `${prodName} ${t('restaurantDetail.addedToOrder', 'ha sido agregado al pedido.')}`
+    );
+  };
+
+  const handleOpenWrite = () => {
+    setEditingReview(null);
+    setWriteModalVisible(true);
+  };
+
+  const handleOpenEdit = (review) => {
+    setEditingReview(review);
+    setWriteModalVisible(true);
+  };
+
+  const handleSubmitReview = async ({ rating, comentario }) => {
+    if (!productId) return;
+    try {
+      if (editingReview) {
+        await api.put(`/analytics/reviews/${editingReview._id || editingReview.id}`, { rating, comentario });
+      } else {
+        await api.post('/analytics/reviews', {
+          usuarioId: user?._id || user?.id,
+          username: user?.username || user?.Username || user?.name || 'Usuario',
+          restauranteId: resolvedProduct.restaurant?._id || resolvedProduct.restaurant || resolvedProduct.restaurantId,
+          platoId: productId,
+          rating,
+          comentario,
+        });
+      }
+      await fetchReviews();
+    } catch (err) {
+      console.warn('Error saving review:', err.message);
+      Alert.alert('Error', err?.response?.data?.message || t('productDetail.deleteError', 'Ocurrió un error.'));
+    }
+  };
+
+  const handleDeleteReview = (reviewId) => {
+    Alert.alert(
+      t('productDetail.deleteTitle', 'Eliminar Reseña'),
+      t('productDetail.deleteMsg', '¿Estás seguro de que deseas eliminar tu reseña?'),
+      [
+        { text: t('productDetail.cancel', 'Cancelar'), style: 'cancel' },
+        {
+          text: t('productDetail.delete', 'Eliminar'), style: 'destructive',
+          onPress: async () => {
+            try {
+              await api.delete(`/analytics/reviews/${reviewId}`);
+              await fetchReviews();
+            } catch (err) {
+              Alert.alert('Error', err?.response?.data?.message || t('productDetail.deleteError', 'Ocurrió un error.'));
+            }
+          }
+        }
+      ]
+    );
+  };
+
+  const userReview = reviews.find(r => r.usuarioId?.toString() === (user?._id || user?.id)?.toString());
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
@@ -450,29 +692,150 @@ const ProductDetailModal = ({ visible, onClose, product, isDark, t }) => {
             {/* Info */}
             <View style={pdStyles.infoContainer}>
               <View style={pdStyles.titleRow}>
-                <Typography variant="h2" color={textColor} style={{ flex: 1 }}>{prodName}</Typography>
+                <View style={{ flex: 1, marginRight: 8 }}>
+                  <Typography variant="h2" color={textColor}>{prodName}</Typography>
+                  {categoryName ? (
+                    <View style={[pdStyles.categoryBadge, { backgroundColor: COLORS.primary + '15', marginTop: 6 }]}>
+                      <Typography variant="smallBold" color={COLORS.primary}>{categoryName}</Typography>
+                    </View>
+                  ) : null}
+                </View>
                 <Typography variant="h2" color={COLORS.primary}>Q {price.toFixed(2)}</Typography>
               </View>
 
-              <Typography variant="bodyBold" color={textColor} style={{ marginTop: 20, marginBottom: 8 }}>
+              <Typography variant="bodyBold" color={textColor} style={{ marginTop: 24, marginBottom: 8 }}>
                 {t('productDetail.description', 'Descripción')}
               </Typography>
               <Typography variant="body" color={textSecondary}>
                 {desc}
               </Typography>
+
+              {/* Comments Section */}
+              <View style={[pdStyles.divider, { backgroundColor: borderColor, marginVertical: 24 }]} />
+              
+              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                  <Typography variant="bodyBold" color={textColor}>
+                    {t('productDetail.review', 'Reseñas')} ({reviews.length})
+                  </Typography>
+                  {averageRating > 0 ? (
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: COLORS.accent + '20', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 12 }}>
+                      <Ionicons name="star" size={12} color={COLORS.accent} />
+                      <Typography variant="smallBold" color={isDark ? COLORS.accent : '#B8860B'}>
+                        {averageRating.toFixed(1)}
+                      </Typography>
+                    </View>
+                  ) : null}
+                </View>
+                {!userReview && (
+                  <TouchableOpacity
+                    style={{ flexDirection: 'row', alignItems: 'center', gap: 4, paddingVertical: 6, paddingHorizontal: 12, backgroundColor: COLORS.primary, borderRadius: 16 }}
+                    onPress={handleOpenWrite}
+                  >
+                    <Ionicons name="add" size={15} color={COLORS.white} />
+                    <Typography variant="smallBold" color={COLORS.white}>
+                      {t('productDetail.write', 'Escribir')}
+                    </Typography>
+                  </TouchableOpacity>
+                )}
+              </View>
+
+              {loading ? (
+                <ActivityIndicator size="small" color={COLORS.primary} style={{ marginVertical: 12 }} />
+              ) : reviews.length === 0 ? (
+                <View style={pdStyles.emptyReviews}>
+                  <Ionicons name="chatbubble-outline" size={32} color={textSecondary} style={{ marginBottom: 6 }} />
+                  <Typography variant="caption" color={textSecondary}>
+                    {t('productDetail.noReviews', 'Sé el primero en dejar una reseña.')}
+                  </Typography>
+                </View>
+              ) : (
+                <View style={{ gap: 12 }}>
+                  {reviews.map((rev, index) => {
+                    const revDate = rev.createdAt ? new Date(rev.createdAt).toLocaleDateString() : '';
+                    const isOwner = rev.usuarioId?.toString() === (user?._id || user?.id)?.toString();
+                    return (
+                      <View 
+                        key={rev._id || rev.id || index} 
+                        style={[pdStyles.reviewCard, { backgroundColor: isDark ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.01)', borderColor }]}
+                      >
+                        <View style={pdStyles.reviewHeader}>
+                          <View style={[pdStyles.avatar, { backgroundColor: COLORS.primary + '15' }]}>
+                            <Ionicons name="person" size={14} color={COLORS.primary} />
+                          </View>
+                          <View style={{ flex: 1 }}>
+                            <Typography variant="bodyBold" color={textColor} numberOfLines={1}>
+                              {rev.username || t('productDetail.anonymous', 'Usuario')}
+                            </Typography>
+                            <View style={{ flexDirection: 'row', gap: 2, marginTop: 2 }}>
+                              {[1,2,3,4,5].map(i => (
+                                <Ionicons
+                                  key={i}
+                                  name={i <= Math.round(rev.rating) ? 'star' : 'star-outline'}
+                                  size={11}
+                                  color={i <= Math.round(rev.rating) ? COLORS.accent : COLORS.border}
+                                />
+                              ))}
+                            </View>
+                          </View>
+                          {isOwner ? (
+                            <View style={{ flexDirection: 'row', gap: 8 }}>
+                              <TouchableOpacity onPress={() => handleOpenEdit(rev)} style={{ padding: 4 }}>
+                                <Ionicons name="pencil" size={14} color={textSecondary} />
+                              </TouchableOpacity>
+                              <TouchableOpacity onPress={() => handleDeleteReview(rev._id || rev.id)} style={{ padding: 4 }}>
+                                <Ionicons name="trash-outline" size={14} color={COLORS.error} />
+                              </TouchableOpacity>
+                            </View>
+                          ) : revDate ? (
+                            <Typography variant="small" color={textSecondary}>{revDate}</Typography>
+                          ) : null}
+                        </View>
+                        <Typography variant="caption" color={textColor} style={{ marginTop: 8 }}>
+                          {rev.comentario}
+                        </Typography>
+                      </View>
+                    );
+                  })}
+                </View>
+              )}
             </View>
           </ScrollView>
 
-          {/* Footer Action */}
+          {/* Footer Actions */}
           <View style={[pdStyles.footer, { borderTopColor: borderColor }]}>
-            <TouchableOpacity style={pdStyles.closeActionBtn} onPress={onClose}>
-              <Typography variant="bodyBold" color={COLORS.white}>
-                {t('menu.back', 'Volver')}
-              </Typography>
-            </TouchableOpacity>
+            <View style={{ flexDirection: 'row', gap: 12 }}>
+              <TouchableOpacity 
+                style={[pdStyles.footerBtn, pdStyles.cancelBtn, { borderColor }]} 
+                onPress={onClose}
+              >
+                <Typography variant="bodyBold" color={textColor}>
+                  {t('menu.back', 'Volver')}
+                </Typography>
+              </TouchableOpacity>
+              <TouchableOpacity 
+                style={[pdStyles.footerBtn, pdStyles.submitBtn, { backgroundColor: COLORS.primary }]} 
+                onPress={handleOrderProduct}
+              >
+                <Ionicons name="cart-outline" size={18} color={COLORS.white} style={{ marginRight: 6 }} />
+                <Typography variant="bodyBold" color={COLORS.white}>
+                  {t('restaurantDetail.order', 'Pedir')}
+                </Typography>
+              </TouchableOpacity>
+            </View>
           </View>
         </View>
       </View>
+
+      {/* Review Modal Form */}
+      <ProductReviewModal
+        visible={writeModalVisible}
+        onClose={() => setWriteModalVisible(false)}
+        onSubmit={handleSubmitReview}
+        isDark={isDark}
+        editingReview={editingReview}
+        t={t}
+      />
     </Modal>
   );
 };
@@ -696,16 +1059,59 @@ const pdStyles = StyleSheet.create({
     alignItems: 'flex-start',
     gap: 16,
   },
+  categoryBadge: {
+    alignSelf: 'flex-start',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 8,
+  },
+  divider: {
+    height: 1,
+  },
+  emptyReviews: {
+    alignItems: 'center',
+    paddingVertical: 20,
+    gap: 8,
+  },
+  reviewCard: {
+    borderRadius: 12,
+    borderWidth: 1,
+    padding: 12,
+  },
+  reviewHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  avatar: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   footer: {
     padding: 20,
     borderTopWidth: 1,
     paddingBottom: Platform.OS === 'ios' ? 30 : 20,
   },
-  closeActionBtn: {
-    backgroundColor: COLORS.primary,
-    paddingVertical: 16,
-    borderRadius: 16,
+  footerBtn: {
+    flex: 1,
+    paddingVertical: 14,
+    borderRadius: 14,
     alignItems: 'center',
+    justifyContent: 'center',
+    flexDirection: 'row',
+  },
+  cancelBtn: {
+    borderWidth: 1,
+  },
+  submitBtn: {
+    elevation: 2,
+    shadowColor: COLORS.black,
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.2,
+    shadowRadius: 2,
   },
 });
 
