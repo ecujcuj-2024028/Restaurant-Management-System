@@ -146,6 +146,10 @@ const ReservationsScreen = ({ navigation }) => {
         fetchData();
     }, []);
 
+    useEffect(() => {
+        setActiveCategory(t('reservations.all'));
+    }, [t]);
+
     const fetchData = async (isRefresh = false) => {
         if (isRefresh) setRefreshing(true);
         else setLoading(true);

@@ -153,6 +153,10 @@ const RestaurantsScreen = ({ navigation }) => {
         fetchData();
     }, []);
 
+    useEffect(() => {
+        setActiveCategory(t('restaurants.all'));
+    }, [t]);
+
     const fetchData = async (isRefresh = false) => {
         if (isRefresh) setRefreshing(true);
         else setLoading(true);
