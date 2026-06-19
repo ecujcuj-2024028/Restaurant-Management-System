@@ -11,7 +11,7 @@ export const getMyReservations = async () => {
 };
 
 export const cancelReservation = async (id) => {
-  const response = await api.delete(`/reservations/${id}`);
+  const response = await api.patch(`/reservations/${id}/cancel`);
   return response.data;
 };
 
