@@ -5,6 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { COLORS } from '../shared/constants/colors';
 import HomeStack from './HomeStack';
 import MenuScreen from '../features/users/screens/MenuScreen';
+import HelpSupportScreen from '../features/users/screens/HelpSupportScreen';
 import RestaurantsStack from './RestaurantsStack';
 import ReservationsStack from './ReservationsStack';
 import MyOrdersScreen from '../features/orders/screens/MyOrdersScreen';
@@ -91,6 +92,7 @@ const MainTab = () => {
     <RootStack.Navigator screenOptions={{ headerShown: false }}>
       <RootStack.Screen name="Tabs" component={BottomTabs} />
       <RootStack.Screen name="MyOrders" component={MyOrdersScreen} />
+      <RootStack.Screen name="HelpSupport" component={HelpSupportScreen} />
     </RootStack.Navigator>
   );
 };

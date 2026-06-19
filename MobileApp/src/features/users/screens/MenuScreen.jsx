@@ -56,7 +56,7 @@ const MenuScreen = ({ navigation }) => {
     { id: 'notificaciones', title: t('menu.notifications'), icon: 'notifications-outline' },
     { id: 'carrito', title: t('menu.cart'), icon: 'cart-outline' },
     { id: 'preferencias', title: t('menu.preferences'), icon: 'settings-outline', action: () => setView('preferences') },
-    { id: 'ayuda', title: t('menu.help'), icon: 'help-circle-outline' },
+    { id: 'ayuda', title: t('menu.help'), icon: 'help-circle-outline', action: () => navigation.navigate('HelpSupport') },
   ];
 
   const bgColor = isDarkMode ? COLORS.darkBackground : '#F5F5F5';

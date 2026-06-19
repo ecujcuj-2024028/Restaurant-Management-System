@@ -145,6 +145,26 @@
     "cancel": "取消",
     "deleteError": "无法删除评价。",
     "anonymous": "用户"
+  },
+  "help": {
+    "search_placeholder": "搜索帮助或问题...",
+    "faq_title": "常见问题",
+    "faq_order_q": "如何下单？",
+    "faq_order_a": "前往首页，选择一家餐厅，将菜品加入购物车，然后点击“去结算”。",
+    "faq_reservation_q": "如何取消预订？",
+    "faq_reservation_a": "在您的个人资料中前往“我的预订”，选择您要取消的预订，然后点击“取消预订”按钮。",
+    "faq_payment_q": "支持哪些付款方式？",
+    "faq_payment_a": "我们支持信用卡/借记卡（Visa，Mastercard）、本地银行转账和货到付款。",
+    "faq_refund_q": "退款需要多长时间？",
+    "faq_refund_a": "退款通常在 3 到 5 个工作日内处理，具体取决于您的银行。",
+    "no_results": "未找到与您的搜索相匹配的结果。",
+    "contact_channels": "直接联系",
+    "form_title": "给我们发送消息",
+    "form_subject": "主题/反馈类型",
+    "form_message": "请在此详细写下您的问题或疑问...",
+    "form_submit": "提交反馈",
+    "empty_fields": "请填写所有字段。",
+    "success_title": "消息已发送",
+    "success_msg": "我们已收到您的支持请求。我们会尽快与您联系。"
   }
-
 }

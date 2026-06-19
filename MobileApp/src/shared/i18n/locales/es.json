@@ -145,5 +145,26 @@
     "cancel": "Cancelar",
     "deleteError": "No se pudo eliminar la reseña.",
     "anonymous": "Usuario"
+  },
+  "help": {
+    "search_placeholder": "Buscar ayuda o preguntas...",
+    "faq_title": "Preguntas Frecuentes",
+    "faq_order_q": "¿Cómo realizo un pedido?",
+    "faq_order_a": "Ve a la pestaña de inicio, selecciona un restaurante, añade platos a tu carrito y presiona 'Proceder al Pago'.",
+    "faq_reservation_q": "¿Cómo cancelo una reserva?",
+    "faq_reservation_a": "Ve a 'Mis Reservas' desde tu perfil, selecciona la reserva que deseas cancelar y presiona el botón 'Cancelar Reserva'.",
+    "faq_payment_q": "¿Qué métodos de pago aceptan?",
+    "faq_payment_a": "Aceptamos tarjetas de crédito/débito (Visa, Mastercard), transferencias locales y efectivo al momento de entrega.",
+    "faq_refund_q": "¿Cuánto tiempo tarda un reembolso?",
+    "faq_refund_a": "Los reembolsos suelen procesarse de 3 a 5 días hábiles dependiendo de tu entidad bancaria.",
+    "no_results": "No encontramos respuestas para tu búsqueda.",
+    "contact_channels": "Contacto Directo",
+    "form_title": "Envíanos un mensaje",
+    "form_subject": "Asunto / Tema",
+    "form_message": "Escribe tu duda o problema aquí detalladamente...",
+    "form_submit": "Enviar Ticket",
+    "empty_fields": "Por favor completa todos los campos.",
+    "success_title": "Mensaje Enviado",
+    "success_msg": "Hemos recibido tu solicitud de ayuda. Nos comunicaremos contigo pronto."
   }
 }
