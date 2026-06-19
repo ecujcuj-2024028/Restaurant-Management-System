@@ -14,3 +14,8 @@ export const getOrderById = async (id) => {
   const response = await api.get(`/orders/${id}`);
   return response.data;
 };
+
+export const sendOrderInvoice = async (id) => {
+  const response = await api.get(`/orders/${id}/invoice`);
+  return response.data;
+};
