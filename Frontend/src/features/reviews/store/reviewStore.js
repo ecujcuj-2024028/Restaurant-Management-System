@@ -79,11 +79,12 @@ const useReviewStore = create((set, get) => ({
     }
   },
 
-  submitReview: async ({ usuarioId, restauranteId, platoId, rating, comentario }) => {
+  submitReview: async ({ usuarioId, username, restauranteId, platoId, rating, comentario }) => {
     set({ submitting: true, error: null })
     try {
       const response = await createReview({
         usuarioId,
+        username,
         restauranteId,
         platoId,
         rating,

@@ -1,4 +1,10 @@
 {
+  "common": {
+    "close": "Close",
+    "cancel": "Cancel",
+    "confirm": "Confirm",
+    "success": "Success"
+  },
   "menu": {
     "myProfile": "My Profile",
     "myReservations": "My Reservations",
@@ -77,7 +83,8 @@
     "address": "Address",
     "phone": "Phone",
     "businessHours": "Business hours",
-    "understood": "Got it"
+    "understood": "Got it",
+    "addedToOrder": "has been added to the order."
   },
   "reservations": {
     "title": "Reservations",

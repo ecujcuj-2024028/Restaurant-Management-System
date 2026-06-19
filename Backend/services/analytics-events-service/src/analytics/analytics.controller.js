@@ -24,7 +24,7 @@ const getOwnedRestaurantIds = async (req) => {
 ─────────────────────────────────────────────── */
 export const crearReview = async (req, res) => {
     try {
-        const { usuarioId, restauranteId, platoId, rating, comentario, consumo } = req.body;
+        const { usuarioId, username, restauranteId, platoId, rating, comentario, consumo } = req.body;
 
         if (!usuarioId || !restauranteId || !platoId) {
             return res.status(400).json({
@@ -35,6 +35,7 @@ export const crearReview = async (req, res) => {
 
         const nuevaReview = new Review({
             usuarioId: usuarioId.toString(),
+            username: username || 'Usuario',
             restauranteId: new mongoose.Types.ObjectId(restauranteId),
             platoId: new mongoose.Types.ObjectId(platoId),
             rating: Number(rating),

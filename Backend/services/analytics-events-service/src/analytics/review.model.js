@@ -10,6 +10,10 @@ const reviewSchema = new mongoose.Schema(
             required: [true, 'El ID de usuario es obligatorio'],
             trim: true
         },
+        username: {
+            type: String,
+            trim: true
+        },
         // Referencia al restaurante 
         restauranteId: {
             type: mongoose.Schema.Types.ObjectId,

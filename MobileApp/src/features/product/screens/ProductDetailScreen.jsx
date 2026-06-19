@@ -294,6 +294,7 @@ const ProductDetailScreen = ({ route, navigation }) => {
     } else {
       await createReview({
         usuarioId: user?._id || user?.id,
+        username: user?.username || user?.Username || user?.name || 'Usuario',
         restauranteId: product?.restaurant?._id || product?.restaurant || product?.restaurantId,
         platoId: productId,
         rating,
@@ -422,10 +423,34 @@ const ProductDetailScreen = ({ route, navigation }) => {
           {/* Divider */}
           <View style={[styles.divider, { backgroundColor: borderColor }]} />
 
-          {/* Reseñas */}
-          <Typography variant="bodyBold" color={textColor} style={{ marginBottom: 12 }}>
-            {stats.totalReviews} {t('productDetail.review')}
-          </Typography>
+          {/* Reseñas Header Row */}
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+            <Typography variant="bodyBold" color={textColor}>
+              {t('productDetail.review') || 'Reseñas'} ({stats.totalReviews})
+            </Typography>
+            <TouchableOpacity
+              style={{ 
+                flexDirection: 'row', 
+                alignItems: 'center', 
+                gap: 4, 
+                paddingVertical: 6, 
+                paddingHorizontal: 12, 
+                backgroundColor: COLORS.primary, 
+                borderRadius: 16,
+                elevation: 2,
+                shadowColor: COLORS.black,
+                shadowOffset: { width: 0, height: 1 },
+                shadowOpacity: 0.2,
+                shadowRadius: 2
+              }}
+              onPress={() => { setEditingReview(null); setModalVisible(true); }}
+            >
+              <Ionicons name="add" size={15} color={COLORS.white} />
+              <Typography variant="smallBold" color={COLORS.white}>
+                {t('productDetail.write') || 'Escribir'}
+              </Typography>
+            </TouchableOpacity>
+          </View>
 
           {reviewsLoading ? (
             [1,2].map(i => (
@@ -433,10 +458,19 @@ const ProductDetailScreen = ({ route, navigation }) => {
             ))
           ) : reviews.length === 0 ? (
             <View style={styles.emptyReviews}>
-              <Ionicons name="chatbubble-outline" size={36} color={textSecondary} />
-              <Typography variant="caption" color={textSecondary} style={{ marginTop: 8, textAlign: 'center' }}>
+              <Ionicons name="chatbubble-outline" size={36} color={textSecondary} style={{ marginBottom: 8 }} />
+              <Typography variant="caption" color={textSecondary} style={{ marginBottom: 12, textAlign: 'center' }}>
                 {t('productDetail.noReviews')}
               </Typography>
+              <TouchableOpacity 
+                style={{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 8, paddingHorizontal: 16, borderRadius: 20, borderStyle: 'dashed', borderWidth: 1, borderColor: COLORS.primary }}
+                onPress={() => { setEditingReview(null); setModalVisible(true); }}
+              >
+                <Ionicons name="add" size={16} color={COLORS.primary} />
+                <Typography variant="smallBold" color={COLORS.primary}>
+                  {t('productDetail.addReview') || 'Agregar Comentario'}
+                </Typography>
+              </TouchableOpacity>
             </View>
           ) : (
             reviews.map(r => (

@@ -1,4 +1,10 @@
 {
+  "common": {
+    "close": "关闭",
+    "cancel": "取消",
+    "confirm": "确认",
+    "success": "成功"
+  },
   "menu": {
     "myProfile": "我的个人资料",
     "myReservations": "我的预订",
@@ -77,7 +83,8 @@
     "address": "地址",
     "phone": "电话",
     "businessHours": "营业时间",
-    "understood": "知道了"
+    "understood": "知道了",
+    "addedToOrder": "已添加到订单中。"
   },
   "reservations": {
     "title": "预订",

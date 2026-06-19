@@ -1,4 +1,10 @@
 {
+  "common": {
+    "close": "Cerrar",
+    "cancel": "Cancelar",
+    "confirm": "Confirmar",
+    "success": "Éxito"
+  },
   "menu": {
     "myProfile": "Mi Perfil",
     "myReservations": "Mis Reservas",
@@ -77,7 +83,8 @@
     "address": "Dirección",
     "phone": "Teléfono",
     "businessHours": "Horario de atención",
-    "understood": "Entendido"
+    "understood": "Entendido",
+    "addedToOrder": "ha sido agregado al pedido."
   },
   "reservations": {
     "title": "Reservaciones",
