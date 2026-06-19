@@ -85,7 +85,16 @@
     "categories": "Categories",
     "all": "All",
     "viewSchedule": "View schedule",
-    "noResults": "No restaurants found"
+    "noResults": "No restaurants found",
+    "filterDate": "Filter by Date",
+    "updatedTitle": "Reservation Updated",
+    "updatedMsg": "Your reservation has been updated to:",
+    "cancelledTitle": "Reservation Cancelled",
+    "cancelledMsg": "Your reservation has been cancelled.",
+    "confirmCancelTitle": "Cancel Reservation",
+    "confirmCancelMsg": "Are you sure you want to cancel this request? (This action is irreversible)",
+    "cancelSuccess": "Reservation cancelled.",
+    "cancelError": "Could not cancel reservation."
   },
   "reservationForm": {
   "title": "Reservar Mesa",

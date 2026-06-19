@@ -330,7 +330,7 @@ const ReservationFormScreen = ({ route, navigation }) => {
     try {
       await createReservation(payload);
       Alert.alert(t('reservationForm.success'), t('reservationForm.successMsg'), [
-        { text: 'OK', onPress: () => navigation.goBack() }
+        { text: 'OK', onPress: () => navigation.navigate('MyReservations') }
       ]);
     } catch (err) {
       const msg = err?.response?.data?.message || t('reservationForm.errorGeneric');

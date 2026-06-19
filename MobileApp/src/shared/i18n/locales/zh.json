@@ -85,7 +85,16 @@
     "categories": "分类",
     "all": "全部",
     "viewSchedule": "查看时间表",
-    "noResults": "未找到餐厅"
+    "noResults": "未找到餐厅",
+    "filterDate": "按日期筛选",
+    "updatedTitle": "预订已更新",
+    "updatedMsg": "您的预订已更新为：",
+    "cancelledTitle": "预订已取消",
+    "cancelledMsg": "您的预订已被取消。",
+    "confirmCancelTitle": "取消预订",
+    "confirmCancelMsg": "确定要取消此预订请求吗？（此操作不可逆）",
+    "cancelSuccess": "预订已取消。",
+    "cancelError": "无法取消预订。"
   },
   "reservationForm": {
     "title": "预订餐桌",

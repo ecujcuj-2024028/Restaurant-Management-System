@@ -85,7 +85,16 @@
     "categories": "Categorias",
     "all": "Todos",
     "viewSchedule": "Ver horários",
-    "noResults": "Nenhum restaurante encontrado"
+    "noResults": "Nenhum restaurante encontrado",
+    "filterDate": "Filtrar por Data",
+    "updatedTitle": "Reserva Atualizada",
+    "updatedMsg": "Sua reserva foi atualizada para:",
+    "cancelledTitle": "Reserva Cancelada",
+    "cancelledMsg": "Sua reserva foi cancelada.",
+    "confirmCancelTitle": "Cancelar Reserva",
+    "confirmCancelMsg": "Tem certeza de que deseja cancelar esta solicitação? (Esta ação é irreversível)",
+    "cancelSuccess": "Reserva cancelada.",
+    "cancelError": "Não foi possível cancelar a reserva."
   },
   "reservationForm": {
     "title": "Reservar Mesa",

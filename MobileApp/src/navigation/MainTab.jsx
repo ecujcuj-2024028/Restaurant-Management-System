@@ -6,6 +6,7 @@ import { COLORS } from '../shared/constants/colors';
 import HomeStack from './HomeStack';
 import MenuScreen from '../features/users/screens/MenuScreen';
 import HelpSupportScreen from '../features/users/screens/HelpSupportScreen';
+import MyReservationsScreen from '../features/reservations/screens/MyReservationsScreen';
 import RestaurantsStack from './RestaurantsStack';
 import ReservationsStack from './ReservationsStack';
 import MyOrdersScreen from '../features/orders/screens/MyOrdersScreen';
@@ -93,6 +94,7 @@ const MainTab = () => {
       <RootStack.Screen name="Tabs" component={BottomTabs} />
       <RootStack.Screen name="MyOrders" component={MyOrdersScreen} />
       <RootStack.Screen name="HelpSupport" component={HelpSupportScreen} />
+      <RootStack.Screen name="MyReservations" component={MyReservationsScreen} />
     </RootStack.Navigator>
   );
 };
