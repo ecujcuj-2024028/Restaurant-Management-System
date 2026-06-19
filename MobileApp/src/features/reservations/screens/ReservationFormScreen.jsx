@@ -7,6 +7,7 @@ import {
   StatusBar,
   Alert,
   ActivityIndicator,
+  BackHandler,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -222,6 +223,32 @@ const ReservationFormScreen = ({ route, navigation }) => {
   const { t, i18n } = useTranslation();
   const { user, isDarkMode } = useAuthStore();
   const restaurantId = route?.params?.id;
+  const referrerTab = route?.params?.referrerTab;
+
+  const handleBack = useCallback(() => {
+    if (referrerTab && restaurantId) {
+      navigation.navigate(referrerTab, {
+        screen: 'RestaurantDetail',
+        params: { id: restaurantId }
+      });
+      return true;
+    }
+    navigation.navigate('ReservationsMain');
+    return true;
+  }, [navigation, referrerTab, restaurantId]);
+
+  useEffect(() => {
+    const backAction = () => {
+      return handleBack();
+    };
+
+    const backHandler = BackHandler.addEventListener(
+      'hardwareBackPress',
+      backAction
+    );
+
+    return () => backHandler.remove();
+  }, [handleBack]);
 
   const [restaurant, setRestaurant] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -354,7 +381,7 @@ const ReservationFormScreen = ({ route, navigation }) => {
 
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
+        <TouchableOpacity onPress={handleBack} style={styles.backBtn}>
           <Ionicons name="arrow-back" size={22} color={textColor} />
         </TouchableOpacity>
         <View style={{ flex: 1 }}>

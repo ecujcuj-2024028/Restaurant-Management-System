@@ -752,7 +752,19 @@ const RestaurantDetailScreen = ({ route, navigation }) => {
       <View style={styles.floatingButtonsRow}>
         <TouchableOpacity
           style={styles.reservarBtn}
-          onPress={() => navigation.navigate('ReservacionesTab', { screen: 'ReservationForm', params: { id } })}
+          onPress={() => {
+            const parentNavigator = navigation.getParent();
+            const parentState = parentNavigator ? parentNavigator.getState() : null;
+            const currentTab = parentState ? parentState.routes[parentState.index]?.name : 'RestaurantesTab';
+
+            navigation.navigate('ReservacionesTab', { 
+              screen: 'ReservationForm', 
+              params: { 
+                id, 
+                referrerTab: currentTab 
+              } 
+            });
+          }}
         >
           <Ionicons name="calendar-outline" size={20} color={COLORS.white} />
           <Typography variant="bodyBold" color={COLORS.white}>{t('restaurantDetail.reserve')}</Typography>
