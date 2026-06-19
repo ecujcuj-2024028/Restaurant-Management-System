@@ -22,6 +22,7 @@ import { getRestaurantById } from '../../../api/restaurants';
 import { getProducts } from '../../../api/products';
 import api from '../../../api/api';
 import useAuthStore from '../../../store/useAuthStore';
+import useReviewStore from '../../../store/useReviewStore';
 import Typography from '../../../shared/components/common/Typography';
 import Input from '../../../shared/components/common/Input';
 import Button from '../../../shared/components/common/Button';
@@ -156,7 +157,7 @@ const CATEGORY_KEYS = {
 };
 
 // ── Tarjeta de producto horizontal (lista) ──
-const ProductCard = ({ item, isDark, onPress, t }) => {
+const ProductCard = ({ item, isDark, onPress, rating = 0, t }) => {
   const bgCard = isDark ? COLORS.darkSurface : COLORS.white;
   const textColor = isDark ? COLORS.darkText : COLORS.text;
   const textSecondary = isDark ? COLORS.darkTextSecondary : COLORS.textSecondary;
@@ -191,6 +192,15 @@ const ProductCard = ({ item, isDark, onPress, t }) => {
           </Typography>
         </View>
 
+        {rating > 0 ? (
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2, marginBottom: 4 }}>
+            <Ionicons name="star" size={12} color={COLORS.accent} />
+            <Typography variant="smallBold" color={isDark ? COLORS.accent : '#B8860B'}>
+              {rating.toFixed(1)}
+            </Typography>
+          </View>
+        ) : null}
+
         <Typography variant="small" color={textSecondary} numberOfLines={2}>
           {item.description || 'Sin descripción disponible.'}
         </Typography>
@@ -220,7 +230,7 @@ const ProductCard = ({ item, isDark, onPress, t }) => {
 };
 
 // ── Tarjeta de producto para carrusel ──
-const CarouselProductCard = ({ item, isDark, onPress, t }) => {
+const CarouselProductCard = ({ item, isDark, onPress, rating = 0, t }) => {
   const bgCard = isDark ? COLORS.darkSurface : COLORS.white;
   const textColor = isDark ? COLORS.darkText : COLORS.text;
   const textSecondary = isDark ? COLORS.darkTextSecondary : COLORS.textSecondary;
@@ -258,6 +268,14 @@ const CarouselProductCard = ({ item, isDark, onPress, t }) => {
         <Typography variant="bodyBold" color={textColor} numberOfLines={1}>
           {item.name}
         </Typography>
+        {rating > 0 ? (
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 }}>
+            <Ionicons name="star" size={12} color={COLORS.accent} />
+            <Typography variant="smallBold" color={isDark ? COLORS.accent : '#B8860B'}>
+              {rating.toFixed(1)}
+            </Typography>
+          </View>
+        ) : null}
         <Typography variant="small" color={textSecondary} numberOfLines={2} style={{ marginTop: 4 }}>
           {item.description || 'Sin descripción disponible.'}
         </Typography>
@@ -373,6 +391,7 @@ const RestaurantDetailScreen = ({ route, navigation }) => {
   const { id } = route.params;
   const { t } = useTranslation();
   const { user, isDarkMode } = useAuthStore();
+  const { productStats, fetchRestaurantStats } = useReviewStore();
   const [restaurant, setRestaurant] = useState(null);
   const [products, setProducts] = useState([]);
   const [menus, setMenus] = useState([]);
@@ -510,6 +529,7 @@ const RestaurantDetailScreen = ({ route, navigation }) => {
 
   const fetchData = async () => {
     try {
+      fetchRestaurantStats(id);
       const [resData, productsData, menusData] = await Promise.all([
         getRestaurantById(id),
         getProducts({ restaurant: id }),
@@ -662,6 +682,7 @@ const RestaurantDetailScreen = ({ route, navigation }) => {
                     item={item}
                     isDark={isDarkMode}
                     onPress={() => handleOpenProductDetail(item)}
+                    rating={productStats[item._id || item.id]?.promedioRating || 0}
                     t={t}
                   />
                 ))}
@@ -679,6 +700,7 @@ const RestaurantDetailScreen = ({ route, navigation }) => {
                     item={item}
                     isDark={isDarkMode}
                     onPress={() => handleOpenProductDetail(item)}
+                    rating={productStats[item._id || item.id]?.promedioRating || 0}
                     t={t}
                   />
                 ))}
