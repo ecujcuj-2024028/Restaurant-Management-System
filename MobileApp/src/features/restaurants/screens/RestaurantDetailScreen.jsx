@@ -529,7 +529,10 @@ const RestaurantDetailScreen = ({ route, navigation }) => {
 
       {/* Botones flotantes: Reservación + Pedir */}
       <View style={styles.floatingButtonsRow}>
-        <TouchableOpacity style={styles.reservarBtn}>
+        <TouchableOpacity
+          style={styles.reservarBtn}
+          onPress={() => navigation.navigate('ReservacionesTab', { screen: 'ReservationForm', params: { id } })}
+        >
           <Ionicons name="calendar-outline" size={20} color={COLORS.white} />
           <Typography variant="bodyBold" color={COLORS.white}>{t('restaurantDetail.reserve')}</Typography>
         </TouchableOpacity>

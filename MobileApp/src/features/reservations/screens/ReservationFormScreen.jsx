@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import {
   View,
   StyleSheet,
@@ -18,8 +18,11 @@ import Typography from '../../../shared/components/common/Typography';
 import Input from '../../../shared/components/common/Input';
 import Button from '../../../shared/components/common/Button';
 import { getRestaurantById } from '../../../api/restaurants';
-import { createReservation } from '../../../api/reservations';
-import api from '../../../api/api';
+import {
+  createReservation,
+  getTablesByRestaurant,
+  getAvailableHours,
+} from '../../../api/reservations';
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 const getDaysInMonth = (year, month) => new Date(year, month + 1, 0).getDate();
@@ -29,8 +32,16 @@ const MONTH_NAMES_EN = ['January','February','March','April','May','June','July'
 const DAY_LABELS_ES = ['L','M','X','J','V','S','D'];
 const DAY_LABELS_EN = ['M','T','W','T','F','S','S'];
 
-const TIME_SLOTS = ['12:00','13:00','14:00','19:00','20:00','21:00'];
-const GUEST_OPTIONS = [1, 2, 3, 4, 5, 6];
+const GUEST_PRESETS = [1, 2, 3, 4, 5, 6];
+
+const formatAddress = (restaurant) => {
+  if (!restaurant) return '';
+  const addr = restaurant.address;
+  if (!addr) return '';
+  if (typeof addr === 'string') return addr;
+  const parts = [addr.street, addr.city, addr.country].filter(Boolean);
+  return parts.join(', ');
+};
 
 // ── Mini Calendario ──────────────────────────────────────────────────────────
 const MiniCalendar = ({ selectedDate, onSelectDate, isDark, lang }) => {
@@ -47,7 +58,6 @@ const MiniCalendar = ({ selectedDate, onSelectDate, isDark, lang }) => {
 
   const daysInMonth = getDaysInMonth(viewYear, viewMonth);
   const firstDay = getFirstDayOfMonth(viewYear, viewMonth);
-  // Adjust: week starts on Monday (0=Mon)
   const startOffset = (firstDay + 6) % 7;
 
   const prevMonth = () => {
@@ -83,7 +93,6 @@ const MiniCalendar = ({ selectedDate, onSelectDate, isDark, lang }) => {
 
   return (
     <View style={[calStyles.wrapper, { backgroundColor: surfaceColor }]}>
-      {/* Header nav */}
       <View style={calStyles.navRow}>
         <TouchableOpacity onPress={prevMonth} style={calStyles.navBtn}>
           <Ionicons name="chevron-back" size={18} color={textSecondary} />
@@ -96,7 +105,6 @@ const MiniCalendar = ({ selectedDate, onSelectDate, isDark, lang }) => {
         </TouchableOpacity>
       </View>
 
-      {/* Day labels */}
       <View style={calStyles.labelsRow}>
         {dayLabels.map((l, i) => (
           <View key={i} style={calStyles.labelCell}>
@@ -105,7 +113,6 @@ const MiniCalendar = ({ selectedDate, onSelectDate, isDark, lang }) => {
         ))}
       </View>
 
-      {/* Cells */}
       <View style={calStyles.grid}>
         {cells.map((day, idx) => {
           if (!day) return <View key={`e-${idx}`} style={calStyles.cell} />;
@@ -150,6 +157,66 @@ const calStyles = StyleSheet.create({
   todayCell: { borderWidth: 1.5, borderColor: COLORS.primary, borderRadius: 50 },
 });
 
+// ── Selector de Mesa (chips) ──────────────────────────────────────────────────
+const TableSelector = ({ tables, selectedTableId, onSelect, isDark, t }) => {
+  const surfaceColor = isDark ? COLORS.darkSurface : COLORS.white;
+  const textColor = isDark ? COLORS.darkText : COLORS.text;
+  const textSecondary = isDark ? COLORS.darkTextSecondary : COLORS.textSecondary;
+
+  if (tables.length === 0) {
+    return (
+      <View style={[tableStyles.emptyBox, { backgroundColor: surfaceColor }]}>
+        <Ionicons name="restaurant-outline" size={22} color={textSecondary} />
+        <Typography variant="small" color={textSecondary} style={{ marginLeft: 8 }}>
+          {t('reservationForm.noTables')}
+        </Typography>
+      </View>
+    );
+  }
+
+  return (
+    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={tableStyles.row}>
+      {tables.map((tb) => {
+        const id = tb.id || tb._id;
+        const active = id === selectedTableId;
+        return (
+          <TouchableOpacity
+            key={id}
+            style={[tableStyles.chip, { backgroundColor: surfaceColor }, active && tableStyles.chipActive]}
+            onPress={() => onSelect(tb)}
+          >
+            <Ionicons name="restaurant" size={14} color={active ? COLORS.white : COLORS.primary} />
+            <Typography variant="small" color={active ? COLORS.white : textColor} style={{ fontWeight: '700', marginLeft: 6 }}>
+              {t('reservationForm.tableLabel')} #{tb.number}
+            </Typography>
+            <Typography variant="small" color={active ? COLORS.white : textSecondary} style={{ marginLeft: 6 }}>
+              ({tb.capacity}p)
+            </Typography>
+          </TouchableOpacity>
+        );
+      })}
+    </ScrollView>
+  );
+};
+
+const tableStyles = StyleSheet.create({
+  row: { gap: 10, paddingBottom: 4 },
+  chip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 20,
+  },
+  chipActive: { backgroundColor: COLORS.primary },
+  emptyBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 14,
+    borderRadius: 12,
+  },
+});
+
 // ── Pantalla Principal ────────────────────────────────────────────────────────
 const ReservationFormScreen = ({ route, navigation }) => {
   const { t, i18n } = useTranslation();
@@ -160,11 +227,24 @@ const ReservationFormScreen = ({ route, navigation }) => {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
 
+  // Mesas
+  const [tables, setTables] = useState([]);
+  const [tablesLoading, setTablesLoading] = useState(true);
+  const [selectedTable, setSelectedTable] = useState(null);
+
+  // Personas: preset o personalizado
   const [guests, setGuests] = useState(2);
+  const [customGuests, setCustomGuests] = useState('');
+  const [useCustomGuests, setUseCustomGuests] = useState(false);
+
   const [selectedDate, setSelectedDate] = useState(null);
+
+  // Horas dinámicas según mesa + fecha
+  const [hourSlots, setHourSlots] = useState([]); // [{time, available}]
+  const [hoursLoading, setHoursLoading] = useState(false);
   const [selectedTime, setSelectedTime] = useState(null);
+
   const [phone, setPhone] = useState(user?.phone || '');
-  const [tableNumber, setTableNumber] = useState('');
   const [notes, setNotes] = useState('');
 
   const bgColor = isDarkMode ? COLORS.darkBackground : COLORS.background;
@@ -173,6 +253,7 @@ const ReservationFormScreen = ({ route, navigation }) => {
   const surfaceColor = isDarkMode ? COLORS.darkSurface : COLORS.white;
   const lang = i18n.language || 'es';
 
+  // Cargar restaurante
   useEffect(() => {
     if (!restaurantId) { setLoading(false); return; }
     getRestaurantById(restaurantId)
@@ -181,22 +262,67 @@ const ReservationFormScreen = ({ route, navigation }) => {
       .finally(() => setLoading(false));
   }, [restaurantId]);
 
+  // Cargar mesas del restaurante
+  useEffect(() => {
+    if (!restaurantId) { setTablesLoading(false); return; }
+    setTablesLoading(true);
+    getTablesByRestaurant(restaurantId)
+      .then(res => setTables(res.tables || []))
+      .catch(() => setTables([]))
+      .finally(() => setTablesLoading(false));
+  }, [restaurantId]);
+
+  // Cargar horas disponibles cuando hay mesa + fecha
+  const fetchHours = useCallback(async () => {
+    if (!selectedTable || !selectedDate || !restaurantId) {
+      setHourSlots([]);
+      return;
+    }
+    const id = selectedTable.id || selectedTable._id;
+    const dateStr = `${selectedDate.getFullYear()}-${String(selectedDate.getMonth()+1).padStart(2,'0')}-${String(selectedDate.getDate()).padStart(2,'0')}`;
+
+    setHoursLoading(true);
+    setSelectedTime(null);
+    try {
+      const res = await getAvailableHours(id, restaurantId, dateStr);
+      setHourSlots(res.availableSlots || []);
+    } catch (err) {
+      setHourSlots([]);
+    } finally {
+      setHoursLoading(false);
+    }
+  }, [selectedTable, selectedDate, restaurantId]);
+
+  useEffect(() => { fetchHours(); }, [fetchHours]);
+
+  const handleSelectTable = (tb) => {
+    setSelectedTable(tb);
+    setSelectedTime(null);
+  };
+
   const userName = user?.firstName
     ? `${user.firstName} ${user.lastName || ''}`.trim()
     : user?.name || user?.username || '';
 
+  const finalGuests = useCustomGuests ? parseInt(customGuests, 10) || 0 : guests;
+  const address = formatAddress(restaurant);
+
   const handleConfirm = async () => {
+    if (!selectedTable) return Alert.alert(t('reservationForm.error'), t('reservationForm.errorTable'));
     if (!selectedDate) return Alert.alert(t('reservationForm.error'), t('reservationForm.errorDate'));
     if (!selectedTime) return Alert.alert(t('reservationForm.error'), t('reservationForm.errorTime'));
+    if (!finalGuests || finalGuests < 1) return Alert.alert(t('reservationForm.error'), t('reservationForm.errorGuests'));
 
     const dateStr = `${selectedDate.getFullYear()}-${String(selectedDate.getMonth()+1).padStart(2,'0')}-${String(selectedDate.getDate()).padStart(2,'0')}`;
     const payload = {
+      tableId: selectedTable.id || selectedTable._id,
       restaurantId,
       date: dateStr,
       time: selectedTime,
-      guests,
-      phone: phone || user?.phone || '',
-      tableNumber: tableNumber || undefined,
+      guestCount: finalGuests,
+      customerName: userName,
+      customerPhone: phone || user?.phone || '',
+      customerEmail: user?.email || '',
       notes,
     };
 
@@ -231,33 +357,67 @@ const ReservationFormScreen = ({ route, navigation }) => {
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
           <Ionicons name="arrow-back" size={22} color={textColor} />
         </TouchableOpacity>
-        <View>
+        <View style={{ flex: 1 }}>
           <Typography variant="h3" color={textColor}>{t('reservationForm.title')}</Typography>
-          <Typography variant="small" color={textSecondary}>
-            {restaurant?.name || ''}
+          <Typography variant="small" color={textSecondary} numberOfLines={1}>
+            {restaurant?.name || ''}{address ? ` - ${address}` : ''}
           </Typography>
         </View>
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
 
+        {/* Mesa */}
+        <Typography variant="bodyBold" color={textColor} style={styles.sectionTitle}>
+          {t('reservationForm.selectTable')}
+        </Typography>
+        {tablesLoading ? (
+          <ActivityIndicator color={COLORS.primary} style={{ marginVertical: 8 }} />
+        ) : (
+          <TableSelector
+            tables={tables}
+            selectedTableId={selectedTable?.id || selectedTable?._id}
+            onSelect={handleSelectTable}
+            isDark={isDarkMode}
+            t={t}
+          />
+        )}
+
         {/* Número de personas */}
         <Typography variant="bodyBold" color={textColor} style={styles.sectionTitle}>
           {t('reservationForm.guests')}
         </Typography>
         <View style={styles.guestsRow}>
-          {GUEST_OPTIONS.map(n => (
+          {GUEST_PRESETS.map(n => (
             <TouchableOpacity
               key={n}
-              style={[styles.guestChip, { backgroundColor: surfaceColor }, n === guests && styles.guestChipActive]}
-              onPress={() => setGuests(n)}
+              style={[styles.guestChip, { backgroundColor: surfaceColor }, !useCustomGuests && n === guests && styles.guestChipActive]}
+              onPress={() => { setUseCustomGuests(false); setGuests(n); }}
             >
-              <Typography variant="bodyBold" color={n === guests ? COLORS.white : textColor}>
+              <Typography variant="bodyBold" color={!useCustomGuests && n === guests ? COLORS.white : textColor}>
                 {n}
               </Typography>
             </TouchableOpacity>
           ))}
+          <TouchableOpacity
+            style={[styles.guestChip, styles.guestChipWide, { backgroundColor: surfaceColor }, useCustomGuests && styles.guestChipActive]}
+            onPress={() => setUseCustomGuests(true)}
+          >
+            <Typography variant="small" color={useCustomGuests ? COLORS.white : textColor} style={{ fontWeight: '700' }}>
+              {t('reservationForm.other')}
+            </Typography>
+          </TouchableOpacity>
         </View>
+
+        {useCustomGuests && (
+          <Input
+            placeholder={t('reservationForm.customGuestsPlaceholder')}
+            value={customGuests}
+            onChangeText={setCustomGuests}
+            keyboardType="numeric"
+            style={{ marginTop: 12 }}
+          />
+        )}
 
         {/* Calendario */}
         <Typography variant="bodyBold" color={textColor} style={styles.sectionTitle}>
@@ -270,48 +430,62 @@ const ReservationFormScreen = ({ route, navigation }) => {
           lang={lang}
         />
 
-        {/* Horarios */}
+        {/* Horarios dinámicos */}
         <Typography variant="bodyBold" color={textColor} style={styles.sectionTitle}>
           {t('reservationForm.timeSlots')}
         </Typography>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.timesRow}>
-          {TIME_SLOTS.map(t2 => (
-            <TouchableOpacity
-              key={t2}
-              style={[styles.timeChip, { backgroundColor: surfaceColor }, t2 === selectedTime && styles.timeChipActive]}
-              onPress={() => setSelectedTime(t2)}
-            >
-              <Typography variant="small" color={t2 === selectedTime ? COLORS.white : textColor} style={{ fontWeight: '600' }}>
-                {t2}
-              </Typography>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
+        {!selectedTable || !selectedDate ? (
+          <Typography variant="small" color={textSecondary}>
+            {t('reservationForm.selectTableAndDateFirst')}
+          </Typography>
+        ) : hoursLoading ? (
+          <ActivityIndicator color={COLORS.primary} style={{ marginVertical: 8 }} />
+        ) : hourSlots.length === 0 ? (
+          <Typography variant="small" color={textSecondary}>
+            {t('reservationForm.noSlots')}
+          </Typography>
+        ) : (
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.timesRow}>
+            {hourSlots.map(slot => {
+              const isActive = slot.time === selectedTime;
+              const disabled = !slot.available;
+              return (
+                <TouchableOpacity
+                  key={slot.time}
+                  style={[
+                    styles.timeChip,
+                    { backgroundColor: surfaceColor },
+                    isActive && styles.timeChipActive,
+                    disabled && styles.timeChipDisabled,
+                  ]}
+                  onPress={() => !disabled && setSelectedTime(slot.time)}
+                  disabled={disabled}
+                >
+                  <Typography
+                    variant="small"
+                    color={isActive ? COLORS.white : disabled ? textSecondary : textColor}
+                    style={{ fontWeight: '600', opacity: disabled ? 0.5 : 1 }}
+                  >
+                    {slot.time}
+                  </Typography>
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
+        )}
 
         {/* Datos */}
         <Typography variant="bodyBold" color={textColor} style={styles.sectionTitle}>
           {t('reservationForm.data')}
         </Typography>
-        <View style={styles.dataRow}>
-          <Input
-            label={t('reservationForm.phone')}
-            placeholder="502 1234-5678"
-            value={phone}
-            onChangeText={setPhone}
-            keyboardType="phone-pad"
-            style={{ flex: 1, marginRight: 8 }}
-          />
-          <Input
-            label={t('reservationForm.table')}
-            placeholder="#"
-            value={tableNumber}
-            onChangeText={setTableNumber}
-            keyboardType="numeric"
-            style={{ width: 80 }}
-          />
-        </View>
+        <Input
+          label={t('reservationForm.phone')}
+          placeholder="502 1234-5678"
+          value={phone}
+          onChangeText={setPhone}
+          keyboardType="phone-pad"
+        />
 
-        {/* Nombre prellenado (solo lectura) */}
         <Input
           label={t('reservationForm.name')}
           value={userName}
@@ -352,13 +526,17 @@ const styles = StyleSheet.create({
   backBtn: { padding: 4 },
   scroll: { paddingHorizontal: 16, paddingBottom: 40 },
   sectionTitle: { marginTop: 24, marginBottom: 12 },
-  guestsRow: { flexDirection: 'row', gap: 10 },
+  guestsRow: { flexDirection: 'row', gap: 10, flexWrap: 'wrap' },
   guestChip: {
     width: 44,
     height: 44,
     borderRadius: 22,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  guestChipWide: {
+    width: 'auto',
+    paddingHorizontal: 16,
   },
   guestChipActive: { backgroundColor: COLORS.primary },
   timesRow: { gap: 10, paddingBottom: 4 },
@@ -368,7 +546,7 @@ const styles = StyleSheet.create({
     borderRadius: 20,
   },
   timeChipActive: { backgroundColor: COLORS.primary },
-  dataRow: { flexDirection: 'row', alignItems: 'flex-start' },
+  timeChipDisabled: { opacity: 0.5 },
   confirmBtn: { marginTop: 24 },
 });
 

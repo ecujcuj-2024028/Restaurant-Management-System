@@ -262,6 +262,18 @@ const MenuScreen = ({ navigation }) => {
           <Ionicons name="chevron-forward" size={16} color={COLORS.error} />
         </TouchableOpacity>
       </ScrollView>
+
+      {/* Botón flotante: volver a Mis Pedidos */}
+      <TouchableOpacity
+        style={styles.ordersFab}
+        onPress={() => navigation.navigate('MyOrders')}
+        activeOpacity={0.85}
+      >
+        <Ionicons name="receipt-outline" size={22} color={COLORS.white} />
+        <Typography variant="small" color={COLORS.white} style={{ fontWeight: '700', marginLeft: 6 }}>
+          {t('menu.myOrders')}
+        </Typography>
+      </TouchableOpacity>
     </View>
   );
 };
@@ -389,6 +401,22 @@ const styles = StyleSheet.create({
   },
   dropdownItemActive: {
     backgroundColor: 'rgba(255, 107, 0, 0.05)',
+  },
+  ordersFab: {
+    position: 'absolute',
+    bottom: 24,
+    right: 20,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.primary,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 28,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.2,
+    shadowRadius: 6,
+    elevation: 5,
   },
 });
 
