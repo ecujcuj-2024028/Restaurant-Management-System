@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, StyleSheet, Alert, KeyboardAvoidingView, Platform, ScrollView, TouchableOpacity } from 'react-native';
+import { View, StyleSheet, Alert, KeyboardAvoidingView, Platform, ScrollView, TouchableOpacity, Linking } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { COLORS } from '../../../shared/constants/colors';
 import useAuthStore from '../../../store/useAuthStore';
@@ -35,8 +35,22 @@ const LoginScreen = ({ navigation }) => {
     try {
       await login({ email: emailOrUsername, password });
     } catch (error) {
-      const errorMsg = error.response?.data?.message || error.message || 'Credenciales incorrectas';
-      Alert.alert('Error de Inicio de Sesión', errorMsg);
+      if (error.code === 'ADMIN_ACCESS_RESTRICTED') {
+        Alert.alert(
+          'Acceso Restringido',
+          'Esta aplicación móvil es exclusiva para clientes. Para gestionar tus restaurantes o el sistema, por favor inicia sesión desde nuestra plataforma web.',
+          [
+            { text: 'Cancelar', style: 'cancel' },
+            { 
+              text: 'Ir a la Web', 
+              onPress: () => Linking.openURL(process.env.EXPO_PUBLIC_WEB_URL || 'http://192.168.0.3:5173')
+            }
+          ]
+        );
+      } else {
+        const errorMsg = error.response?.data?.message || error.message || 'Credenciales incorrectas';
+        Alert.alert('Error de Inicio de Sesión', errorMsg);
+      }
     } finally {
       setLoading(false);
     }

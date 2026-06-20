@@ -3,6 +3,7 @@ import * as SecureStore from 'expo-secure-store';
 import { login as loginApi } from '../api/auth';
 import { saveExpoToken } from "../api/notifications";
 import { getProfile } from '../api/users';
+import { ROLES } from '../shared/constants/roles';
 
 const useAuthStore = create((set, get) => ({
   user: null,
@@ -68,33 +69,39 @@ const useAuthStore = create((set, get) => ({
   },
 
   login: async (credentials, expoToken = null) => {
-  const data = await loginApi(credentials);
+    const data = await loginApi(credentials);
+    const { token, user } = data;
+    const userRole = user?.roles?.[0] || user?.role;
 
-  const { token, user } = data;
-
-  await SecureStore.setItemAsync("userToken", token);
-  await SecureStore.setItemAsync(
-    "userData",
-    JSON.stringify(user)
-  );
-
-  if (expoToken) {
-    try {
-      await saveExpoToken(expoToken);
-    } catch (error) {
-      console.log(error);
+    if (userRole !== ROLES.CLIENTE) {
+      const error = new Error('Acceso restringido en la App Móvil');
+      error.code = 'ADMIN_ACCESS_RESTRICTED';
+      throw error;
     }
-  }
 
-  set({
-    user,
-    token,
-    isAuthenticated: true,
-  });
+    await SecureStore.setItemAsync("userToken", token);
+    await SecureStore.setItemAsync(
+      "userData",
+      JSON.stringify(user)
+    );
 
-  // Fetch full profile to get details like profilePicture which are not in login response
-  get().fetchProfile();
-},
+    if (expoToken) {
+      try {
+        await saveExpoToken(expoToken);
+      } catch (error) {
+        console.log(error);
+      }
+    }
+
+    set({
+      user,
+      token,
+      isAuthenticated: true,
+    });
+
+    // Fetch full profile to get details like profilePicture which are not in login response
+    get().fetchProfile();
+  },
 
   logout: async () => {
     await SecureStore.deleteItemAsync('userToken');
