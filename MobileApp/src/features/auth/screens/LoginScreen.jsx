@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, StyleSheet, Alert, KeyboardAvoidingView, Platform, ScrollView, TouchableOpacity } from 'react-native';
+import { View, StyleSheet, Alert, KeyboardAvoidingView, Platform, ScrollView, TouchableOpacity, Linking } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { COLORS } from '../../../shared/constants/colors';
 import useAuthStore from '../../../store/useAuthStore';
@@ -17,6 +17,8 @@ const LoginScreen = ({ navigation }) => {
 
   const login = useAuthStore((state) => state.login);
   const setHasSeenOnboarding = useAuthStore((state) => state.setHasSeenOnboarding);
+  const isDarkMode = useAuthStore((state) => state.isDarkMode);
+  const toggleTheme = useAuthStore((state) => state.toggleTheme);
 
   const validateForm = () => {
     let newErrors = {};
@@ -35,8 +37,22 @@ const LoginScreen = ({ navigation }) => {
     try {
       await login({ email: emailOrUsername, password });
     } catch (error) {
-      const errorMsg = error.response?.data?.message || error.message || 'Credenciales incorrectas';
-      Alert.alert('Error de Inicio de Sesión', errorMsg);
+      if (error.code === 'ADMIN_ACCESS_RESTRICTED') {
+        Alert.alert(
+          'Acceso Restringido',
+          'Esta aplicación móvil es exclusiva para clientes. Para gestionar tus restaurantes o el sistema, por favor inicia sesión desde nuestra plataforma web.',
+          [
+            { text: 'Cancelar', style: 'cancel' },
+            { 
+              text: 'Ir a la Web', 
+              onPress: () => Linking.openURL(process.env.EXPO_PUBLIC_WEB_URL || 'http://192.168.0.3:5173')
+            }
+          ]
+        );
+      } else {
+        const errorMsg = error.response?.data?.message || error.message || 'Credenciales incorrectas';
+        Alert.alert('Error de Inicio de Sesión', errorMsg);
+      }
     } finally {
       setLoading(false);
     }
@@ -44,11 +60,22 @@ const LoginScreen = ({ navigation }) => {
 
   return (
     <KeyboardAvoidingView 
-      style={styles.container} 
+      style={[styles.container, { backgroundColor: isDarkMode ? COLORS.darkBackground : COLORS.background }]} 
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
       <ScrollView contentContainerStyle={styles.scrollContainer} bounces={false}>
         <View style={styles.header}>
+          <TouchableOpacity 
+            style={styles.themeToggle} 
+            onPress={toggleTheme}
+            activeOpacity={0.7}
+          >
+            <MaterialIcons 
+              name={isDarkMode ? "light-mode" : "dark-mode"} 
+              size={24} 
+              color="white" 
+            />
+          </TouchableOpacity>
           <View style={styles.logoContainer}>
             <View style={styles.logoIcon}>
               <MaterialIcons name="restaurant" size={40} color={COLORS.primary} />
@@ -57,9 +84,9 @@ const LoginScreen = ({ navigation }) => {
           </View>
         </View>
 
-        <View style={styles.formContainer}>
-          <Typography variant="h2">Bienvenido de vuelta</Typography>
-          <Typography variant="caption" style={{ marginBottom: 30 }}>Inicia sesión para continuar</Typography>
+        <View style={[styles.formContainer, { backgroundColor: isDarkMode ? COLORS.darkBackground : COLORS.background }]}>
+          <Typography variant="h2" color={isDarkMode ? COLORS.darkText : COLORS.text}>Bienvenido de vuelta</Typography>
+          <Typography variant="caption" color={isDarkMode ? COLORS.darkTextSecondary : COLORS.textSecondary} style={{ marginBottom: 30 }}>Inicia sesión para continuar</Typography>
 
           <Input
             label="Correo o Usuario"
@@ -101,7 +128,7 @@ const LoginScreen = ({ navigation }) => {
           />
 
           <View style={styles.footer}>
-            <Typography variant="caption">¿No tienes cuenta? </Typography>
+            <Typography variant="caption" color={isDarkMode ? COLORS.darkTextSecondary : COLORS.textSecondary}>¿No tienes cuenta? </Typography>
             <TouchableOpacity onPress={() => navigation.navigate('Register')}>
               <Typography variant="bodyBold" color={COLORS.primary}>Regístrate</Typography>
             </TouchableOpacity>
@@ -111,8 +138,8 @@ const LoginScreen = ({ navigation }) => {
           <Button
             title="Reiniciar Onboarding (Solo Pruebas)"
             variant="outline"
-            style={styles.debugButton}
-            textStyle={styles.debugButtonText}
+            style={[styles.debugButton, { borderColor: isDarkMode ? COLORS.darkBorder : COLORS.border }]}
+            textStyle={[styles.debugButtonText, { color: isDarkMode ? COLORS.darkTextSecondary : COLORS.textSecondary }]}
             onPress={() => setHasSeenOnboarding(false)}
           />
         </View>
@@ -185,6 +212,18 @@ const styles = StyleSheet.create({
   debugButtonText: {
     fontSize: 12,
     fontStyle: 'italic',
+  },
+  themeToggle: {
+    position: 'absolute',
+    top: 50,
+    right: 20,
+    zIndex: 10,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
 });
 
