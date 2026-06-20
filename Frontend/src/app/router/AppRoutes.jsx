@@ -19,7 +19,7 @@ import RoleRoute from "../../shared/components/RoleRoute";
 import OrderList from "../../features/orders/components/OrderList";
 import ReportsPage from "../../features/reports/components/ReportsPage";
 import MyOrders from '../../features/orders/components/MyOrders'
-import EventList from '../../features/events/components/EventList'
+import EventList from '../../features/events/components/Eventlist'
 import MenuList from '../../features/menu/components/MenuList';
 
 // Roles disponibles en el sistema
