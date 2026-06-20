@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, TouchableOpacity, Alert, ScrollView, Switch, Animated, Easing, Image } from 'react-native';
+import { View, StyleSheet, TouchableOpacity, Alert, ScrollView, Switch, Animated, Easing, Image, BackHandler } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
 import { COLORS } from '../../../shared/constants/colors';
@@ -19,6 +19,25 @@ const MenuScreen = ({ navigation }) => {
       fetchProfile();
     }, [])
   );
+
+  // Controlar el botón de atrás físico en Android
+  useEffect(() => {
+    const backAction = () => {
+      if (view === 'preferences') {
+        setView('menu');
+        return true; // Previene que la navegación retroceda a la pantalla de inicio
+      }
+      return false; // Permite retroceder normalmente
+    };
+
+    const backHandler = BackHandler.addEventListener(
+      'hardwareBackPress',
+      backAction
+    );
+
+    return () => backHandler.remove();
+  }, [view]);
+
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [isLangDropdownOpen, setIsLangDropdownOpen] = useState(false);
 
