@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { View, StyleSheet, Alert, ScrollView, TouchableOpacity, KeyboardAvoidingView, Platform } from 'react-native';
-import { FontAwesome6 } from '@expo/vector-icons';
+import { FontAwesome6, MaterialIcons } from '@expo/vector-icons';
 import { COLORS } from '../../../shared/constants/colors';
 import { register as registerApi } from '../../../api/auth';
+import useAuthStore from '../../../store/useAuthStore';
 
 // Common Components
 import Button from '../../../shared/components/common/Button';
@@ -21,6 +22,9 @@ const RegisterScreen = ({ navigation }) => {
   });
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState({});
+
+  const isDarkMode = useAuthStore((state) => state.isDarkMode);
+  const toggleTheme = useAuthStore((state) => state.toggleTheme);
 
   const validateForm = () => {
     let newErrors = {};
@@ -72,11 +76,22 @@ const RegisterScreen = ({ navigation }) => {
 
   return (
     <KeyboardAvoidingView 
-      style={styles.container} 
+      style={[styles.container, { backgroundColor: isDarkMode ? COLORS.darkBackground : COLORS.background }]} 
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
       <ScrollView contentContainerStyle={styles.scrollContainer} showsVerticalScrollIndicator={false}>
         <View style={styles.header}>
+          <TouchableOpacity 
+            style={styles.themeToggle} 
+            onPress={toggleTheme}
+            activeOpacity={0.7}
+          >
+            <MaterialIcons 
+              name={isDarkMode ? "light-mode" : "dark-mode"} 
+              size={24} 
+              color="white" 
+            />
+          </TouchableOpacity>
           <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
             <FontAwesome6 name="arrow-left" size={20} color="white" />
           </TouchableOpacity>
@@ -84,7 +99,7 @@ const RegisterScreen = ({ navigation }) => {
           <Typography variant="caption" color="rgba(255,255,255,0.8)">Regístrate para comenzar</Typography>
         </View>
 
-        <View style={styles.formContainer}>
+        <View style={[styles.formContainer, { backgroundColor: isDarkMode ? COLORS.darkBackground : COLORS.background }]}>
           <View style={styles.row}>
             <Input
               label="Nombre"
@@ -158,7 +173,7 @@ const RegisterScreen = ({ navigation }) => {
           />
 
           <View style={styles.footer}>
-            <Typography variant="caption">¿Ya tienes cuenta? </Typography>
+            <Typography variant="caption" color={isDarkMode ? COLORS.darkTextSecondary : COLORS.textSecondary}>¿Ya tienes cuenta? </Typography>
             <TouchableOpacity onPress={() => navigation.navigate('Login')}>
               <Typography variant="bodyBold" color={COLORS.primary}>Inicia sesión</Typography>
             </TouchableOpacity>
@@ -205,7 +220,19 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'center',
     marginBottom: 20,
-  }
+  },
+  themeToggle: {
+    position: 'absolute',
+    top: 60,
+    right: 30,
+    zIndex: 10,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
 });
 
 export default RegisterScreen;

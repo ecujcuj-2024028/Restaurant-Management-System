@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { View, StyleSheet, Alert, KeyboardAvoidingView, Platform, ScrollView, TouchableOpacity } from 'react-native';
-import { FontAwesome6 } from '@expo/vector-icons';
+import { FontAwesome6, MaterialIcons } from '@expo/vector-icons';
 import { COLORS } from '../../../shared/constants/colors';
 import { forgotPassword } from '../../../api/auth';
+import useAuthStore from '../../../store/useAuthStore';
 
 // Common Components
 import Button from '../../../shared/components/common/Button';
@@ -13,6 +14,9 @@ const ForgotPasswordScreen = ({ navigation }) => {
     const [email, setEmail] = useState('');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
+
+    const isDarkMode = useAuthStore((state) => state.isDarkMode);
+    const toggleTheme = useAuthStore((state) => state.toggleTheme);
 
     const handleResetPassword = async () => {
         if (!email.trim()) {
@@ -47,7 +51,7 @@ const ForgotPasswordScreen = ({ navigation }) => {
 
     return (
         <KeyboardAvoidingView
-            style={styles.flexContainer}
+            style={[styles.flexContainer, { backgroundColor: isDarkMode ? COLORS.darkBackground : COLORS.background }]}
             behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         >
             <ScrollView
@@ -55,10 +59,17 @@ const ForgotPasswordScreen = ({ navigation }) => {
                 keyboardShouldPersistTaps="handled"
             >
                 <View style={styles.container}>
-                    <View style={styles.containerReturnButton}>
+                    <View style={styles.headerRow}>
                         <TouchableOpacity style={styles.returnButton} onPress={() => navigation?.goBack()}>
                             <FontAwesome6 name="arrow-left" size={20} color={COLORS.primary} />
                             <Typography variant="bodyBold" color={COLORS.primary} style={{ marginLeft: 10 }}>Volver</Typography>
+                        </TouchableOpacity>
+                        <TouchableOpacity style={styles.themeButton} onPress={toggleTheme} activeOpacity={0.7}>
+                            <MaterialIcons 
+                                name={isDarkMode ? "light-mode" : "dark-mode"} 
+                                size={24} 
+                                color={isDarkMode ? 'white' : COLORS.text} 
+                            />
                         </TouchableOpacity>
                     </View>
 
@@ -68,8 +79,8 @@ const ForgotPasswordScreen = ({ navigation }) => {
                         </View>
 
                         <View style={styles.containerInfo}>
-                            <Typography variant="h2" style={{ textAlign: 'center', marginBottom: 10 }}>Recuperar Contraseña</Typography>
-                            <Typography variant="caption" style={{ textAlign: 'center' }}>
+                            <Typography variant="h2" color={isDarkMode ? COLORS.darkText : COLORS.text} style={{ textAlign: 'center', marginBottom: 10 }}>Recuperar Contraseña</Typography>
+                            <Typography variant="caption" color={isDarkMode ? COLORS.darkTextSecondary : COLORS.textSecondary} style={{ textAlign: 'center' }}>
                                 Ingresa tu correo y te enviaremos instrucciones para restablecer tu contraseña.
                             </Typography>
                         </View>
@@ -86,7 +97,7 @@ const ForgotPasswordScreen = ({ navigation }) => {
                                     setEmail(text);
                                     if (error) setError('');
                                 }}
-                                leftIcon={<FontAwesome6 name="envelope" size={18} color={COLORS.textSecondary} />}
+                                leftIcon={<FontAwesome6 name="envelope" size={18} color={isDarkMode ? COLORS.darkTextSecondary : COLORS.textSecondary} />}
                             />
                         </View>
 
@@ -116,9 +127,19 @@ const styles = StyleSheet.create({
     container: {
         flex: 1,
     },
-    containerReturnButton: {
+    headerRow: {
         marginTop: 50,
-        marginLeft: 20,
+        marginHorizontal: 20,
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+    },
+    themeButton: {
+        width: 40,
+        height: 40,
+        borderRadius: 20,
+        justifyContent: 'center',
+        alignItems: 'center',
     },
     returnButton: {
         flexDirection: 'row',
