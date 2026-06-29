@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, Alert, KeyboardAvoidingView, Platform, ScrollView, TouchableOpacity, Linking } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { COLORS } from '../../../shared/constants/colors';
 import useAuthStore from '../../../store/useAuthStore';
+import { registerForPushNotificationsAsync } from '../../../features/notifications/notificationService';
 
 // Common Components
 import Button from '../../../shared/components/common/Button';
@@ -14,11 +15,20 @@ const LoginScreen = ({ navigation }) => {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState({});
+  const [expoPushToken, setExpoPushToken] = useState(null);
 
   const login = useAuthStore((state) => state.login);
   const setHasSeenOnboarding = useAuthStore((state) => state.setHasSeenOnboarding);
   const isDarkMode = useAuthStore((state) => state.isDarkMode);
   const toggleTheme = useAuthStore((state) => state.toggleTheme);
+
+  useEffect(() => {
+    registerForPushNotificationsAsync().then(token => {
+      if (token) {
+        setExpoPushToken(token);
+      }
+    });
+  }, []);
 
   const validateForm = () => {
     let newErrors = {};
@@ -35,7 +45,7 @@ const LoginScreen = ({ navigation }) => {
 
     setLoading(true);
     try {
-      await login({ email: emailOrUsername, password });
+      await login({ email: emailOrUsername, password }, expoPushToken);
     } catch (error) {
       if (error.code === 'ADMIN_ACCESS_RESTRICTED') {
         Alert.alert(

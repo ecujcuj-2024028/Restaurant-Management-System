@@ -1,11 +1,27 @@
-import * as Device from "expo-device";
-import * as Notifications from "expo-notifications";
 import { Platform } from "react-native";
+
+let Notifications;
+let isDevice;
+
+if (Platform.OS !== "web") {
+    Notifications = require("expo-notifications").default;
+    isDevice = require("expo-device").isDevice;
+}
+
+if (Notifications) {
+    Notifications.setNotificationHandler({
+        handleNotification: async () => ({
+            shouldShowAlert: true,
+            shouldPlaySound: true,
+            shouldSetBadge: true,
+        }),
+    });
+}
 
 export const registerForPushNotificationsAsync = async () => {
     let token;
 
-    if (Device.isDevice) {
+    if (isDevice) {
         const { status: existingStatus } =
             await Notifications.getPermissionsAsync();
 
@@ -25,6 +41,9 @@ export const registerForPushNotificationsAsync = async () => {
         token = (
             await Notifications.getExpoPushTokenAsync()
         ).data;
+    } else {
+        // Simulación para desarrollo/web
+        token = "MockExpoToken-" + Math.random().toString(36).substring(7);
     }
 
     if (Platform.OS === "android") {
@@ -33,6 +52,7 @@ export const registerForPushNotificationsAsync = async () => {
             {
                 name: "default",
                 importance: Notifications.AndroidImportance.MAX,
+                sound: true,
             }
         );
     }

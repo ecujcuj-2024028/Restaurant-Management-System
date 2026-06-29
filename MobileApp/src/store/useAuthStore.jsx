@@ -1,9 +1,28 @@
 import { create } from 'zustand';
-import * as SecureStore from 'expo-secure-store';
+import { Platform } from 'react-native';
 import { login as loginApi } from '../api/auth';
 import { saveExpoToken } from "../api/notifications";
 import { getProfile } from '../api/users';
 import { ROLES } from '../shared/constants/roles';
+
+let storage;
+if (Platform.OS !== "web") {
+    storage = require('expo-secure-store');
+}
+
+// Simple storage fallback for web
+const webStorage = {
+    getItemAsync: (key) => Promise.resolve(localStorage.getItem(key)),
+    setItemAsync: (key, value) => Promise.resolve(localStorage.setItem(key, value)),
+    deleteItemAsync: (key) => Promise.resolve(localStorage.removeItem(key)),
+};
+
+const storage = storage || webStorage;
+
+let registerForPushNotificationsAsync = null;
+if (Platform.OS !== "web") {
+    registerForPushNotificationsAsync = require('../features/notifications/notificationService').registerForPushNotificationsAsync;
+}
 
 const useAuthStore = create((set, get) => ({
   user: null,
@@ -15,10 +34,10 @@ const useAuthStore = create((set, get) => ({
 
   initialize: async () => {
     try {
-      const token = await SecureStore.getItemAsync('userToken');
-      const userStr = await SecureStore.getItemAsync('userData');
-      const hasSeenOnboarding = await SecureStore.getItemAsync('hasSeenOnboarding');
-      const theme = await SecureStore.getItemAsync('theme');
+      const token = await storage.getItemAsync('userToken');
+      const userStr = await storage.getItemAsync('userData');
+      const hasSeenOnboarding = await storage.getItemAsync('hasSeenOnboarding');
+      const theme = await storage.getItemAsync('theme');
 
       let parsedUser = userStr ? JSON.parse(userStr) : null;
       
@@ -31,6 +50,17 @@ const useAuthStore = create((set, get) => ({
       });
 
       if (token) {
+        // Register for push notifications and save token
+        if (registerForPushNotificationsAsync) {
+          const expoToken = await registerForPushNotificationsAsync();
+          if (expoToken) {
+            try {
+              await saveExpoToken(expoToken);
+            } catch (error) {
+              console.log('[Initialize] Error saving expo token:', error);
+            }
+          }
+        }
         get().fetchProfile();
       } else {
         set({ isLoading: false });
@@ -45,7 +75,7 @@ const useAuthStore = create((set, get) => ({
       const response = await getProfile();
       const userData = response.user;
       if (userData) {
-        await SecureStore.setItemAsync('userData', JSON.stringify(userData));
+        await storage.setItemAsync('userData', JSON.stringify(userData));
         set({ user: userData });
       }
     } catch (error) {
@@ -58,13 +88,13 @@ const useAuthStore = create((set, get) => ({
   toggleTheme: async () => {
     set((state) => {
       const newMode = !state.isDarkMode;
-      SecureStore.setItemAsync('theme', newMode ? 'dark' : 'light');
+      storage.setItemAsync('theme', newMode ? 'dark' : 'light');
       return { isDarkMode: newMode };
     });
   },
 
   setHasSeenOnboarding: async (value) => {
-    await SecureStore.setItemAsync('hasSeenOnboarding', value ? 'true' : 'false');
+    await storage.setItemAsync('hasSeenOnboarding', value ? 'true' : 'false');
     set({ hasSeenOnboarding: value });
   },
 
@@ -79,8 +109,8 @@ const useAuthStore = create((set, get) => ({
       throw error;
     }
 
-    await SecureStore.setItemAsync("userToken", token);
-    await SecureStore.setItemAsync(
+    await storage.setItemAsync("userToken", token);
+    await storage.setItemAsync(
       "userData",
       JSON.stringify(user)
     );
@@ -104,13 +134,13 @@ const useAuthStore = create((set, get) => ({
   },
 
   logout: async () => {
-    await SecureStore.deleteItemAsync('userToken');
-    await SecureStore.deleteItemAsync('userData');
+    await storage.deleteItemAsync('userToken');
+    await storage.deleteItemAsync('userData');
     set({ user: null, token: null, isAuthenticated: false });
   },
 
   updateUser: async (user) => {
-    await SecureStore.setItemAsync('userData', JSON.stringify(user));
+    await storage.setItemAsync('userData', JSON.stringify(user));
     set({ user });
   }
 }));

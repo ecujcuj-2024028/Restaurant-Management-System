@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
@@ -10,6 +10,7 @@ import MyReservationsScreen from '../features/reservations/screens/MyReservation
 import RestaurantsStack from './RestaurantsStack';
 import ReservationsStack from './ReservationsStack';
 import MyOrdersScreen from '../features/orders/screens/MyOrdersScreen';
+import NotificationHistoryScreen from '../features/notifications/NotificationHistoryScreen';
 import { View, Text } from 'react-native';
 import useAuthStore from '../store/useAuthStore';
 import { useTranslation } from 'react-i18next';
@@ -95,6 +96,7 @@ const MainTab = () => {
       <RootStack.Screen name="MyOrders" component={MyOrdersScreen} />
       <RootStack.Screen name="HelpSupport" component={HelpSupportScreen} />
       <RootStack.Screen name="MyReservations" component={MyReservationsScreen} />
+      <RootStack.Screen name="NotificationHistory" component={NotificationHistoryScreen} />
     </RootStack.Navigator>
   );
 };

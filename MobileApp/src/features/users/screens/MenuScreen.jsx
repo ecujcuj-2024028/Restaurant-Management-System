@@ -72,7 +72,7 @@ const MenuScreen = ({ navigation }) => {
     { id: 'reservas', title: t('menu.myReservations'), icon: 'calendar-outline', action: () => navigation.navigate('MyReservations') },
     { id: 'pedidos', title: t('menu.myOrders'), icon: 'list-outline', action: () => navigation.navigate('MyOrders') },
     { id: 'eventos', title: t('menu.events'), icon: 'star-outline' },
-    { id: 'notificaciones', title: t('menu.notifications'), icon: 'notifications-outline' },
+    { id: 'notificaciones', title: t('menu.notifications'), icon: 'notifications-outline', action: () => navigation.navigate('NotificationHistory') },
     { id: 'carrito', title: t('menu.cart'), icon: 'cart-outline' },
     { id: 'preferencias', title: t('menu.preferences'), icon: 'settings-outline', action: () => setView('preferences') },
     { id: 'ayuda', title: t('menu.help'), icon: 'help-circle-outline', action: () => navigation.navigate('HelpSupport') },

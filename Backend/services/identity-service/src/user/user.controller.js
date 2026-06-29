@@ -78,10 +78,29 @@ const formatearUsuario = (user) => ({
     status: user.Status,
     phone: user.UserProfile?.Phone || null,
     profilePicture: user.UserProfile?.ProfilePicture || null,
+    expoToken: user.ExpoToken || null,
     roles: user.UserRole?.Role?.Name ? [user.UserRole.Role.Name] : [],
     createdAt: user.CreatedAt,
     updatedAt: user.UpdatedAt
 });
+
+export const saveExpoToken = async (req, res) => {
+    try {
+        const userId = req.user.Id;
+        const { expoToken } = req.body;
+
+        if (!expoToken) {
+            return res.status(400).json({ success: false, message: 'El token de Expo es requerido.' });
+        }
+
+        await User.update({ ExpoToken: expoToken }, { where: { Id: userId } });
+
+        return res.status(200).json({ success: true, message: 'Token de notificaciones guardado correctamente.' });
+    } catch (error) {
+        console.error('[UserController] saveExpoToken:', error);
+        return res.status(500).json({ success: false, message: error.message });
+    }
+};
 
 /* =========================
    GET /users

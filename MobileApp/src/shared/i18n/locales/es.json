@@ -238,5 +238,10 @@
     "empty_fields": "Por favor completa todos los campos.",
     "success_title": "Mensaje Enviado",
     "success_msg": "Hemos recibido tu solicitud de ayuda. Nos comunicaremos contigo pronto."
+  },
+  "notifications": {
+    "markAllRead": "Marcar leídas",
+    "empty": "No tienes notificaciones",
+    "markAllAsRead": "Todas las notificaciones marcadas como leídas"
   }
 }
