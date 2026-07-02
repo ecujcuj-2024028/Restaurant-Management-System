@@ -83,12 +83,12 @@ const BottomTabs = () => {
         name="ReservacionesTab"
         component={ReservationsStack}
         options={{ tabBarLabel: t('tabs.reservations') }}
-      />EventosTab"
+      />
+      <Tab.Screen
+        name="EventosTab"
         component={EventsStack}
         options={{ tabBarLabel: t('tabs.events') || 'Eventos' }}
       />
-      <Tab.Screen
-        name="
       <Tab.Screen
         name="MenuTab"
         component={MenuScreen}
