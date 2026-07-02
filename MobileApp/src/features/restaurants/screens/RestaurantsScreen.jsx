@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import {
     View,
     StyleSheet,
@@ -9,6 +9,7 @@ import {
     RefreshControl,
     Image,
     Modal,
+    TouchableWithoutFeedback,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -18,11 +19,12 @@ import { COMMON_STYLES } from '../../../shared/constants/theme';
 import { getRestaurants } from '../../../api/restaurants';
 import useAuthStore from '../../../store/useAuthStore';
 import useReviewStore from '../../../store/useReviewStore';
+import useNotificationStore from '../../../store/useNotificationStore';
 import Typography from '../../../shared/components/common/Typography';
 import Input from '../../../shared/components/common/Input';
 import Skeleton from '../../../shared/components/common/Skeleton';
 
-// ─── Skeleton de carga ───────────────────────────────────────────────────────
+// ─── Skeleton ────────────────────────────────────────────────────────────────
 const RestaurantsSkeleton = ({ isDark }) => {
     const bg = isDark ? COLORS.darkBackground : COLORS.background;
     return (
@@ -45,7 +47,7 @@ const RestaurantsSkeleton = ({ isDark }) => {
     );
 };
 
-// ─── Tarjeta de restaurante en lista vertical ────────────────────────────────
+// ─── Tarjeta de restaurante ───────────────────────────────────────────────────
 const RestaurantListCard = ({ restaurant, onPress, isDark }) => {
     const { t } = useTranslation();
     const { restaurantStats, fetchRestaurantStats } = useReviewStore();
@@ -56,11 +58,7 @@ const RestaurantListCard = ({ restaurant, onPress, isDark }) => {
         if (id) fetchRestaurantStats(id);
     }, [id]);
 
-    const mainImage =
-        restaurant.photos && restaurant.photos.length > 0
-            ? restaurant.photos[0]
-            : null;
-
+    const mainImage = restaurant.photos?.length > 0 ? restaurant.photos[0] : null;
     const bgCard = isDark ? COLORS.darkSurface : COLORS.white;
     const textColor = isDark ? COLORS.darkText : COLORS.text;
     const textSecondary = isDark ? COLORS.darkTextSecondary : COLORS.textSecondary;
@@ -99,7 +97,6 @@ const RestaurantListCard = ({ restaurant, onPress, isDark }) => {
                     <Ionicons name="arrow-forward" size={18} color={COLORS.white} />
                 </TouchableOpacity>
             </View>
-
             <View style={styles.listCardInfo}>
                 <View style={styles.listCardRow}>
                     <Typography variant="bodyBold" color={textColor} style={{ flex: 1 }} numberOfLines={1}>
@@ -109,7 +106,6 @@ const RestaurantListCard = ({ restaurant, onPress, isDark }) => {
                         {schedule}
                     </Typography>
                 </View>
-
                 <View style={styles.listCardRow}>
                     <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
                         <Ionicons name="star" size={13} color={COLORS.accent} />
@@ -133,29 +129,25 @@ const RestaurantsScreen = ({ navigation }) => {
     const { t } = useTranslation();
     const { isDarkMode } = useAuthStore();
     const { restaurantStats, fetchRestaurantStats } = useReviewStore();
+    const { notifications, unreadCount, markAsRead: markLocalAsRead, clearNotifications } = useNotificationStore();
 
     const [restaurants, setRestaurants] = useState([]);
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
     const [search, setSearch] = useState('');
     const [activeCategory, setActiveCategory] = useState(t('restaurants.all'));
-
-    // Rating filter state
     const [selectedRating, setSelectedRating] = useState(0);
     const [ratingModalVisible, setRatingModalVisible] = useState(false);
+    const [notifDropdownVisible, setNotifDropdownVisible] = useState(false);
 
     const bgColor = isDarkMode ? COLORS.darkBackground : COLORS.background;
     const textColor = isDarkMode ? COLORS.darkText : COLORS.text;
     const textSecondary = isDarkMode ? COLORS.darkTextSecondary : COLORS.textSecondary;
     const surfaceColor = isDarkMode ? COLORS.darkSurface : COLORS.white;
+    const cardColor = isDarkMode ? '#2a2a2a' : COLORS.white;
 
-    useEffect(() => {
-        fetchData();
-    }, []);
-
-    useEffect(() => {
-        setActiveCategory(t('restaurants.all'));
-    }, [t]);
+    useEffect(() => { fetchData(); }, []);
+    useEffect(() => { setActiveCategory(t('restaurants.all')); }, [t]);
 
     const fetchData = async (isRefresh = false) => {
         if (isRefresh) setRefreshing(true);
@@ -164,16 +156,11 @@ const RestaurantsScreen = ({ navigation }) => {
             const res = await getRestaurants();
             const fetchedRestaurants = res.restaurants || [];
             setRestaurants(fetchedRestaurants);
-
-            // Pre-fetch reviews/stats for all restaurants to have ratings ready for filtering!
             fetchedRestaurants.forEach(r => {
                 const id = r._id || r.id;
-                if (id) {
-                    fetchRestaurantStats(id);
-                }
+                if (id) fetchRestaurantStats(id);
             });
         } catch (e) {
-            console.error('Error al obtener restaurantes:', e);
             setRestaurants([]);
         } finally {
             setLoading(false);
@@ -183,9 +170,7 @@ const RestaurantsScreen = ({ navigation }) => {
 
     const categories = useMemo(() => {
         const unique = new Set();
-        restaurants.forEach((r) => {
-            if (r.category) unique.add(r.category);
-        });
+        restaurants.forEach((r) => { if (r.category) unique.add(r.category); });
         return [t('restaurants.all'), ...Array.from(unique)];
     }, [restaurants, t]);
 
@@ -200,19 +185,24 @@ const RestaurantsScreen = ({ navigation }) => {
     const filtered = useMemo(() => {
         return restaurants.filter((r) => {
             const matchSearch = r?.name?.toLowerCase().includes(search.toLowerCase());
-            
-            const matchCat =
-                activeCategory === t('restaurants.all') ||
+            const matchCat = activeCategory === t('restaurants.all') ||
                 r?.category?.toLowerCase() === activeCategory.toLowerCase();
-
-            // Rating filter
             const id = r?._id || r?.id;
             const rating = restaurantStats[id]?.promedioRating || 0;
             const matchRating = selectedRating === 0 || rating >= selectedRating;
-
             return matchSearch && matchCat && matchRating;
         });
     }, [restaurants, search, activeCategory, selectedRating, restaurantStats, t]);
+
+    const handleMarkAsRead = (id) => {
+        markLocalAsRead(id);
+    };
+
+    const handleDelete = (id) => {
+        useNotificationStore.getState().setNotifications(
+            notifications.filter(n => (n.id || n._id) !== id)
+        );
+    };
 
     if (loading) return <RestaurantsSkeleton isDark={isDarkMode} />;
 
@@ -225,9 +215,72 @@ const RestaurantsScreen = ({ navigation }) => {
                     <Typography variant="h2" color={textColor}>
                         {t('restaurants.title')}
                     </Typography>
-                    <TouchableOpacity style={[styles.bellBtn, { backgroundColor: surfaceColor }]}>
-                        <Ionicons name="notifications" size={22} color={textColor} />
-                    </TouchableOpacity>
+
+                    {/* Campana con dropdown */}
+                    <View style={styles.bellWrapper}>
+                        <TouchableOpacity
+                            style={[styles.bellBtn, { backgroundColor: surfaceColor }]}
+                            onPress={() => setNotifDropdownVisible(!notifDropdownVisible)}
+                        >
+                            <Ionicons name="notifications" size={22} color={textColor} />
+                            {unreadCount > 0 && <View style={styles.notifBadge} />}
+                        </TouchableOpacity>
+
+                        {/* Dropdown de notificaciones */}
+                        {notifDropdownVisible && (
+                            <TouchableWithoutFeedback onPress={() => setNotifDropdownVisible(false)}>
+                                <View style={styles.dropdownBackdrop} />
+                            </TouchableWithoutFeedback>
+                        )}
+                        {notifDropdownVisible && (
+                            <View style={[styles.dropdown, { backgroundColor: cardColor }]}>
+                                {notifications.length === 0 ? (
+                                    <View style={styles.dropdownEmpty}>
+                                        <Typography variant="caption" color={textSecondary}>
+                                            No hay notificaciones
+                                        </Typography>
+                                    </View>
+                                ) : (
+                                    <ScrollView style={{ maxHeight: 320 }} showsVerticalScrollIndicator={false}>
+                                        {notifications.slice(0, 5).map((notif) => {
+                                            const id = notif.id || notif._id;
+                                            return (
+                                                <View
+                                                    key={id}
+                                                    style={[
+                                                        styles.notifCard,
+                                                        { backgroundColor: isDarkMode ? '#333' : '#f9f9f9' },
+                                                        !notif.isRead && { borderLeftWidth: 3, borderLeftColor: COLORS.primary },
+                                                    ]}
+                                                >
+                                                    <Typography variant="bodyBold" color={textColor} numberOfLines={1}>
+                                                        {notif.title || 'Notificacion'}
+                                                    </Typography>
+                                                    <Typography variant="caption" color={textSecondary} numberOfLines={2} style={{ marginTop: 2 }}>
+                                                        {notif.message || 'Descripcion'}
+                                                    </Typography>
+                                                    <View style={styles.notifActions}>
+                                                        {!notif.isRead && (
+                                                            <TouchableOpacity onPress={() => handleMarkAsRead(id)}>
+                                                                <Typography variant="small" color={COLORS.primary}>
+                                                                    Marcar como visto
+                                                                </Typography>
+                                                            </TouchableOpacity>
+                                                        )}
+                                                        <TouchableOpacity onPress={() => handleDelete(id)}>
+                                                            <Typography variant="small" color="#e53935">
+                                                                Eliminar
+                                                            </Typography>
+                                                        </TouchableOpacity>
+                                                    </View>
+                                                </View>
+                                            );
+                                        })}
+                                    </ScrollView>
+                                )}
+                            </View>
+                        )}
+                    </View>
                 </View>
 
                 <Input
@@ -245,7 +298,6 @@ const RestaurantsScreen = ({ navigation }) => {
                     <Typography variant="bodyBold" color={textColor} style={styles.categoriesTitle}>
                         {t('restaurants.categories')}
                     </Typography>
-                    {/* Rating filter pill */}
                     <TouchableOpacity
                         onPress={() => setRatingModalVisible(true)}
                         style={[styles.filterPill, { backgroundColor: surfaceColor }]}
@@ -281,11 +333,7 @@ const RestaurantsScreen = ({ navigation }) => {
                 contentContainerStyle={styles.listContent}
                 showsVerticalScrollIndicator={false}
                 refreshControl={
-                    <RefreshControl
-                        refreshing={refreshing}
-                        onRefresh={() => fetchData(true)}
-                        tintColor={COLORS.primary}
-                    />
+                    <RefreshControl refreshing={refreshing} onRefresh={() => fetchData(true)} tintColor={COLORS.primary} />
                 }
                 ListEmptyComponent={
                     <View style={styles.emptyContainer}>
@@ -304,18 +352,9 @@ const RestaurantsScreen = ({ navigation }) => {
                 )}
             />
 
-            {/* Rating Filter Modal */}
-            <Modal
-                visible={ratingModalVisible}
-                transparent
-                animationType="slide"
-                onRequestClose={() => setRatingModalVisible(false)}
-            >
-                <TouchableOpacity
-                    style={styles.modalOverlay}
-                    activeOpacity={1}
-                    onPress={() => setRatingModalVisible(false)}
-                >
+            {/* Rating Modal */}
+            <Modal visible={ratingModalVisible} transparent animationType="slide" onRequestClose={() => setRatingModalVisible(false)}>
+                <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={() => setRatingModalVisible(false)}>
                     <View style={[styles.bottomSheet, { backgroundColor: surfaceColor }]}>
                         <View style={styles.sheetHeader}>
                             <Typography variant="bodyBold" color={textColor}>
@@ -331,14 +370,8 @@ const RestaurantsScreen = ({ navigation }) => {
                                 return (
                                     <TouchableOpacity
                                         key={opt.value}
-                                        onPress={() => {
-                                            setSelectedRating(opt.value);
-                                            setRatingModalVisible(false);
-                                        }}
-                                        style={[
-                                            styles.optionRow,
-                                            isSelected && { backgroundColor: COLORS.primary + '15' }
-                                        ]}
+                                        onPress={() => { setSelectedRating(opt.value); setRatingModalVisible(false); }}
+                                        style={[styles.optionRow, isSelected && { backgroundColor: COLORS.primary + '15' }]}
                                     >
                                         <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                                             {opt.value > 0 ? (
@@ -352,19 +385,12 @@ const RestaurantsScreen = ({ navigation }) => {
                                                             style={{ marginRight: 2 }}
                                                         />
                                                     ))}
-                                                    <Typography
-                                                        variant={isSelected ? 'bodyBold' : 'body'}
-                                                        color={isSelected ? COLORS.primary : textColor}
-                                                        style={{ marginLeft: 8 }}
-                                                    >
+                                                    <Typography variant={isSelected ? 'bodyBold' : 'body'} color={isSelected ? COLORS.primary : textColor} style={{ marginLeft: 8 }}>
                                                         {opt.label}
                                                     </Typography>
                                                 </View>
                                             ) : (
-                                                <Typography
-                                                    variant={isSelected ? 'bodyBold' : 'body'}
-                                                    color={isSelected ? COLORS.primary : textColor}
-                                                >
+                                                <Typography variant={isSelected ? 'bodyBold' : 'body'} color={isSelected ? COLORS.primary : textColor}>
                                                     {opt.label}
                                                 </Typography>
                                             )}
@@ -383,56 +409,61 @@ const RestaurantsScreen = ({ navigation }) => {
 
 const styles = StyleSheet.create({
     container: { flex: 1 },
-    header: {
-        paddingHorizontal: 16,
-        paddingTop: 16,
-        paddingBottom: 8,
-        gap: 16,
+    header: { paddingHorizontal: 16, paddingTop: 16, paddingBottom: 8, gap: 16 },
+    headerTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+    bellWrapper: { position: 'relative' },
+    bellBtn: { padding: 10, borderRadius: 12 },
+    notifBadge: {
+        position: 'absolute',
+        top: 8,
+        right: 8,
+        width: 8,
+        height: 8,
+        borderRadius: 4,
+        backgroundColor: COLORS.primary,
     },
-    headerTop: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
+    dropdownBackdrop: {
+        position: 'absolute',
+        top: 0,
+        left: -400,
+        right: -400,
+        bottom: -800,
+        zIndex: 10,
     },
-    bellBtn: {
-        padding: 10,
+    dropdown: {
+        position: 'absolute',
+        top: 48,
+        right: 0,
+        width: 260,
         borderRadius: 12,
-    },
-    categoriesWrapper: {
-        paddingHorizontal: 16,
-        marginTop: 8,
-        marginBottom: 4,
-    },
-    categoriesTitle: { marginBottom: 10 },
-    categoriesList: {
-        gap: 10,
-        paddingBottom: 4,
-    },
-    categoryChip: {
-        paddingHorizontal: 20,
-        paddingVertical: 8,
-        borderRadius: 20,
-    },
-    listContent: {
-        paddingHorizontal: 16,
-        paddingTop: 16,
-        paddingBottom: 32,
-        gap: 16,
-    },
-    listCard: {
-        borderRadius: 16,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.15,
+        shadowRadius: 8,
+        elevation: 8,
+        zIndex: 20,
         overflow: 'hidden',
     },
-    listCardBanner: {
-        width: '100%',
-        height: 140,
-        justifyContent: 'flex-start',
-        padding: 10,
+    dropdownEmpty: { padding: 16, alignItems: 'center' },
+    notifCard: {
+        padding: 12,
+        marginHorizontal: 8,
+        marginVertical: 4,
+        borderRadius: 10,
     },
-    listCardImage: {
-        ...StyleSheet.absoluteFillObject,
-        borderRadius: 0,
+    notifActions: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        marginTop: 8,
     },
+    categoriesWrapper: { paddingHorizontal: 16, marginTop: 8, marginBottom: 4 },
+    categoriesTitle: { marginBottom: 10 },
+    categoriesList: { gap: 10, paddingBottom: 4 },
+    categoryChip: { paddingHorizontal: 20, paddingVertical: 8, borderRadius: 20 },
+    listContent: { paddingHorizontal: 16, paddingTop: 16, paddingBottom: 32, gap: 16 },
+    listCard: { borderRadius: 16, overflow: 'hidden' },
+    listCardBanner: { width: '100%', height: 140, justifyContent: 'flex-start', padding: 10 },
+    listCardImage: { ...StyleSheet.absoluteFillObject, borderRadius: 0 },
     categoryBadge: {
         alignSelf: 'flex-start',
         backgroundColor: COLORS.primary,
@@ -440,21 +471,9 @@ const styles = StyleSheet.create({
         paddingVertical: 4,
         borderRadius: 10,
     },
-    listCardInfo: {
-        padding: 12,
-        gap: 8,
-    },
-    listCardRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-    },
-    dot: {
-        width: 3,
-        height: 3,
-        borderRadius: 1.5,
-        marginHorizontal: 6,
-    },
+    listCardInfo: { padding: 12, gap: 8 },
+    listCardRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+    dot: { width: 3, height: 3, borderRadius: 1.5, marginHorizontal: 6 },
     arrowBtnOnImage: {
         position: 'absolute',
         bottom: 10,
@@ -466,16 +485,8 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         alignItems: 'center',
     },
-    emptyContainer: {
-        alignItems: 'center',
-        paddingTop: 60,
-    },
-    categoriesHeaderRow: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: 10,
-    },
+    emptyContainer: { alignItems: 'center', paddingTop: 60 },
+    categoriesHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 },
     filterPill: {
         flexDirection: 'row',
         alignItems: 'center',
@@ -490,11 +501,7 @@ const styles = StyleSheet.create({
         shadowRadius: 1.5,
         elevation: 2,
     },
-    modalOverlay: {
-        flex: 1,
-        backgroundColor: 'rgba(0,0,0,0.5)',
-        justifyContent: 'flex-end',
-    },
+    modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
     bottomSheet: {
         borderTopLeftRadius: 24,
         borderTopRightRadius: 24,
@@ -512,9 +519,7 @@ const styles = StyleSheet.create({
         borderBottomColor: '#f1f5f9',
         paddingBottom: 12,
     },
-    closeSheetBtn: {
-        padding: 4,
-    },
+    closeSheetBtn: { padding: 4 },
     optionRow: {
         flexDirection: 'row',
         justifyContent: 'space-between',
