@@ -18,6 +18,7 @@ import { getRestaurants } from '../../../api/restaurants';
 import { getProducts } from '../../../api/products';
 import useAuthStore from '../../../store/useAuthStore';
 import useReviewStore from '../../../store/useReviewStore';
+import useNotificationStore from '../../../store/useNotificationStore';
 import RestaurantCard from '../components/RestaurantCard';
 import ProductCard from '../../../shared/components/common/ProductCard';
 import Input from '../../../shared/components/common/Input';
@@ -63,6 +64,7 @@ const HomeScreen = ({ navigation }) => {
   const { t } = useTranslation();
   const { user, isDarkMode } = useAuthStore();
   const { productStats, fetchRestaurantStats } = useReviewStore();
+  const { unreadCount } = useNotificationStore();
 
   const [restaurants, setRestaurants] = useState([]);
   const [products, setProducts] = useState([]);
@@ -71,7 +73,6 @@ const HomeScreen = ({ navigation }) => {
   const [search, setSearch] = useState('');
   const [activeCategory, setActiveCategory] = useState(t('home.all'));
 
-  // Product category and rating filters state
   const [selectedProductCategory, setSelectedProductCategory] = useState('ALL');
   const [selectedProductRating, setSelectedProductRating] = useState(0);
   const [categoryModalVisible, setCategoryModalVisible] = useState(false);
@@ -103,12 +104,9 @@ const HomeScreen = ({ navigation }) => {
       setRestaurants(fetchedRestaurants);
       setProducts(productsRes.products || []);
 
-      // Pre-fetch reviews/stats for all restaurants to have product ratings ready
       fetchedRestaurants.forEach(r => {
         const id = r._id || r.id;
-        if (id) {
-          fetchRestaurantStats(id);
-        }
+        if (id) fetchRestaurantStats(id);
       });
     } catch (error) {
       console.error('Error fetching data:', error);
@@ -125,22 +123,18 @@ const HomeScreen = ({ navigation }) => {
     restaurants.forEach(r => {
       if (r.category) uniqueCats.add(r.category);
     });
-
     const catsArray = Array.from(uniqueCats).map((name, index) => ({
       id: (index + 1).toString(),
       name,
       icon: 'food'
     }));
-
     return [{ id: '0', name: t('home.all'), icon: 'apps' }, ...catsArray];
   }, [restaurants, t]);
 
   const productCategories = useMemo(() => {
     const uniqueCats = new Set();
     products.forEach(p => {
-      if (p.category?.name) {
-        uniqueCats.add(p.category.name);
-      }
+      if (p.category?.name) uniqueCats.add(p.category.name);
     });
     return ['ALL', ...Array.from(uniqueCats)];
   }, [products]);
@@ -166,22 +160,15 @@ const HomeScreen = ({ navigation }) => {
     return (products || []).filter((p) => {
       const matchesSearch = p?.name?.toLowerCase().includes(search.toLowerCase()) ||
         p?.description?.toLowerCase().includes(search.toLowerCase());
-      
       const restaurantCategory = p?.restaurant?.category ||
         restaurants.find(r => (r._id || r.id) === (p.restaurant?._id || p.restaurant))?.category;
-      
       const matchesCategory = activeCategory === t('home.all') ||
         restaurantCategory?.toLowerCase() === activeCategory.toLowerCase();
-
-      // Product category filter
       const matchesProductCategory = selectedProductCategory === 'ALL' ||
         p?.category?.name?.toLowerCase() === selectedProductCategory.toLowerCase();
-
-      // Product rating filter
       const id = p?._id || p?.id;
       const rating = productStats[id]?.promedioRating || 0;
       const matchesRating = selectedProductRating === 0 || rating >= selectedProductRating;
-
       return matchesSearch && matchesCategory && matchesProductCategory && matchesRating;
     });
   }, [products, restaurants, search, activeCategory, selectedProductCategory, selectedProductRating, productStats, t]);
@@ -203,7 +190,7 @@ const HomeScreen = ({ navigation }) => {
           />
         }
       >
-        {/* Header con Saludo y Notificación */}
+        {/* Header */}
         <View style={styles.header}>
           <View style={styles.greetingRow}>
             <View>
@@ -211,13 +198,17 @@ const HomeScreen = ({ navigation }) => {
                 {t('home.greeting')}, {user?.name || (user?.firstName ? `${user.firstName} ${user.lastName}` : t('home.guest'))}
               </Typography>
             </View>
-            <TouchableOpacity style={[styles.notificationIcon, { backgroundColor: surfaceColor }]}>
+            <TouchableOpacity
+              style={[styles.notificationIcon, { backgroundColor: surfaceColor }]}
+              onPress={() => navigation.navigate('NotificationHistory')}
+            >
               <Ionicons name="notifications" size={24} color={textColor} />
-              <View style={[styles.notificationDot, { borderColor: surfaceColor }]} />
+              {unreadCount > 0 && (
+                <View style={[styles.notificationDot, { borderColor: surfaceColor }]} />
+              )}
             </TouchableOpacity>
           </View>
 
-          {/* Buscador Estilo Adaptable */}
           <Input
             placeholder={t('home.searchPlaceholder')}
             value={search}
@@ -228,16 +219,12 @@ const HomeScreen = ({ navigation }) => {
           />
         </View>
 
-        {/* Categorías Dinámicas */}
+        {/* Categorías */}
         <View style={styles.sectionContainer}>
           <Typography variant="h3" color={textColor} style={styles.sectionTitle}>
             {t('home.categories')}
           </Typography>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.categoriesList}
-          >
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.categoriesList}>
             {categories.map((cat) => {
               const isActive = cat.name === activeCategory;
               return (
@@ -246,10 +233,7 @@ const HomeScreen = ({ navigation }) => {
                   onPress={() => setActiveCategory(cat.name)}
                   style={[styles.categoryChip, { backgroundColor: surfaceColor }, isActive && styles.categoryChipActive]}
                 >
-                  <Typography
-                    variant="small"
-                    color={isActive ? COLORS.white : textSecondary}
-                  >
+                  <Typography variant="small" color={isActive ? COLORS.white : textSecondary}>
                     {cat.name}
                   </Typography>
                 </TouchableOpacity>
@@ -258,7 +242,7 @@ const HomeScreen = ({ navigation }) => {
           </ScrollView>
         </View>
 
-        {/* Destacados cerca de ti */}
+        {/* Destacados */}
         <View style={styles.sectionContainer}>
           <View style={styles.sectionHeader}>
             <Typography variant="h3" color={textColor}>
@@ -268,11 +252,7 @@ const HomeScreen = ({ navigation }) => {
               <Typography variant="caption" color={COLORS.primary}>{t('home.viewAll')} &rarr;</Typography>
             </TouchableOpacity>
           </View>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.horizontalList}
-          >
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.horizontalList}>
             {filteredRestaurants.length > 0 ? (
               filteredRestaurants.map((item) => (
                 <RestaurantCard
@@ -297,23 +277,14 @@ const HomeScreen = ({ navigation }) => {
               {activeCategory === t('home.all') ? t('home.popular') : `${t('home.popular')} (${activeCategory})`}
             </Typography>
             <View style={styles.filtersRow}>
-              {/* Product Category Filter Pill */}
-              <TouchableOpacity
-                onPress={() => setCategoryModalVisible(true)}
-                style={[styles.filterPill, { backgroundColor: surfaceColor }]}
-              >
+              <TouchableOpacity onPress={() => setCategoryModalVisible(true)} style={[styles.filterPill, { backgroundColor: surfaceColor }]}>
                 <Ionicons name="funnel-outline" size={12} color={COLORS.primary} style={{ marginRight: 4 }} />
                 <Typography variant="caption" color={textColor} numberOfLines={1} style={{ maxWidth: 75 }}>
                   {selectedProductCategory === 'ALL' ? t('home.allProducts') || 'Todos' : selectedProductCategory}
                 </Typography>
                 <Ionicons name="chevron-down" size={10} color={textSecondary} style={{ marginLeft: 4 }} />
               </TouchableOpacity>
-
-              {/* Product Rating Filter Pill */}
-              <TouchableOpacity
-                onPress={() => setRatingModalVisible(true)}
-                style={[styles.filterPill, { backgroundColor: surfaceColor }]}
-              >
+              <TouchableOpacity onPress={() => setRatingModalVisible(true)} style={[styles.filterPill, { backgroundColor: surfaceColor }]}>
                 <Ionicons name="star" size={12} color={COLORS.accent} style={{ marginRight: 4 }} />
                 <Typography variant="caption" color={textColor}>
                   {selectedProductRating === 0 ? t('home.allRatings') || 'Todas' : `${selectedProductRating}★`}
@@ -331,10 +302,7 @@ const HomeScreen = ({ navigation }) => {
                   isDark={isDarkMode}
                   onPress={() => {
                     const restaurantId = item.restaurant?._id || item.restaurant;
-                    navigation.navigate('RestaurantDetail', { 
-                      id: restaurantId, 
-                      productId: item._id || item.id 
-                    });
+                    navigation.navigate('RestaurantDetail', { id: restaurantId, productId: item._id || item.id });
                   }}
                 />
               ))
@@ -347,23 +315,12 @@ const HomeScreen = ({ navigation }) => {
         </View>
       </ScrollView>
 
-      {/* Category Filter Modal */}
-      <Modal
-        visible={categoryModalVisible}
-        transparent
-        animationType="slide"
-        onRequestClose={() => setCategoryModalVisible(false)}
-      >
-        <TouchableOpacity
-          style={styles.modalOverlay}
-          activeOpacity={1}
-          onPress={() => setCategoryModalVisible(false)}
-        >
+      {/* Category Modal */}
+      <Modal visible={categoryModalVisible} transparent animationType="slide" onRequestClose={() => setCategoryModalVisible(false)}>
+        <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={() => setCategoryModalVisible(false)}>
           <View style={[styles.bottomSheet, { backgroundColor: surfaceColor }]}>
             <View style={styles.sheetHeader}>
-              <Typography variant="bodyBold" color={textColor}>
-                {t('home.filterCategory') || 'Filtrar por Categoría'}
-              </Typography>
+              <Typography variant="bodyBold" color={textColor}>{t('home.filterCategory') || 'Filtrar por Categoría'}</Typography>
               <TouchableOpacity onPress={() => setCategoryModalVisible(false)} style={styles.closeSheetBtn}>
                 <Ionicons name="close" size={24} color={textColor} />
               </TouchableOpacity>
@@ -374,19 +331,10 @@ const HomeScreen = ({ navigation }) => {
                 return (
                   <TouchableOpacity
                     key={cat}
-                    onPress={() => {
-                      setSelectedProductCategory(cat);
-                      setCategoryModalVisible(false);
-                    }}
-                    style={[
-                      styles.optionRow,
-                      isSelected && { backgroundColor: COLORS.primary + '15' }
-                    ]}
+                    onPress={() => { setSelectedProductCategory(cat); setCategoryModalVisible(false); }}
+                    style={[styles.optionRow, isSelected && { backgroundColor: COLORS.primary + '15' }]}
                   >
-                    <Typography
-                      variant={isSelected ? 'bodyBold' : 'body'}
-                      color={isSelected ? COLORS.primary : textColor}
-                    >
+                    <Typography variant={isSelected ? 'bodyBold' : 'body'} color={isSelected ? COLORS.primary : textColor}>
                       {cat === 'ALL' ? t('home.allProducts') || 'Todos' : cat}
                     </Typography>
                     {isSelected && <Ionicons name="checkmark" size={20} color={COLORS.primary} />}
@@ -398,23 +346,12 @@ const HomeScreen = ({ navigation }) => {
         </TouchableOpacity>
       </Modal>
 
-      {/* Rating Filter Modal */}
-      <Modal
-        visible={ratingModalVisible}
-        transparent
-        animationType="slide"
-        onRequestClose={() => setRatingModalVisible(false)}
-      >
-        <TouchableOpacity
-          style={styles.modalOverlay}
-          activeOpacity={1}
-          onPress={() => setRatingModalVisible(false)}
-        >
+      {/* Rating Modal */}
+      <Modal visible={ratingModalVisible} transparent animationType="slide" onRequestClose={() => setRatingModalVisible(false)}>
+        <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={() => setRatingModalVisible(false)}>
           <View style={[styles.bottomSheet, { backgroundColor: surfaceColor }]}>
             <View style={styles.sheetHeader}>
-              <Typography variant="bodyBold" color={textColor}>
-                {t('home.filterRating') || 'Filtrar por Calificación'}
-              </Typography>
+              <Typography variant="bodyBold" color={textColor}>{t('home.filterRating') || 'Filtrar por Calificación'}</Typography>
               <TouchableOpacity onPress={() => setRatingModalVisible(false)} style={styles.closeSheetBtn}>
                 <Ionicons name="close" size={24} color={textColor} />
               </TouchableOpacity>
@@ -425,14 +362,8 @@ const HomeScreen = ({ navigation }) => {
                 return (
                   <TouchableOpacity
                     key={opt.value}
-                    onPress={() => {
-                      setSelectedProductRating(opt.value);
-                      setRatingModalVisible(false);
-                    }}
-                    style={[
-                      styles.optionRow,
-                      isSelected && { backgroundColor: COLORS.primary + '15' }
-                    ]}
+                    onPress={() => { setSelectedProductRating(opt.value); setRatingModalVisible(false); }}
+                    style={[styles.optionRow, isSelected && { backgroundColor: COLORS.primary + '15' }]}
                   >
                     <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                       {opt.value > 0 ? (
@@ -446,19 +377,12 @@ const HomeScreen = ({ navigation }) => {
                               style={{ marginRight: 2 }}
                             />
                           ))}
-                          <Typography
-                            variant={isSelected ? 'bodyBold' : 'body'}
-                            color={isSelected ? COLORS.primary : textColor}
-                            style={{ marginLeft: 8 }}
-                          >
+                          <Typography variant={isSelected ? 'bodyBold' : 'body'} color={isSelected ? COLORS.primary : textColor} style={{ marginLeft: 8 }}>
                             {opt.label}
                           </Typography>
                         </View>
                       ) : (
-                        <Typography
-                          variant={isSelected ? 'bodyBold' : 'body'}
-                          color={isSelected ? COLORS.primary : textColor}
-                        >
+                        <Typography variant={isSelected ? 'bodyBold' : 'body'} color={isSelected ? COLORS.primary : textColor}>
                           {opt.label}
                         </Typography>
                       )}
@@ -476,23 +400,15 @@ const HomeScreen = ({ navigation }) => {
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  header: {
-    paddingHorizontal: 16,
-    paddingTop: 20,
-  },
+  container: { flex: 1 },
+  header: { paddingHorizontal: 16, paddingTop: 20 },
   greetingRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 20,
   },
-  notificationIcon: {
-    padding: 10,
-    borderRadius: 12,
-  },
+  notificationIcon: { padding: 10, borderRadius: 12 },
   notificationDot: {
     position: 'absolute',
     top: 10,
@@ -503,51 +419,22 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.primary,
     borderWidth: 1.5,
   },
-  searchContainer: {
-    marginBottom: 0,
-  },
-  searchInput: {
-    borderColor: 'transparent',
-    borderRadius: 12,
-    height: 52,
-    paddingHorizontal: 12,
-  },
-  sectionContainer: {
-    marginTop: 24,
-    paddingHorizontal: 16,
-  },
-  sectionTitle: {
-    marginBottom: 16,
-  },
+  searchContainer: { marginBottom: 0 },
+  searchInput: { borderColor: 'transparent', borderRadius: 12, height: 52, paddingHorizontal: 12 },
+  sectionContainer: { marginTop: 24, paddingHorizontal: 16 },
+  sectionTitle: { marginBottom: 16 },
   sectionHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 16,
   },
-  categoriesList: {
-    gap: 12,
-  },
-  categoryChip: {
-    paddingHorizontal: 20,
-    paddingVertical: 8,
-    borderRadius: 20,
-  },
-  categoryChipActive: {
-    backgroundColor: COLORS.primary,
-  },
-  horizontalList: {
-    paddingRight: 16,
-  },
-  productsList: {
-    gap: 16,
-    paddingBottom: 40,
-  },
-  filtersRow: {
-    flexDirection: 'row',
-    gap: 8,
-    alignItems: 'center',
-  },
+  categoriesList: { gap: 12 },
+  categoryChip: { paddingHorizontal: 20, paddingVertical: 8, borderRadius: 20 },
+  categoryChipActive: { backgroundColor: COLORS.primary },
+  horizontalList: { paddingRight: 16 },
+  productsList: { gap: 16, paddingBottom: 40 },
+  filtersRow: { flexDirection: 'row', gap: 8, alignItems: 'center' },
   filterPill: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -562,11 +449,7 @@ const styles = StyleSheet.create({
     shadowRadius: 1.5,
     elevation: 2,
   },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    justifyContent: 'flex-end',
-  },
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
   bottomSheet: {
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
@@ -584,12 +467,8 @@ const styles = StyleSheet.create({
     borderBottomColor: '#f1f5f9',
     paddingBottom: 12,
   },
-  closeSheetBtn: {
-    padding: 4,
-  },
-  sheetContent: {
-    marginVertical: 8,
-  },
+  closeSheetBtn: { padding: 4 },
+  sheetContent: { marginVertical: 8 },
   optionRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
