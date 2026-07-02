@@ -49,6 +49,7 @@
     "home": "Inicio",
     "restaurants": "Restaurantes",
     "reservations": "Reservas",
+    "events": "Eventos",
     "menu": "Menú"
   },
   "restaurants": {
@@ -269,5 +270,23 @@
     "markAllRead": "Marcar leídas",
     "empty": "No tienes notificaciones",
     "markAllAsRead": "Todas las notificaciones marcadas como leídas"
+  },
+  "events": {
+    "title": "Eventos",
+    "searchPlaceholder": "Buscar eventos...",
+    "allRestaurants": "Todos los restaurantes",
+    "clear": "Limpiar",
+    "date": "Fecha",
+    "time": "Hora",
+    "location": "Ubicación",
+    "price": "Precio",
+    "free": "Gratis",
+    "attendees": "Asistentes",
+    "about": "Acerca del evento",
+    "attendEvent": "Asistir al evento",
+    "cancelAttendance": "Cancelar asistencia",
+    "noEvents": "No hay eventos disponibles",
+    "errorLoadingEvents": "Error al cargar los eventos",
+    "errorUpdatingAttendance": "Error al actualizar tu asistencia"
   }
 }

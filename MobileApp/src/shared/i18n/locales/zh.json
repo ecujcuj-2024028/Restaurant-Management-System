@@ -49,6 +49,7 @@
     "home": "首页",
     "restaurants": "餐厅",
     "reservations": "预订",
+    "events": "活动",
     "menu": "菜单"
   },
   "restaurants": {
@@ -238,6 +239,24 @@
     "deleteError": "无法删除评价。",
     "anonymous": "用户"
   },
+  "events": {
+    "title": "活动",
+    "searchPlaceholder": "搜索活动...",
+    "allRestaurants": "所有餐厅",
+    "clear": "清除",
+    "date": "日期",
+    "time": "时间",
+    "location": "位置",
+    "price": "价格",
+    "free": "免费",
+    "attendees": "参与者",
+    "about": "关于活动",
+    "attendEvent": "参加活动",
+    "cancelAttendance": "取消参加",
+    "noEvents": "没有可用的活动",
+    "errorLoadingEvents": "加载活动出错",
+    "errorUpdatingAttendance": "更新您的参加状态出错"
+  },
   "help": {
     "search_placeholder": "搜索帮助或问题...",
     "faq_title": "常见问题",
@@ -258,5 +277,23 @@
     "empty_fields": "请填写所有字段。",
     "success_title": "消息已发送",
     "success_msg": "我们已收到您的支持请求。我们会尽快与您联系。"
+  },
+  "events": {
+    "title": "活动",
+    "searchPlaceholder": "搜索活动...",
+    "allRestaurants": "所有餐厅",
+    "clear": "清除",
+    "date": "日期",
+    "time": "时间",
+    "location": "位置",
+    "price": "价格",
+    "free": "免费",
+    "attendees": "参与者",
+    "about": "关于活动",
+    "attendEvent": "参加活动",
+    "cancelAttendance": "取消参加",
+    "noEvents": "没有可用的活动",
+    "errorLoadingEvents": "加载活动出错",
+    "errorUpdatingAttendance": "更新您的参加状态出错"
   }
 }

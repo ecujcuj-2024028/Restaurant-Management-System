@@ -12,6 +12,7 @@ import ReservationsStack from './ReservationsStack';
 import MyOrdersScreen from '../features/orders/screens/MyOrdersScreen';
 import CreateOrderScreen from '../features/orders/screens/CreateOrderScreen';
 import NotificationHistoryScreen from '../features/notifications/NotificationHistoryScreen';
+import EventsStack from './EventsStack';
 import { View, Text } from 'react-native';
 import useAuthStore from '../store/useAuthStore';
 import { useTranslation } from 'react-i18next';
@@ -50,6 +51,8 @@ const BottomTabs = () => {
             iconName = focused ? 'restaurant' : 'restaurant-outline';
           } else if (route.name === 'ReservacionesTab') {
             iconName = focused ? 'calendar' : 'calendar-outline';
+          } else if (route.name === 'EventosTab') {
+            iconName = focused ? 'calendar-sharp' : 'calendar-outline';
           } else if (route.name === 'MenuTab') {
             iconName = focused ? 'menu' : 'menu-outline';
           }
@@ -80,7 +83,12 @@ const BottomTabs = () => {
         name="ReservacionesTab"
         component={ReservationsStack}
         options={{ tabBarLabel: t('tabs.reservations') }}
+      />EventosTab"
+        component={EventsStack}
+        options={{ tabBarLabel: t('tabs.events') || 'Eventos' }}
       />
+      <Tab.Screen
+        name="
       <Tab.Screen
         name="MenuTab"
         component={MenuScreen}

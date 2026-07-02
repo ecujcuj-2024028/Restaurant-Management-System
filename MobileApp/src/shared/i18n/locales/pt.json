@@ -50,6 +50,7 @@
     "home": "Início",
     "restaurants": "Restaurantes",
     "reservations": "Reservas",
+    "events": "Eventos",
     "menu": "Menu"
   },
   "restaurants": {
@@ -258,5 +259,23 @@
     "empty_fields": "Por favor, preencha todos os campos.",
     "success_title": "Mensagem Enviada",
     "success_msg": "Recebemos sua solicitação de suporte. Entraremos em contato em breve."
+  },
+  "events": {
+    "title": "Eventos",
+    "searchPlaceholder": "Pesquisar eventos...",
+    "allRestaurants": "Todos os restaurantes",
+    "clear": "Limpar",
+    "date": "Data",
+    "time": "Hora",
+    "location": "Localização",
+    "price": "Preço",
+    "free": "Grátis",
+    "attendees": "Participantes",
+    "about": "Sobre o evento",
+    "attendEvent": "Participar do evento",
+    "cancelAttendance": "Cancelar participação",
+    "noEvents": "Nenhum evento disponível",
+    "errorLoadingEvents": "Erro ao carregar eventos",
+    "errorUpdatingAttendance": "Erro ao atualizar sua participação"
   }
 }
