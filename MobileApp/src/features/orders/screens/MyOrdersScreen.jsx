@@ -1441,8 +1441,11 @@ const MyOrdersScreen = ({ navigation }) => {
           <Typography variant="h2" color={textColor} style={{ flex: 1, marginLeft: 12 }}>
             {t('orders.title')}
           </Typography>
-          <TouchableOpacity style={[styles.bellBtn, { backgroundColor: surfaceColor }]}>
-            <Ionicons name="notifications" size={22} color={textColor} />
+          <TouchableOpacity
+            style={[styles.bellBtn, { backgroundColor: COLORS.accent }]}
+            onPress={() => navigation.navigate('CreateOrder')}
+          >
+            <Ionicons name="add" size={24} color={COLORS.white} />
           </TouchableOpacity>
         </View>
 

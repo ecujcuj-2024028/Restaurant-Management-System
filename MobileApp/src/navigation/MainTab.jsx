@@ -10,6 +10,7 @@ import MyReservationsScreen from '../features/reservations/screens/MyReservation
 import RestaurantsStack from './RestaurantsStack';
 import ReservationsStack from './ReservationsStack';
 import MyOrdersScreen from '../features/orders/screens/MyOrdersScreen';
+import CreateOrderScreen from '../features/orders/screens/CreateOrderScreen';
 import NotificationHistoryScreen from '../features/notifications/NotificationHistoryScreen';
 import { View, Text } from 'react-native';
 import useAuthStore from '../store/useAuthStore';
@@ -94,6 +95,7 @@ const MainTab = () => {
     <RootStack.Navigator screenOptions={{ headerShown: false }}>
       <RootStack.Screen name="Tabs" component={BottomTabs} />
       <RootStack.Screen name="MyOrders" component={MyOrdersScreen} />
+      <RootStack.Screen name="CreateOrder" component={CreateOrderScreen} />
       <RootStack.Screen name="HelpSupport" component={HelpSupportScreen} />
       <RootStack.Screen name="MyReservations" component={MyReservationsScreen} />
       <RootStack.Screen name="NotificationHistory" component={NotificationHistoryScreen} />
