@@ -33,6 +33,18 @@ const useNotificationStore = create((set, get) => ({
     },
 
     clearNotifications: () => set({ notifications: [], unreadCount: 0 }),
+
+    deleteNotification: (id) => {
+        set((state) => {
+            const notificationToDelete = state.notifications.find((n) => n.id === id || n._id === id);
+            return {
+                notifications: state.notifications.filter((n) => n.id !== id && n._id !== id),
+                unreadCount: notificationToDelete && !notificationToDelete.isRead 
+                    ? Math.max(0, state.unreadCount - 1) 
+                    : state.unreadCount,
+            };
+        });
+    },
 }));
 
 export default useNotificationStore;

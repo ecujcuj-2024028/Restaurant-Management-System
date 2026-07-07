@@ -14,7 +14,7 @@ import useAuthStore from '../../store/useAuthStore';
 import useNotificationStore from '../../store/useNotificationStore';
 import { useTranslation } from 'react-i18next';
 import Typography from '../../shared/components/common/Typography';
-import { getNotificationsHistory, markAsRead, markAllAsRead } from '../../api/notifications';
+import { getNotificationsHistory, markAsRead, markAllAsRead, deleteNotification } from '../../api/notifications';
 
 const NotificationHistoryScreen = ({ navigation }) => {
     const { t } = useTranslation();
@@ -26,6 +26,7 @@ const NotificationHistoryScreen = ({ navigation }) => {
         markAsRead: markLocalAsRead,
         markAllAsRead: markAllLocalAsRead,
         setNotifications,
+        deleteNotification: deleteLocalNotification,
     } = useNotificationStore();
 
     const [loading, setLoading] = useState(true);
@@ -97,6 +98,16 @@ const NotificationHistoryScreen = ({ navigation }) => {
             console.log('[Notifications] Error marcando todas como leídas:', error);
         } finally {
             markAllLocalAsRead();
+        }
+    };
+
+    const handleDeleteNotification = async (id) => {
+        try {
+            await deleteNotification(id);
+            deleteLocalNotification(id);
+        } catch (error) {
+            console.log('[Notifications] Error eliminando notificación:', error);
+            deleteLocalNotification(id);
         }
     };
 
@@ -200,6 +211,12 @@ const NotificationHistoryScreen = ({ navigation }) => {
                                     {formatDate(item.createdAt)}
                                 </Typography>
                             </View>
+                            <TouchableOpacity
+                                style={styles.deleteButton}
+                                onPress={() => handleDeleteNotification(item._id || item.id)}
+                            >
+                                <Ionicons name="close-circle" size={24} color={COLORS.error} />
+                            </TouchableOpacity>
                             {!item.isRead && <View style={styles.unreadDot} />}
                         </TouchableOpacity>
                     )}
@@ -269,6 +286,7 @@ const styles = StyleSheet.create({
     },
     notificationIcon: { marginRight: 12, marginTop: 2 },
     notificationContent: { flex: 1 },
+    deleteButton: { padding: 4, marginLeft: 8 },
     unreadDot: {
         width: 10,
         height: 10,
