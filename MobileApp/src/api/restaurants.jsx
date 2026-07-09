@@ -11,12 +11,12 @@ export const getRestaurantById = async (id) => {
 };
 
 export const getRestaurantMenus = async (restaurantId) => {
-  const response = await api.get(`/menus/restaurant/${restaurantId}`);
+  const response = await api.get(`/menus`, { params: { restaurant: restaurantId } });
   return response.data;
 };
 
 export const getRestaurantProducts = async (restaurantId) => {
-  const response = await api.get(`/products/restaurant/${restaurantId}`);
+  const response = await api.get(`/products`, { params: { restaurant: restaurantId } });
   return response.data;
 };
 

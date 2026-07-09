@@ -5,19 +5,35 @@ const useNotificationStore = create((set, get) => ({
     unreadCount: 0,
 
     addNotification: (notification) => {
+        const notifId = notification.id || notification._id;
+        const exists = get().notifications.some(
+            (n) => n.id === notifId || n._id === notifId || n.id === notification._id || n._id === notification.id
+        );
+        if (exists) return;
+
         set((state) => ({
             notifications: [notification, ...state.notifications],
-            unreadCount: state.unreadCount + 1,
+            unreadCount: state.unreadCount + (notification.isRead ? 0 : 1),
         }));
     },
 
     markAsRead: (id) => {
-        set((state) => ({
-            notifications: state.notifications.map((n) =>
-                n.id === id ? { ...n, isRead: true } : n
-            ),
-            unreadCount: Math.max(0, state.unreadCount - 1),
-        }));
+        set((state) => {
+            let decremented = false;
+            const updated = state.notifications.map((n) => {
+                if (n.id === id || n._id === id) {
+                    if (!n.isRead) {
+                        decremented = true;
+                    }
+                    return { ...n, isRead: true };
+                }
+                return n;
+            });
+            return {
+                notifications: updated,
+                unreadCount: decremented ? Math.max(0, state.unreadCount - 1) : state.unreadCount,
+            };
+        });
     },
 
     markAllAsRead: () => {
