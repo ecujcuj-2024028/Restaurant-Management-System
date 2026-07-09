@@ -39,7 +39,7 @@ const Reservation = sequelize.define('Reservation', {
         }
     },
     status: {
-        type: DataTypes.ENUM('pendiente', 'confirmada', 'cancelada', 'completada'),
+        type: DataTypes.ENUM('pendiente', 'confirmada', 'cancelada', 'completada', 'iniciada'),
         defaultValue: 'pendiente',
     },
     customerName: {
