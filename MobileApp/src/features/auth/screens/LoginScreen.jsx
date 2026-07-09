@@ -146,7 +146,7 @@ const LoginScreen = ({ navigation }) => {
 
           {/* BOTÓN SOLO PARA PRUEBAS */}
           <Button
-            title="Reiniciar Onboarding (Solo Pruebas)"
+            title="Reiniciar Onboarding"
             variant="outline"
             style={[styles.debugButton, { borderColor: isDarkMode ? COLORS.darkBorder : COLORS.border }]}
             textStyle={[styles.debugButtonText, { color: isDarkMode ? COLORS.darkTextSecondary : COLORS.textSecondary }]}

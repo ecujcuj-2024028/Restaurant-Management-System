@@ -1,0 +1,19 @@
+{
+  "name": "restaurant-management-system",
+  "private": true,
+  "version": "1.0.0",
+  "scripts": {
+    "dev": "node scripts/sync-envs.js && pnpm --parallel -r dev",
+    "dev:backend": "node scripts/sync-envs.js && pnpm --filter \"./Backend/services/*\" --parallel dev",
+    "dev:frontend": "pnpm --filter restaurant-managment dev",
+    "dev:mobile": "pnpm --filter mobileapp dev",
+    "sync-envs": "node scripts/sync-envs.js"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "argon2",
+      "@scarf/scarf",
+      "core-js"
+    ]
+  }
+}
