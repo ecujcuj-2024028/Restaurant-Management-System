@@ -390,22 +390,7 @@ const ProfileScreen = ({ navigation }) => {
               </View>
             </View>
           )}
-          {__DEV__ && (
-            <View style={{ marginTop: 20, padding: 12, backgroundColor: 'rgba(0,0,0,0.05)', borderRadius: 12 }}>
-              <Typography variant="small" color={textSecondary}>
-                Debug User Info:
-              </Typography>
-              <Typography variant="caption" color={textSecondary} style={{ marginTop: 4 }}>
-                Keys: {Object.keys(user || {}).join(', ')}
-              </Typography>
-              <Typography variant="caption" color={textSecondary} style={{ marginTop: 4 }}>
-                username: "{user?.username}"
-              </Typography>
-              <Typography variant="caption" color={textSecondary} style={{ marginTop: 2 }}>
-                Username: "{user?.Username}"
-              </Typography>
-            </View>
-          )}
+
         </ScrollView>
       </KeyboardAvoidingView>
     </View>
