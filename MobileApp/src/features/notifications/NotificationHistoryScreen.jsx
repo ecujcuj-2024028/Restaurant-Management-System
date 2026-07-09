@@ -57,23 +57,37 @@ const NotificationHistoryScreen = ({ navigation }) => {
         const socket = getSocket();
         if (!socket) return;
 
-        const handleOrderStatusChange = (data) => {
+        const handleNewNotification = (notification) => {
             addNotification({
-                id: Date.now().toString(),
-                title: data.title || 'Actualización de pedido',
-                message: data.message || `Tu pedido cambió a: ${data.status}`,
+                id: notification._id || notification.id || Date.now().toString(),
+                title: notification.title || 'Notificación',
+                message: notification.message || '',
+                type: notification.type || 'info',
+                isRead: notification.isRead || false,
+                createdAt: notification.createdAt || new Date().toISOString(),
+            });
+        };
+
+        const handleOrderStatusChange = (data) => {
+            const statusLabel = data.status || data.estado || '';
+            addNotification({
+                id: data._id || data.id || Date.now().toString(),
+                title: 'Actualización de pedido',
+                message: `Tu pedido cambió a: ${statusLabel}`,
                 type: 'order',
                 isRead: false,
                 createdAt: new Date().toISOString(),
             });
         };
 
-        socket.on('order_status_changed', handleOrderStatusChange);
-        socket.on('notification', handleOrderStatusChange);
+        socket.on('new_notification', handleNewNotification);
+        socket.on('order_status_updated', handleOrderStatusChange);
+        socket.on('order_cancelled', handleOrderStatusChange);
 
         return () => {
-            socket.off('order_status_changed', handleOrderStatusChange);
-            socket.off('notification', handleOrderStatusChange);
+            socket.off('new_notification', handleNewNotification);
+            socket.off('order_status_updated', handleOrderStatusChange);
+            socket.off('order_cancelled', handleOrderStatusChange);
         };
     }, [getSocket, addNotification]);
 
@@ -139,9 +153,10 @@ const NotificationHistoryScreen = ({ navigation }) => {
     }
 
     return (
-    <SafeAreaView style={[styles.container, { backgroundColor: cardColor }]}>            <View style={styles.header}>
-                <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
-                    <Ionicons name="chevron-back" size={24} color={COLORS.primary} />
+        <SafeAreaView style={[styles.container, { backgroundColor: bgColor }]}>
+            <View style={styles.header}>
+                <TouchableOpacity style={styles.backButton} onPress={() => navigation.navigate('Tabs', { screen: 'HomeTab' })}>
+                    <Ionicons name="chevron-back" size={24} color={textColor} />
                 </TouchableOpacity>
                 <Typography variant="h2" color={textColor}>
                     {t('menu.notifications')}
@@ -168,7 +183,7 @@ const NotificationHistoryScreen = ({ navigation }) => {
                         </Typography>
                         <TouchableOpacity
                             style={styles.backButtonCard}
-                            onPress={() => navigation.goBack()}
+                            onPress={() => navigation.navigate('Tabs', { screen: 'HomeTab' })}
                         >
                             <Typography variant="bodyBold" color={COLORS.white}>
                                 Regresar

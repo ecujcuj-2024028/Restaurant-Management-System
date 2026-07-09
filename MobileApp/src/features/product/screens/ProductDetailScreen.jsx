@@ -24,6 +24,7 @@ import Input from '../../../shared/components/common/Input';
 import Button from '../../../shared/components/common/Button';
 import Skeleton from '../../../shared/components/common/Skeleton';
 import api from '../../../api/api';
+import useOrderCartStore from '../../../store/useOrderCartStore';
 
 // ── API helpers ───────────────────────────────────────────────────────────────
 const getProductReviews = (productId) =>
@@ -239,6 +240,8 @@ const mStyles = StyleSheet.create({
 const ProductDetailScreen = ({ route, navigation }) => {
   const { t } = useTranslation();
   const { user, isDarkMode } = useAuthStore();
+  const addItem = useOrderCartStore((state) => state.addItem);
+  const setRestaurant = useOrderCartStore((state) => state.setRestaurant);
 
   // El producto puede venir completo por params, o solo el id
   const { product: productParam, productId: idParam } = route?.params || {};
@@ -303,6 +306,33 @@ const ProductDetailScreen = ({ route, navigation }) => {
     }
     await fetchReviews();
     setEditingReview(null);
+  };
+
+  const handleOrderProduct = () => {
+    if (!product) return;
+
+    addItem({
+      id: product._id || product.id,
+      _id: product._id || product.id,
+      name: product.name,
+      price: product.price,
+      quantity: 1,
+      isMenu: false,
+    });
+
+    if (product?.restaurant) {
+      setRestaurant(product.restaurant);
+    }
+
+    navigation.navigate('CreateOrder', {
+      restaurantId: product?.restaurant?._id || product?.restaurant?.id || product?.restaurantId,
+      initialProduct: {
+        id: product._id || product.id,
+        name: product.name,
+        price: product.price,
+        quantity: 1,
+      },
+    });
   };
 
   const handleDelete = (reviewId) => {
@@ -422,6 +452,26 @@ const ProductDetailScreen = ({ route, navigation }) => {
 
           {/* Divider */}
           <View style={[styles.divider, { backgroundColor: borderColor }]} />
+
+          <TouchableOpacity
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 6,
+              paddingVertical: 12,
+              paddingHorizontal: 16,
+              marginBottom: 16,
+              backgroundColor: COLORS.primary,
+              borderRadius: 16,
+            }}
+            onPress={handleOrderProduct}
+          >
+            <Ionicons name="cart-outline" size={18} color={COLORS.white} />
+            <Typography variant="bodyBold" color={COLORS.white}>
+              {t('restaurantDetail.order') || 'Pedir'}
+            </Typography>
+          </TouchableOpacity>
 
           {/* Reseñas Header Row */}
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
