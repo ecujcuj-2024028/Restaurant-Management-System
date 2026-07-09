@@ -1,1 +1,5 @@
 .vscode/
+.idea/
+node_modules/
+.gemini/
+.env

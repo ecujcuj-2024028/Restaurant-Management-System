@@ -5,6 +5,8 @@ import Table from './table.model.js';
 import Restaurant from '../restaurants/restaurant.model.js';
 import { ADMIN_SISTEMA, ADMIN_RESTAURANTE } from '../../helpers/role-constants.js';
 
+const ORDER_SERVICE_URL = process.env.ORDER_SERVICE_URL || 'http://order_service:3003/restaurantManagement/v1';
+
 /* ─────────────────────────────────────────────
    Helper: obtener IDs de restaurantes propios
 ─────────────────────────────────────────────── */
@@ -37,7 +39,7 @@ export const getTables = async (req, res) => {
     try {
         // Soporta tanto ?restaurantId=ID como /restaurant/ID
         const restaurantId = req.query.restaurantId || req.params.restaurantId;
-        const { availability } = req.query;
+        const { availability, onlyActiveReservation } = req.query; // Nueva bandera
         const where = { isActive: true };
 
         const roles = req.userRoles || [];
@@ -45,13 +47,9 @@ export const getTables = async (req, res) => {
         const isRestauranteAdmin = roles.includes(ADMIN_RESTAURANTE);
         const userId = req.userId;
 
-        console.log(`[ManagementService] getTables - User: ${userId}, roles: [${roles.join(', ')}], isSystemAdmin: ${isSystemAdmin}, isRestauranteAdmin: ${isRestauranteAdmin}`);
-
         if (isSystemAdmin) {
-            // Admin sistema ve todo
             if (restaurantId) where.restaurant = restaurantId;
         } else if (isRestauranteAdmin) {
-            // Admin restaurante ve solo lo suyo
             const myRestaurants = await Restaurant.find({ ownerId: userId, isActive: true }, '_id');
             const myIds = myRestaurants.map(r => r._id.toString());
 
@@ -64,16 +62,66 @@ export const getTables = async (req, res) => {
                 where.restaurant = { [Op.in]: myIds }; 
             }
         } else {
-            // CLIENTE u otros: DEBEN proporcionar un restaurantId para ver mesas
+            // CLIENTE
             if (!restaurantId) {
                 return res.status(400).json({ success: false, message: 'Se requiere restaurantId para consultar mesas' });
             }
             where.restaurant = restaurantId;
+
+            // --- LÓGICA DE FILTRADO POR RESERVACIÓN ACTIVA (Solo si se pide explícitamente) ---
+            if (onlyActiveReservation === 'true') {
+                try {
+                    const today = new Date().toISOString().split('T')[0];
+                    const url = new URL(`${ORDER_SERVICE_URL}/reservations`);
+                    url.searchParams.append('date', today);
+
+                    const response = await fetch(url.toString(), {
+                        headers: { 'Authorization': req.header('Authorization') }
+                    });
+
+                    if (response.ok) {
+                        const data = await response.json();
+                        const myReservations = data?.reservations || [];
+                        
+                        const now = new Date();
+                        const currentHHMM = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+                        
+                        const activeTableIds = myReservations
+                            .filter(res => {
+                                const resRestId = res.restaurantId?._id || res.restaurantId;
+                                if (resRestId?.toString() !== restaurantId) return false;
+
+                                const normalizedStatus = (res.status || '').toLowerCase();
+                                const isActiveReservation = ['aceptada', 'confirmada', 'iniciada'].includes(normalizedStatus);
+                                if (!isActiveReservation) return false;
+
+                                // Si está iniciada, se salta la validación horaria (el admin ya dio acceso)
+                                if (normalizedStatus === 'iniciada') return true;
+
+                                const [resH, resM] = String(res.time || '00:00').split(':').map(Number);
+                                const resTime = new Date();
+                                resTime.setHours(resH, resM, 0, 0);
+                                
+                                const endTime = new Date(resTime.getTime() + 120 * 60000);
+                                const endHHMM = `${String(endTime.getHours()).padStart(2, '0')}:${String(endTime.getMinutes()).padStart(2, '0')}`;
+                                
+                                return currentHHMM >= String(res.time || '00:00') && currentHHMM <= endHHMM;
+                            })
+                            .map(res => res.tableId?._id || res.tableId);
+
+                        if (activeTableIds.length === 0) {
+                            return res.status(200).json({ success: true, count: 0, tables: [] });
+                        }
+                        where.id = { [Op.in]: activeTableIds };
+                    }
+                } catch (err) {
+                    console.error('[ManagementService] Error fetching reservations:', err.message);
+                }
+            }
         }
 
         if (availability) where.availability = availability;
 
-        // USA findAll porque es SEQUELIZE
         const tables = await Table.findAll({ 
             where,
             order: [['number', 'ASC']]

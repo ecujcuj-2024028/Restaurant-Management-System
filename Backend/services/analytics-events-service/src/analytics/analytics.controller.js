@@ -24,7 +24,7 @@ const getOwnedRestaurantIds = async (req) => {
 ─────────────────────────────────────────────── */
 export const crearReview = async (req, res) => {
     try {
-        const { usuarioId, restauranteId, platoId, rating, comentario, consumo } = req.body;
+        const { usuarioId, username, restauranteId, platoId, rating, comentario, consumo } = req.body;
 
         if (!usuarioId || !restauranteId || !platoId) {
             return res.status(400).json({
@@ -35,6 +35,7 @@ export const crearReview = async (req, res) => {
 
         const nuevaReview = new Review({
             usuarioId: usuarioId.toString(),
+            username: username || 'Usuario',
             restauranteId: new mongoose.Types.ObjectId(restauranteId),
             platoId: new mongoose.Types.ObjectId(platoId),
             rating: Number(rating),
@@ -132,12 +133,19 @@ export const getReviewsPorRestaurante = async (req, res) => {
         const overall = stats[0].overall[0] || { promedioRating: 0, totalReviews: 0 };
         const perProduct = stats[0].perProduct || [];
 
+        // Obtener todas las reseñas detalladas para el restaurante
+        const reviews = await Review.find({ 
+            restauranteId: new mongoose.Types.ObjectId(restauranteId), 
+            estado: 'activa' 
+        }).sort({ createdAt: -1 }).lean();
+
         return res.status(200).json({
             success: true,
             data: {
                 restauranteId,
                 totalReviews: overall.totalReviews,
                 promedioRating: parseFloat((overall.promedioRating || 0).toFixed(1)),
+                reviews,
                 products: perProduct.map(p => ({
                     platoId: p._id,
                     promedioRating: parseFloat((p.promedioRating || 0).toFixed(1)),

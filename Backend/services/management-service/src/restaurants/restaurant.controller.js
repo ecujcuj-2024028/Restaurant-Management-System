@@ -39,28 +39,25 @@ export const createRestaurant = async (req, res) => {
 /* Listar restaurantes */
 export const getRestaurants = async (req, res) => {
     try {
-        const query = { isActive: true };
-
         const roles = req.userRoles || [];
         const isSystemAdmin = roles.includes(ADMIN_SISTEMA);
+        const isRestauranteAdmin = roles.includes(ADMIN_RESTAURANTE);
         const userId = req.userId;
+
+        const query = {};
 
         console.log(`[ManagementService] getRestaurants - User: ${userId}, Roles: [${roles.join(', ')}], isSystemAdmin: ${isSystemAdmin}`);
 
-        // SEGURIDAD: 
-        // 1. Admin Sistema: Ve todos.
-        // 2. Admin Restaurante: SOLO ve los suyos (OBLIGATORIO).
-        // 3. Cliente / Otros: Ven todos los activos.
-        const isRestauranteAdmin = roles.includes(ADMIN_RESTAURANTE);
-
-        console.log(`[ManagementService] Roles detected: systemAdmin=${isSystemAdmin}, restauranteAdmin=${isRestauranteAdmin}`);
-
-        if (isRestauranteAdmin && !isSystemAdmin) {
+        if (isSystemAdmin) {
+            console.log(`[ManagementService] System Admin access - no filters`);
+            // Admin sistema ve todos (activos e inactivos)
+        } else if (isRestauranteAdmin) {
             query.ownerId = userId;
-            console.log(`[ManagementService] Applying OWNERSHIP filter for user ${userId}`);
-        } else if (isSystemAdmin) {
-            console.log(`[ManagementService] System Admin access - no ownership filter`);
+            console.log(`[ManagementService] Restaurant Admin access - filtering by ownership for user ${userId}`);
+            // Admin restaurante ve todos sus restaurantes (activos e inactivos)
         } else {
+            // Clientes y otros ven solo activos
+            query.isActive = true;
             console.log(`[ManagementService] Public/Client access - viewing all active`);
         }
 
@@ -86,27 +83,34 @@ export const getRestaurants = async (req, res) => {
 export const getRestaurantById = async (req, res) => {
     try {
         const { id } = req.params;
+        const roles = req.userRoles || [];
+        const isSystemAdmin = roles.includes(ADMIN_SISTEMA);
+        const isRestauranteAdmin = roles.includes(ADMIN_RESTAURANTE);
 
         const restaurant = await Restaurant.findById(id);
 
-        if (!restaurant || !restaurant.isActive) {
+        if (!restaurant) {
             return res.status(404).json({
                 success: false,
                 message: 'Restaurant not found'
             });
         }
 
+        // Si es un cliente y el restaurante está inactivo, ocultarlo
+        if (!isSystemAdmin && !isRestauranteAdmin && !restaurant.isActive) {
+            return res.status(404).json({
+                success: false,
+                message: 'Restaurant not available'
+            });
+        }
+
         // Seguridad: 
         // - Admin Sistema ve todo.
-        // - Clientes ven todo (catálogo).
-        // - Admin Restaurante SOLO ve el suyo.
-        const isRestauranteAdmin = req.userRoles?.includes(ADMIN_RESTAURANTE);
-        const isSystemAdmin = req.userRoles?.includes(ADMIN_SISTEMA);
-
-        if (isRestauranteAdmin && !isSystemAdmin && restaurant.ownerId.toString() !== req.userId) {
+        // - Admin Restaurante ve solo el suyo.
+        if (isRestauranteAdmin && !isSystemAdmin && restaurant.ownerId.toString() !== req.userId.toString()) {
             return res.status(403).json({
                 success: false,
-                message: 'No tienes permiso para gestionar este restaurante.'
+                message: 'No autorizado para ver este restaurante'
             });
         }
 

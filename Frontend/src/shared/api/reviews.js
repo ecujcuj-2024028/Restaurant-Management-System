@@ -13,3 +13,6 @@ export const deleteReview = (id) =>
 
 export const getReviewsByProduct = (platoId) =>
   api.get(`${REVIEWS_ENDPOINT}/plato/${platoId}`)
+
+export const getReviewsByRestaurant = (restauranteId) =>
+  api.get(`${REVIEWS_ENDPOINT}/restaurant/${restauranteId}`)

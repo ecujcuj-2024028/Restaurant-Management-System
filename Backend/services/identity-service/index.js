@@ -35,9 +35,33 @@ const BASE_PATH = '/restaurantManagement/v1';
    ========================= */
 const ensureRootAdmin = async () => {
     try {
-        const existingRoot = await User.findOne({ where: { Email: process.env.ROOT_ADMIN_EMAIL } });
+        const rootEmail = process.env.ROOT_ADMIN_EMAIL;
+        const existingRoot = await User.findOne({ where: { Email: rootEmail } });
+        
         if (existingRoot) {
-            console.log('PostgreSQL | Root admin already exists');
+            let updated = false;
+            
+            // Si el root existe pero no tiene password o está desactivado, lo arreglamos
+            if (!existingRoot.Password || !existingRoot.Status) {
+                console.log('PostgreSQL | Repairing ROOT ADMIN (missing password or inactive)...');
+                const hashedPassword = await hashPassword(process.env.ROOT_ADMIN_PASSWORD);
+                existingRoot.Password = hashedPassword;
+                existingRoot.Status = true;
+                updated = true;
+            }
+
+            // Asegurar que tenga el username correcto si falta
+            if (!existingRoot.Username) {
+                existingRoot.Username = process.env.ROOT_ADMIN_USERNAME;
+                updated = true;
+            }
+
+            if (updated) {
+                await existingRoot.save();
+                console.log('PostgreSQL | ROOT ADMIN REPAIRED SUCCESSFULLY');
+            } else {
+                console.log('PostgreSQL | Root admin already exists and is healthy');
+            }
             return;
         }
 
@@ -47,7 +71,7 @@ const ensureRootAdmin = async () => {
             Name: 'Root',
             Surname: 'Admin',
             Username: process.env.ROOT_ADMIN_USERNAME,
-            Email: process.env.ROOT_ADMIN_EMAIL,
+            Email: rootEmail,
             Password: hashedPassword,
             Status: true
         });

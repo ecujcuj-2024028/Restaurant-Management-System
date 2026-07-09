@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { toast } from 'react-hot-toast'
 import { useNavigate } from 'react-router-dom'
+import { XCircle } from 'lucide-react'
 import useOrderStore from '../store/orderStore'
 import api from '../../../shared/api/api'
 import Modal from '../../../shared/components/ui/Modal'
@@ -19,7 +20,7 @@ const CreateOrderForm = ({ restaurantId, onClose, initialItems = [] }) => {
     const fetchData = async () => {
       try {
         const [tablesRes, productsRes] = await Promise.all([
-          api.get(`/tables?restaurantId=${restaurantId}`),
+          api.get(`/tables?restaurantId=${restaurantId}&onlyActiveReservation=true`),
           api.get(`/products?restaurant=${restaurantId}`)
         ])
         setTables(tablesRes.data?.tables || tablesRes.data || [])
@@ -82,11 +83,31 @@ const handleSubmit = async () => {
         isMenu: i.isMenu || false
       }))
     })
-    toast.success('¡Pedido creado exitosamente!', { id: toastId })
+    
+    toast.success((t) => (
+      <div className="flex items-center justify-between gap-4 w-full">
+        <span>¡Pedido creado exitosamente!</span>
+        <button 
+          onClick={() => toast.dismiss(t.id)}
+          className="p-1 hover:bg-white/10 rounded-full transition-colors"
+        >
+          <XCircle size={14} className="text-zinc-500" />
+        </button>
+      </div>
+    ), { id: toastId, duration: 6000 })
+
     onClose()
     navigate('/my-orders')
   } catch (error) {
-    toast.error(error?.response?.data?.message || 'Error al crear el pedido', { id: toastId })
+    const message = error?.response?.data?.message || 'Error al crear el pedido'
+    toast.error((t) => (
+      <div className="flex items-center justify-between gap-4 w-full">
+        <span>{message}</span>
+        <button onClick={() => toast.dismiss(t.id)} className="p-1 hover:bg-white/10 rounded-full transition-colors">
+          <XCircle size={14} className="text-zinc-500" />
+        </button>
+      </div>
+    ), { id: toastId })
   }
 }
 
@@ -105,14 +126,19 @@ const handleSubmit = async () => {
               onChange={(e) => setSelectedTable(e.target.value)}
               className="w-full bg-zinc-800 border border-zinc-700 text-white rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-orange-500"
             >
-              <option value="">-- Selecciona una mesa --</option>
-              {tables.map((t) => (
-                <option key={t._id || t.id} value={t._id || t.id}>
-                  Mesa #{t.number || t.tableNumber} — Cap. {t.capacity}
-                </option>
-              ))}
-            </select>
-          </div>
+              {tables.length === 0 ? (
+                <option value="">No tienes reservación activa</option>
+              ) : (
+                <>
+                  <option value="">-- Selecciona una mesa --</option>
+                  {tables.map((t) => (
+                    <option key={t._id || t.id} value={t._id || t.id}>
+                      Mesa #{t.number || t.tableNumber} — Cap. {t.capacity}
+                    </option>
+                  ))}
+                </>
+              )}
+            </select>          </div>
 
           <div>
             <label className="text-zinc-400 text-xs font-semibold uppercase tracking-wider mb-2 block">

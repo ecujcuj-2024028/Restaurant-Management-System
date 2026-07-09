@@ -4,6 +4,22 @@ import Notification from './notification-model.js';
 import { InventoryItem } from '../inventory/inventory.model.js';
 import Restaurant from '../restaurants/restaurant.model.js';
 import { Op } from 'sequelize';
+import axios from 'axios';
+
+const GATEWAY_INTERNAL_URL = process.env.GATEWAY_INTERNAL_URL || 'http://api_gateway:3000/restaurantManagement/v1/internal/emit';
+
+// Helper para emitir via socket
+const emitSocketNotification = async (notification) => {
+    try {
+        await axios.post(GATEWAY_INTERNAL_URL, {
+            event: 'new_notification',
+            data: notification,
+            room: `user_${notification.userId}`
+        });
+    } catch (err) {
+        console.error('[SocketError] Error emitting notification:', err.message);
+    }
+};
 
 /**
  * Obtener notificaciones del usuario autenticado
@@ -18,31 +34,22 @@ export const getMyNotifications = async (req, res) => {
             const userRestaurant = await Restaurant.findOne({ ownerId: userId, isActive: true });
             if (userRestaurant) {
                 restaurantId = userRestaurant._id.toString();
-                console.log("Resolved Restaurant ID from ownerId:", restaurantId);
             }
         }
 
-        console.log("Final Restaurant ID:", restaurantId);
-
         // ── AUTO-GENERACIÓN DE NOTIFICACIONES DE STOCK BAJO ──
+        // Solo intentamos generar alertas si detectamos un restaurante asociado
         if (restaurantId) {
             const allItems = await InventoryItem.findAll({
                 where: { RestaurantId: restaurantId, IsActive: true },
                 raw: true
             });
 
-            console.log(`Total items found in inventory for restaurant ${restaurantId}:`, allItems.length);
-            
             const lowStockBasics = allItems.filter(i => {
                 const isBasic = !i.MongoProductId;
                 const isLow = parseFloat(i.Quantity) <= parseFloat(i.MinStock);
-                if (isLow) {
-                    console.log(`Item "${i.Name}": Basic=${isBasic}, Qty=${i.Quantity}, Min=${i.MinStock}, MongoID=${i.MongoProductId}`);
-                }
                 return isBasic && isLow;
             });
-
-            console.log("Basic Low Stock Items detected:", lowStockBasics.length);
 
             for (const item of lowStockBasics) {
                 const today = new Date();
@@ -58,8 +65,7 @@ export const getMyNotifications = async (req, res) => {
                 });
 
                 if (!existing) {
-                    console.log("Creating new notification for:", item.Name);
-                    await Notification.create({
+                    const newNotif = await Notification.create({
                         userId,
                         restaurantId,
                         type: 'inventory',
@@ -67,12 +73,9 @@ export const getMyNotifications = async (req, res) => {
                         message: `El insumo básico "${item.Name}" tiene un stock de ${item.Quantity} ${item.Unit}. El mínimo es ${item.MinStock}.`,
                         link: '/inventory'
                     });
-                } else {
-                    console.log("Notification already exists for today and is unread:", item.Name);
+                    emitSocketNotification(newNotif);
                 }
             }
-        } else {
-            console.log("WARNING: No restaurantId provided in request query");
         }
 
         const filter = { userId };
@@ -100,7 +103,7 @@ export const getMyNotifications = async (req, res) => {
 export const markAsRead = async (req, res) => {
     try {
         const { id } = req.params;
-        const userId = req.userId; // Cambiado de req.uid
+        const userId = req.userId;
 
         const notification = await Notification.findOneAndUpdate(
             { _id: id, userId },
@@ -123,7 +126,7 @@ export const markAsRead = async (req, res) => {
  */
 export const markAllAsRead = async (req, res) => {
     try {
-        const userId = req.userId; // Cambiado de req.uid
+        const userId = req.userId;
         await Notification.updateMany({ userId, isRead: false }, { isRead: true });
 
         return res.status(200).json({ success: true, message: 'Todas las notificaciones marcadas como leídas' });
@@ -138,7 +141,7 @@ export const markAllAsRead = async (req, res) => {
 export const deleteNotification = async (req, res) => {
     try {
         const { id } = req.params;
-        const userId = req.userId; // Cambiado de req.uid
+        const userId = req.userId;
 
         const result = await Notification.findOneAndDelete({ _id: id, userId });
 
@@ -147,6 +150,23 @@ export const deleteNotification = async (req, res) => {
         }
 
         return res.status(200).json({ success: true, message: 'Notificación eliminada' });
+    } catch (error) {
+        return res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+/**
+ * Crear una nueva notificación (invocado internamente por otros servicios)
+ */
+export const createNotification = async (req, res) => {
+    try {
+        const notification = new Notification(req.body);
+        await notification.save();
+
+        // Emitir por socket
+        emitSocketNotification(notification);
+
+        return res.status(201).json({ success: true, notification });
     } catch (error) {
         return res.status(500).json({ success: false, message: error.message });
     }

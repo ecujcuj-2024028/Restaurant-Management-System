@@ -92,6 +92,12 @@ export const User = sequelize.define(
             defaultValue: DataTypes.NOW,
             field: 'updated_at',
         },
+        ExpoToken: {
+            type: DataTypes.STRING(255),
+            allowNull: true,
+            defaultValue: null,
+            field: 'expo_token',
+        },
     },
     {
         tableName: 'users',

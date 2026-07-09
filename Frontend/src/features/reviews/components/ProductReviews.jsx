@@ -107,7 +107,7 @@ const ProductReviews = ({ platoId, onEdit }) => {
                   </div>
                   <div>
                     <p className="text-white text-xs font-bold leading-none">
-                      {typeof review.usuarioId === 'string' ? review.usuarioId?.slice(0, 8) : 'Usuario'}...
+                      {review.username || (typeof review.usuarioId === 'string' ? review.usuarioId?.slice(0, 8) : 'Usuario')}
                     </p>
                     <p className="text-zinc-600 text-[10px] mt-0.5">{formatDate(review.createdAt)}</p>
                   </div>

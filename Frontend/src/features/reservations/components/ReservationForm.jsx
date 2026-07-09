@@ -1,7 +1,7 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { toast } from 'react-hot-toast'
-import { X, MapPin, Users, Calendar, Clock, Mail, Phone, User, MessageSquare, Save } from 'lucide-react'
+import { X, MapPin, Users, Calendar, Clock, Mail, Phone, User, MessageSquare, Save, Loader2 } from 'lucide-react'
 import useReservationStore from '../store/reservationStore'
 import useRestaurantStore from '../../restaurants/store/restaurantStore'
 import useTableStore from '../../tables/store/tableStore'
@@ -18,7 +18,7 @@ const getDefaultDate = () => {
 
 const getDefaultTime = () => '20:00'
 
-const ReservationForm = ({ reservationToEdit = null, onClose, onSuccess }) => {
+const ReservationForm = ({ reservationToEdit = null, onClose, onSuccess, defaultRestaurantId = null }) => {
   const isEditing = Boolean(reservationToEdit)
   const user = useAuthStore((state) => state.user)
   
@@ -28,9 +28,13 @@ const ReservationForm = ({ reservationToEdit = null, onClose, onSuccess }) => {
 
   const createReservation = useReservationStore((state) => state.createReservation)
   const updateReservation = useReservationStore((state) => state.updateReservation)
+  const fetchAvailableHours = useReservationStore((state) => state.fetchAvailableHours)
 
   const { restaurants, fetchRestaurants } = useRestaurantStore()
   const { tables, fetchTablesByRestaurant } = useTableStore()
+
+  const [availableHours, setAvailableHours] = useState([])
+  const [loadingHours, setLoadingHours] = useState(false)
 
   const {
     register,
@@ -41,7 +45,7 @@ const ReservationForm = ({ reservationToEdit = null, onClose, onSuccess }) => {
     formState: { errors, isSubmitting },
   } = useForm({
     defaultValues: {
-      restaurantId: '',
+      restaurantId: defaultRestaurantId || '',
       tableId: '',
       customerName: isAdmin ? '' : `${user?.name || ''} ${user?.surname || ''}`.trim(),
       customerPhone: user?.phone || '',
@@ -55,6 +59,9 @@ const ReservationForm = ({ reservationToEdit = null, onClose, onSuccess }) => {
   })
 
   const selectedRestaurantId = watch('restaurantId')
+  const selectedTableId = watch('tableId')
+  const selectedDate = watch('date')
+  const selectedTime = watch('time')
 
   useEffect(() => {
     fetchRestaurants()
@@ -67,11 +74,47 @@ const ReservationForm = ({ reservationToEdit = null, onClose, onSuccess }) => {
     }
   }, [selectedRestaurantId, fetchTablesByRestaurant])
 
+  // Cargar horas disponibles cuando cambia la mesa o la fecha
   useEffect(() => {
-    if (!isEditing) {
+    const loadHours = async () => {
+      if (selectedTableId && selectedDate && selectedRestaurantId) {
+        setLoadingHours(true)
+        try {
+          const slots = await fetchAvailableHours({
+            tableId: selectedTableId,
+            restaurantId: selectedRestaurantId,
+            date: selectedDate
+          })
+          setAvailableHours(slots)
+          
+          // Si la hora seleccionada no está disponible en los nuevos slots, buscar la primera disponible
+          if (slots.length > 0) {
+            const isCurrentAvailable = slots.find(s => s.time === selectedTime && s.available)
+            if (!isCurrentAvailable) {
+              const firstAvailable = slots.find(s => s.available)
+              if (firstAvailable) {
+                setValue('time', firstAvailable.time)
+              }
+            }
+          }
+        } catch (err) {
+          console.error(err)
+        } finally {
+          setLoadingHours(false)
+        }
+      } else {
+        setAvailableHours([])
+      }
+    }
+
+    loadHours()
+  }, [selectedTableId, selectedDate, selectedRestaurantId, fetchAvailableHours, setValue])
+
+  useEffect(() => {
+    if (!isEditing && !defaultRestaurantId) {
         setValue('tableId', '')
     }
-  }, [selectedRestaurantId, setValue, isEditing])
+  }, [selectedRestaurantId, setValue, isEditing, defaultRestaurantId])
 
   useEffect(() => {
     if (reservationToEdit) {
@@ -189,18 +232,62 @@ const ReservationForm = ({ reservationToEdit = null, onClose, onSuccess }) => {
         </div>
 
         {/* Fecha y Hora */}
-        <div className="grid grid-cols-2 gap-6 p-6 bg-zinc-800/20 rounded-[2rem] border border-white/5">
-          <div className="space-y-2">
-            <label className="flex items-center gap-2 text-zinc-500 text-[10px] font-black uppercase tracking-widest">
-              <Calendar size={12} className="text-orange-500" /> Fecha
-            </label>
-            <input type="date" {...register('date', { required: true })} className="w-full bg-transparent border-none text-white focus:ring-0 outline-none [color-scheme:dark]" />
+        <div className="space-y-6">
+          <div className="grid grid-cols-1 gap-6 p-6 bg-zinc-800/20 rounded-[2rem] border border-white/5">
+            <div className="space-y-2">
+              <label className="flex items-center gap-2 text-zinc-500 text-[10px] font-black uppercase tracking-widest">
+                <Calendar size={12} className="text-orange-500" /> Fecha de Reserva
+              </label>
+              <input 
+                type="date" 
+                {...register('date', { required: true })} 
+                min={getDefaultDate()}
+                className="w-full bg-transparent border-none text-white text-xl font-bold focus:ring-0 outline-none [color-scheme:dark] cursor-pointer" 
+              />
+            </div>
           </div>
-          <div className="space-y-2">
-            <label className="flex items-center gap-2 text-zinc-500 text-[10px] font-black uppercase tracking-widest">
-              <Clock size={12} className="text-orange-500" /> Hora
+
+          <div className="space-y-3">
+            <label className="flex items-center gap-2 text-zinc-500 text-[10px] font-black uppercase tracking-widest ml-1">
+              <Clock size={12} className="text-orange-500" /> Horarios Disponibles
             </label>
-            <input type="time" {...register('time', { required: true })} className="w-full bg-transparent border-none text-white focus:ring-0 outline-none [color-scheme:dark]" />
+            
+            {!selectedTableId ? (
+              <div className="p-8 bg-zinc-900/50 rounded-2xl border border-dashed border-white/5 text-center">
+                <p className="text-zinc-500 text-xs">Selecciona una mesa para ver horarios</p>
+              </div>
+            ) : loadingHours ? (
+              <div className="p-8 flex flex-col items-center justify-center gap-3">
+                <Loader2 size={24} className="text-orange-500 animate-spin" />
+                <p className="text-zinc-500 text-xs">Consultando disponibilidad...</p>
+              </div>
+            ) : availableHours.length > 0 ? (
+              <div className="grid grid-cols-4 sm:grid-cols-5 gap-2">
+                {availableHours.map((slot) => (
+                  <button
+                    key={slot.time}
+                    type="button"
+                    disabled={!slot.available}
+                    onClick={() => setValue('time', slot.time)}
+                    className={`
+                      py-3 rounded-xl text-sm font-bold transition-all border
+                      ${selectedTime === slot.time 
+                        ? 'bg-orange-500 border-orange-400 text-white shadow-lg shadow-orange-500/20 scale-105' 
+                        : slot.available 
+                          ? 'bg-zinc-800/50 border-white/5 text-zinc-300 hover:bg-zinc-700' 
+                          : 'bg-zinc-900/30 border-transparent text-zinc-600 opacity-40 cursor-not-allowed'}
+                    `}
+                  >
+                    {slot.time}
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <div className="p-8 bg-zinc-900/50 rounded-2xl border border-white/5 text-center">
+                <p className="text-zinc-400 text-xs font-medium">No hay horarios disponibles para esta fecha.</p>
+              </div>
+            )}
+            <input type="hidden" {...register('time', { required: true })} />
           </div>
         </div>
 
@@ -214,7 +301,7 @@ const ReservationForm = ({ reservationToEdit = null, onClose, onSuccess }) => {
 
         <div className="flex gap-4 pt-4">
           <button type="button" onClick={onClose} className="flex-1 bg-zinc-800 hover:bg-zinc-700 text-zinc-400 py-4 rounded-2xl font-bold transition-all">Cancelar</button>
-          <button type="submit" disabled={isSubmitting} className="flex-[2] bg-orange-500 hover:bg-orange-600 text-white font-black py-4 rounded-2xl shadow-xl shadow-orange-500/20 active:scale-95 disabled:opacity-50 transition-all flex items-center justify-center gap-2">
+          <button type="submit" disabled={isSubmitting || (availableHours.length > 0 && !availableHours.find(s => s.time === selectedTime)?.available)} className="flex-[2] bg-orange-500 hover:bg-orange-600 text-white font-black py-4 rounded-2xl shadow-xl shadow-orange-500/20 active:scale-95 disabled:opacity-50 transition-all flex items-center justify-center gap-2">
             <Save size={18} /> {isEditing ? 'Actualizar' : 'Confirmar Reserva'}
           </button>
         </div>

@@ -31,19 +31,76 @@ const buildPaginationMeta = (page, limit, total) => {
     };
 };
 
+/* =========================
+   GET /users/:id
+   Obtiene un usuario por su ID
+   ========================= */
+export const getUserById = async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        const user = await User.findByPk(id, {
+            attributes: ['Id', 'Name', 'Surname', 'Username', 'Email', 'Status'],
+            include: [
+                {
+                    model: UserProfile,
+                    as: 'UserProfile',
+                    attributes: ['Phone', 'ProfilePicture'],
+                },
+                {
+                    model: UserRole,
+                    as: 'UserRole',
+                    include: [{ model: Role, as: 'Role', attributes: ['Name'] }],
+                },
+            ],
+        });
+
+        if (!user) {
+            return res.status(404).json({ success: false, message: 'Usuario no encontrado.' });
+        }
+
+        return res.status(200).json({
+            success: true,
+            user: formatearUsuario(user)
+        });
+    } catch (error) {
+        console.error('[UserController] getUserById:', error);
+        return res.status(500).json({ success: false, message: error.message });
+    }
+};
+
 const formatearUsuario = (user) => ({
     id: user.Id,
     name: user.Name,
     surname: user.Surname,
-    username: user.Username,
+    username: user.Username || user.username,
     email: user.Email,
     status: user.Status,
     phone: user.UserProfile?.Phone || null,
     profilePicture: user.UserProfile?.ProfilePicture || null,
+    expoToken: user.ExpoToken || null,
     roles: user.UserRole?.Role?.Name ? [user.UserRole.Role.Name] : [],
     createdAt: user.CreatedAt,
     updatedAt: user.UpdatedAt
 });
+
+export const saveExpoToken = async (req, res) => {
+    try {
+        const userId = req.user.Id;
+        const { expoToken } = req.body;
+
+        if (!expoToken) {
+            return res.status(400).json({ success: false, message: 'El token de Expo es requerido.' });
+        }
+
+        await User.update({ ExpoToken: expoToken }, { where: { Id: userId } });
+
+        return res.status(200).json({ success: true, message: 'Token de notificaciones guardado correctamente.' });
+    } catch (error) {
+        console.error('[UserController] saveExpoToken:', error);
+        return res.status(500).json({ success: false, message: error.message });
+    }
+};
 
 /* =========================
    GET /users
@@ -166,7 +223,7 @@ export const getProfile = async (req, res) => {
                 id            : user.Id,
                 name          : user.Name,
                 surname       : user.Surname,
-                username      : user.Username,
+                username      : user.Username || user.username,
                 email         : user.Email,
                 status        : user.Status,
                 phone         : user.UserProfile?.Phone         || null,
@@ -188,20 +245,40 @@ export const getProfile = async (req, res) => {
 export const updateProfile = async (req, res) => {
     try {
         const userId      = req.user.Id;
-        const { name, surname, phone } = req.body;
+        const { name, surname, username, phone } = req.body;
 
-        if (!name && !surname && !phone) {
+        if (!name && !surname && !username && !phone) {
             return res.status(400).json({
                 success: false,
-                message: 'Debes enviar al menos un campo para actualizar (name, surname, phone).',
+                message: 'Debes enviar al menos un campo para actualizar (name, surname, username, phone).',
             });
         }
 
-        // Actualizar User si hay cambios de nombre/apellido
-        if (name || surname) {
+        // Validar unicidad de username si se desea cambiar
+        if (username) {
+            const trimmedUsername = username.trim().toLowerCase();
+            if (trimmedUsername) {
+                const existing = await User.findOne({
+                    where: {
+                        Username: trimmedUsername,
+                        Id: { [Op.ne]: userId }
+                    }
+                });
+                if (existing) {
+                    return res.status(400).json({
+                        success: false,
+                        message: 'El nombre de usuario ya está en uso.',
+                    });
+                }
+            }
+        }
+
+        // Actualizar User si hay cambios de nombre/apellido/username
+        if (name || surname || username) {
             const updates = {};
-            if (name)    updates.Name    = name;
-            if (surname) updates.Surname = surname;
+            if (name)      updates.Name     = name;
+            if (surname)   updates.Surname  = surname;
+            if (username)  updates.Username = username.trim().toLowerCase();
 
             await User.update(updates, { where: { Id: userId } });
         }
@@ -235,7 +312,7 @@ export const updateProfile = async (req, res) => {
                 id            : updated.Id,
                 name          : updated.Name,
                 surname       : updated.Surname,
-                username      : updated.Username,
+                username      : updated.Username || updated.username,
                 email         : updated.Email,
                 status        : updated.Status,
                 phone         : updated.UserProfile?.Phone         || null,
@@ -305,7 +382,7 @@ export const updateProfilePicture = async (req, res) => {
                 id            : updated.Id,
                 name          : updated.Name,
                 surname       : updated.Surname,
-                username      : updated.Username,
+                username      : updated.Username || updated.username,
                 email         : updated.Email,
                 status        : updated.Status,
                 phone         : updated.UserProfile?.Phone         || null,

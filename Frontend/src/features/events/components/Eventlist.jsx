@@ -19,7 +19,7 @@ import { toast } from 'react-hot-toast'
 import useEventStore from '../store/eventStore'
 import useRestaurantStore from '../../restaurants/store/restaurantStore'
 import useAuthStore from '../../auth/store/authStore'
-import EventForm from './EventForm'
+import EventForm from './Eventform'
 import Skeleton from '../../../shared/components/ui/Skeleton'
 import ConfirmDialog from '../../../shared/components/ui/ConfirmDialog'
 

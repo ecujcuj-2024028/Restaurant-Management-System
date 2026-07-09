@@ -12,15 +12,7 @@ const itemVariants = {
 }
 
 const RestaurantCard = ({ restaurant, index, navigate }) => {
-  const { restaurantStats, fetchRestaurantStats } = useReviewStore()
   const id = restaurant.id || restaurant._id
-  const stats = restaurantStats[id]
-
-  useEffect(() => {
-    if (!stats) {
-      fetchRestaurantStats(id)
-    }
-  }, [id, stats, fetchRestaurantStats])
 
   return (
     <motion.div
@@ -58,8 +50,8 @@ const RestaurantCard = ({ restaurant, index, navigate }) => {
             <div className="flex items-center gap-2">
               <Star size={14} className="text-yellow-400 fill-yellow-400" />
               <span className="text-white text-xs font-bold">
-                {stats?.promedioRating ? stats.promedioRating : 'Nuevo'}
-                {stats?.totalReviews > 0 && <span className="text-zinc-500 font-medium ml-1">({stats.totalReviews})</span>}
+                {restaurant.totalReviews > 0 ? restaurant.rating : 'Nuevo'}
+                {restaurant.totalReviews > 0 && <span className="text-zinc-500 font-medium ml-1">({restaurant.totalReviews})</span>}
               </span>
             </div>
             <div className="flex items-center gap-1.5 text-zinc-500">

@@ -9,6 +9,19 @@ import { ADMIN_RESTAURANTE, ADMIN_SISTEMA } from '../../helpers/role-constants.j
 import { sequelize } from '../../configs/db-postgres.js';
 import { Op } from 'sequelize';
 import mongoose from 'mongoose';
+import axios from 'axios';
+
+const GATEWAY_INTERNAL_URL = process.env.GATEWAY_INTERNAL_URL || 'http://api_gateway:3000/restaurantManagement/v1/internal/emit';
+const NOTIFICATIONS_INTERNAL_URL = process.env.NOTIFICATIONS_INTERNAL_URL || 'http://api_gateway:3000/restaurantManagement/v1/notifications/internal/create';
+
+// Helper para crear notificaciones persistentes
+const createPersistentNotification = async (data) => {
+  try {
+    await axios.post(NOTIFICATIONS_INTERNAL_URL, data);
+  } catch (err) {
+    console.error('[NotificationError] Error creating persistent notification:', err.message);
+  }
+};
 
 /* ─────────────────────────────────────────────
    Helper: obtener IDs de restaurantes propios
@@ -37,23 +50,58 @@ export const createOrder = async (req, res) => {
       return res.status(400).json({ message: "Debe enviar al menos un producto o menú" });
     }
 
+    // Validar que el restaurante exista y esté activo
+    const restaurant = await Restaurant.findById(restaurantId);
+    if (!restaurant || !restaurant.isActive) {
+        await t.rollback();
+        return res.status(400).json({
+            success: false,
+            message: 'El restaurante no está disponible para recibir pedidos.'
+        });
+    }
+
     // ── VALIDACIÓN DE RESERVA PARA CLIENTES ──────────────────────────────────
     if (isClient) {
-      const restaurant = await Restaurant.findById(restaurantId);
-      const restaurantPhone = restaurant?.phone || 'el establecimiento';
       const today = new Date().toISOString().split('T')[0]; 
       
-      const activeReservation = await Reservation.findOne({
-        where: { userId, restaurantId, tableId, date: today, status: 'confirmada' },
+      // Obtener todas las reservaciones confirmadas o iniciadas del usuario para hoy en este restaurante y mesa
+      const activeReservations = await Reservation.findAll({
+        where: { userId, restaurantId, tableId, date: today, status: { [Op.in]: ['confirmada', 'iniciada'] } },
         transaction: t
       });
 
-      if (!activeReservation) {
+      if (!activeReservations || activeReservations.length === 0) {
         await t.rollback();
         return res.status(403).json({
           success: false,
-          message: `Primero debes tener una reservación confirmada en esta mesa para hoy.`
+          message: `No tienes una reservación confirmada o iniciada en esta mesa para hoy.`
         });
+      }
+
+      // Validar ventana de tiempo (2 horas desde la hora de la reserva), omitir si está iniciada
+      const hasIniciada = activeReservations.some(res => res.status === 'iniciada');
+      if (!hasIniciada) {
+        const now = new Date();
+        const currentHHMM = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+        
+        const isWithinWindow = activeReservations.some(res => {
+            const [resH, resM] = res.time.split(':').map(Number);
+            const resTime = new Date();
+            resTime.setHours(resH, resM, 0, 0);
+            
+            const endTime = new Date(resTime.getTime() + 120 * 60000); // +2 horas
+            const endHHMM = `${String(endTime.getHours()).padStart(2, '0')}:${String(endTime.getMinutes()).padStart(2, '0')}`;
+            
+            return currentHHMM >= res.time && currentHHMM <= endHHMM;
+        });
+
+        if (!isWithinWindow) {
+            await t.rollback();
+            return res.status(403).json({
+                success: false,
+                message: `Tu reservación no está activa en este momento. Solo puedes pedir durante las 2 horas de tu reserva (${activeReservations[0].time}).`
+            });
+        }
       }
     }
 
@@ -127,6 +175,18 @@ export const createOrder = async (req, res) => {
     await newOrder.save();
     await t.commit();
 
+    // Poblar datos para que el Admin vea el pedido completo (nombres, etc)
+    const populatedOrder = await Order.findById(newOrder._id)
+      .populate('restaurantId', 'name photos')
+      .lean();
+
+    // Notificar vía WebSockets al restaurante
+    axios.post(GATEWAY_INTERNAL_URL, {
+      event: 'order_created',
+      data: populatedOrder || newOrder,
+      room: `restaurant_${restaurantId}`
+    }).catch(err => console.error('[SocketError] Error notifying creation:', err.message));
+
     return res.status(201).json({ success: true, message: "Pedido creado correctamente", order: newOrder });
 
   } catch (error) {
@@ -198,6 +258,20 @@ export const cancelOrder = async (req, res) => {
     await order.save();
     await t.commit();
 
+    // Notificar vía WebSockets
+    axios.post(GATEWAY_INTERNAL_URL, {
+      event: 'order_cancelled',
+      data: order,
+      room: `restaurant_${order.restaurantId}`
+    }).catch(err => console.error('[SocketError] Error notifying cancellation:', err.message));
+
+    // Notificar al usuario específico
+    axios.post(GATEWAY_INTERNAL_URL, {
+      event: 'order_cancelled',
+      data: order,
+      room: `user_${order.userId}`
+    }).catch(() => {});
+
     return res.json({ message: "Pedido cancelado correctamente", order });
 
   } catch (error) {
@@ -212,13 +286,24 @@ export const cancelOrder = async (req, res) => {
 export const getOrderHistory = async (req, res) => {
   try {
     const userId = req.userId;
-    const { restaurantId } = req.query; // Soportar filtro por restaurante
+    const { restaurantId, startDate, endDate } = req.query;
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 10;
     const skip = (page - 1) * limit;
 
     const filter = { userId };
     if (restaurantId) filter.restaurantId = restaurantId;
+    
+    // Filtro por fecha
+    if (startDate || endDate) {
+      filter.createdAt = {};
+      if (startDate) filter.createdAt.$gte = new Date(startDate);
+      if (endDate) {
+        const end = new Date(endDate);
+        end.setHours(23, 59, 59, 999);
+        filter.createdAt.$lte = end;
+      }
+    }
 
     const orders = await Order.find(filter)
       .populate('restaurantId', 'name photos')
@@ -227,7 +312,7 @@ export const getOrderHistory = async (req, res) => {
       .limit(limit);
 
     return res.json({ page, limit, orders, reservations: [] });
-  } catch (error) {
+} catch (error) {
     console.error('Error getOrderHistory:', error.message);
     return res.status(500).json({
       message: "Error al obtener historial",
@@ -280,7 +365,51 @@ export const updateOrderStatus = async (req, res) => {
     order.status = status;
     await order.save();
 
+    // Intentar poblar restaurante para que el cliente no vea "Restaurante" genérico
+    const populatedOrder = await Order.findById(id).populate('restaurantId', 'name photos');
+
     console.log(`[OrderService] Order ${id} updated from ${previousStatus} to ${status} by ${req.userId}`);
+
+    // ... (statusMessages igual)
+    const statusMessages = {
+      recibido: "¡Recibimos tu pedido! Pronto empezaremos a prepararlo.",
+      en_preparacion: "Tu pedido está en la cocina. ¡Ya se siente el aroma!",
+      listo: "¡Prepárate! Ya casi llega tu pedido a la mesa.",
+      entregado: "¡Buen provecho! Esperamos que te haya gustado.",
+      cancelado: "Lo sentimos, tu pedido ha sido cancelado."
+    }
+
+    const statusTitles = {
+      recibido: "¡Recibimos tu pedido!",
+      en_preparacion: "Tu pedido está en la cocina",
+      listo: "¡Prepárate! Ya casi llega",
+      entregado: "¡Buen provecho!",
+      cancelado: "Pedido Cancelado"
+    }
+
+    // Persistir notificación para el cliente
+    createPersistentNotification({
+      userId: order.userId,
+      restaurantId: order.restaurantId,
+      type: 'order',
+      title: statusTitles[status] || 'Actualización de Pedido',
+      message: statusMessages[status] || `Tu pedido está: ${status}`,
+      link: '/orders'
+    });
+
+    // Notificar vía WebSockets usando el objeto poblado
+    axios.post(GATEWAY_INTERNAL_URL, {
+      event: 'order_status_updated',
+      data: populatedOrder || order,
+      room: `restaurant_${order.restaurantId}`
+    }).catch(err => console.error('[SocketError] Error notifying status update:', err.message));
+
+    // Notificar al usuario específico
+    axios.post(GATEWAY_INTERNAL_URL, {
+      event: 'order_status_updated',
+      data: populatedOrder || order,
+      room: `user_${order.userId}`
+    }).catch(() => {});
 
     return res.json({ 
       success: true, 
@@ -294,7 +423,7 @@ export const updateOrderStatus = async (req, res) => {
 
 export const getRestaurantOrders = async (req, res) => {
   try {
-    const { restaurantId, status } = req.query;
+    const { restaurantId, status, startDate, endDate } = req.query;
     const filter = {};
 
     // SEGURIDAD: Filtrar por propiedad
@@ -313,6 +442,17 @@ export const getRestaurantOrders = async (req, res) => {
     }
 
     if (status) filter.status = status;
+
+    // Filtro por fecha
+    if (startDate || endDate) {
+      filter.createdAt = {};
+      if (startDate) filter.createdAt.$gte = new Date(startDate);
+      if (endDate) {
+        const end = new Date(endDate);
+        end.setHours(23, 59, 59, 999);
+        filter.createdAt.$lte = end;
+      }
+    }
 
     const orders = await Order.find(filter).sort({ createdAt: -1 });
 
@@ -346,11 +486,39 @@ export const getInvoice = async (req, res) => {
         }
 
         const restaurant = await Restaurant.findById(order.restaurantId);
-        const customer = isCustomerOwner ? req.user : { Name: 'Cliente', Surname: 'Registrado', Email: null };
+        
+        let customerData = { Name: 'Cliente', Surname: 'Registrado', Email: null };
+        
+        // Intentar obtener datos reales del cliente desde identity-service
+        if (order.userId) {
+            try {
+                const IDENTITY_SERVICE_URL = process.env.IDENTITY_SERVICE_URL || 'http://identity_service:3001/restaurantManagement/v1';
+                const response = await axios.get(`${IDENTITY_SERVICE_URL}/users/${order.userId}`, {
+                    headers: { 'Authorization': req.header('Authorization') }
+                });
+                if (response.data?.success) {
+                    customerData = {
+                        Name: response.data.user.name,
+                        Surname: response.data.user.surname,
+                        Email: response.data.user.email
+                    };
+                }
+            } catch (err) {
+                console.warn(`[InvoiceError] No se pudo obtener datos del cliente ${order.userId}:`, err.message);
+                // Si el que solicita es el dueño del pedido, usamos sus datos de la sesión
+                if (isCustomerOwner) {
+                    customerData = {
+                        Name: req.user.Name,
+                        Surname: req.user.Surname,
+                        Email: req.user.Email
+                    };
+                }
+            }
+        }
 
         const invoiceParams = {
-            customerEmail: customer?.Email,
-            customerName: customer ? `${customer.Name} ${customer.Surname}` : 'Cliente',
+            customerEmail: customerData.Email,
+            customerName: `${customerData.Name} ${customerData.Surname}`,
             invoiceNumber: order._id.toString().slice(-8).toUpperCase(),
             date: new Date(order.updatedAt).toLocaleString('es-GT', { dateStyle: 'long' }),
             restaurantName: restaurant?.name || 'GastroManager',

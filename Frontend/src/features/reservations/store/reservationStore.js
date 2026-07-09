@@ -100,8 +100,34 @@ const useReservationStore = create((set) => ({
         }
     },
 
+    fetchAvailableHours: async (params) => {
+        try {
+            const { getAvailableHours } = await import('../../../shared/api/reservations')
+            const response = await getAvailableHours(params)
+            return response.data?.availableSlots || []
+        } catch (error) {
+            console.error('[ReservationStore] Error fetching available hours:', error)
+            return []
+        }
+    },
+
     clearReservationError: () => {
         set({ error: null })
+    },
+
+    // Handlers para WebSockets
+    handleSocketUpdate: (updatedRes) => {
+        set((state) => ({
+            reservations: state.reservations.map((r) =>
+                getReservationId(r) === getReservationId(updatedRes) ? updatedRes : r
+            ),
+        }))
+    },
+
+    handleSocketNewReservation: (newRes) => {
+        set((state) => ({
+            reservations: [newRes, ...state.reservations]
+        }))
     },
 }))
 

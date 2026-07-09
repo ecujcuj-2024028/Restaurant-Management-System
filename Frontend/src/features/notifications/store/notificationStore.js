@@ -70,6 +70,19 @@ const useNotificationStore = create((set, get) => ({
       console.error('Error deleting notification:', error)
     }
   },
+
+  // Handler para WebSockets
+  handleSocketNewNotification: (notification) => {
+    set((state) => {
+      // Evitar duplicados
+      if (state.notifications.some(n => n._id === notification._id)) return state;
+      
+      return {
+        notifications: [notification, ...state.notifications],
+        unreadCount: state.unreadCount + 1
+      }
+    })
+  }
 }))
 
 export default useNotificationStore

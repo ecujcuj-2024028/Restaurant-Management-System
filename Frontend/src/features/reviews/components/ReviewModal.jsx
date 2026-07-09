@@ -79,6 +79,7 @@ const ReviewModal = ({ product, restauranteId, onClose, onSuccess, reviewToEdit 
       } else {
         await submitReview({
           usuarioId: user?._id || user?.id || user?.uid,
+          username: user?.username || user?.Username || user?.name || 'Usuario',
           restauranteId,
           platoId: product._id || product.id || product.productId,
           rating,

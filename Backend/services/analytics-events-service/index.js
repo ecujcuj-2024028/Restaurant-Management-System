@@ -25,6 +25,7 @@ dotenv.config();
 
 const app = express();
 const PORT = process.env.ANALYTICS_SERVICE_PORT || 3004;
+const HOST = process.env.HOST || '0.0.0.0';
 const BASE_PATH = '/restaurantManagement/v1';
 
 /* =========================
@@ -63,9 +64,9 @@ const startServer = async () => {
 
         setupSwagger(app);
 
-        app.listen(PORT, () => {
+        app.listen(PORT, HOST, () => {
             console.log('---------------------------------------------');
-            console.log(`Analytics Service running on port: ${PORT}`);
+            console.log(`Analytics Service running on http://${HOST}:${PORT}`);
             console.log('---------------------------------------------');
         });
     } catch (error) {

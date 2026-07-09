@@ -22,3 +22,7 @@ export const updateReservation = (id, data) => {
 export const cancelReservation = (id) => {
   return api.patch(`${RESERVATIONS_ENDPOINT}/${id}/cancel`)
 }
+
+export const getAvailableHours = (params) => {
+  return api.get(`${RESERVATIONS_ENDPOINT}/available-hours`, { params })
+}

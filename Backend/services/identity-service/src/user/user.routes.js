@@ -1,7 +1,7 @@
 'use strict';
 
 import { Router } from 'express';
-import { getProfile, getUsers, updateProfile, updateProfilePicture, changePassword } from './user.controller.js';
+import { getProfile, getUsers, getUserById, updateProfile, updateProfilePicture, changePassword, saveExpoToken } from './user.controller.js';
 import { uploadUserProfileImage } from '../../middlewares/restaurant-uploader.js';
 import { hasRole } from '../../middlewares/hasRole.js';
 import { ADMIN_SISTEMA } from '../../helpers/role-constants.js';
@@ -121,5 +121,45 @@ router.patch(
 );
 
 router.patch('/profile/password', changePassword);
+
+/**
+ * @swagger
+ * /users/{id}:
+ *   get:
+ *     summary: Obtener un usuario por su ID
+ *     tags: [User]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string }
+ *     responses:
+ *       200: { description: Usuario encontrado }
+ *       404: { description: Usuario no encontrado }
+ */
+router.get('/:id', getUserById);
+
+/**
+ * @swagger
+ * /users/profile/notifications/token:
+ *   post:
+ *     summary: Guardar el token de Expo para notificaciones push
+ *     tags: [User]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               expoToken: { type: string }
+ *     responses:
+ *       200: { description: Token guardado correctamente }
+ */
+router.post('/profile/notifications/token', saveExpoToken);
 
 export default router;

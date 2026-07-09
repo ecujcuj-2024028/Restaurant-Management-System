@@ -79,11 +79,12 @@ const useReviewStore = create((set, get) => ({
     }
   },
 
-  submitReview: async ({ usuarioId, restauranteId, platoId, rating, comentario }) => {
+  submitReview: async ({ usuarioId, username, restauranteId, platoId, rating, comentario }) => {
     set({ submitting: true, error: null })
     try {
       const response = await createReview({
         usuarioId,
+        username,
         restauranteId,
         platoId,
         rating,
@@ -118,6 +119,9 @@ const useReviewStore = create((set, get) => ({
           },
         }
       })
+
+      // Actualizar stats generales del restaurante para que se refleje el cambio en el Dashboard/Grid
+      get().fetchRestaurantStats(restauranteId)
 
       return nuevaReview
     } catch (error) {
@@ -158,6 +162,12 @@ const useReviewStore = create((set, get) => ({
           },
         }
       })
+
+      // Actualizar stats generales del restaurante
+      if (updatedReview.restauranteId) {
+        get().fetchRestaurantStats(updatedReview.restauranteId)
+      }
+
       return updatedReview
     } catch (error) {
       const message = getErrorMessage(error)
@@ -169,6 +179,12 @@ const useReviewStore = create((set, get) => ({
   deleteReview: async (reviewId, platoId) => {
     set({ submitting: true, error: null })
     try {
+      // Obtener la reseña antes de borrarla para saber el restauranteId
+      const state = get()
+      const existing = state.reviewsByProduct[platoId]
+      const reviewToDelete = existing?.reviews.find(r => (r._id || r.id) === reviewId)
+      const restauranteId = reviewToDelete?.restauranteId
+
       await deleteReview(reviewId)
 
       set((state) => {
@@ -194,6 +210,11 @@ const useReviewStore = create((set, get) => ({
           },
         }
       })
+
+      // Actualizar stats generales del restaurante
+      if (restauranteId) {
+        get().fetchRestaurantStats(restauranteId)
+      }
     } catch (error) {
       const message = getErrorMessage(error)
       set({ submitting: false, error: message })
