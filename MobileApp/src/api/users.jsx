@@ -14,3 +14,13 @@ export const deleteAccount = async () => {
   const response = await api.delete('/users/account');
   return response.data;
 };
+
+export const updatePassword = async (passwordData) => {
+  const response = await api.patch('/users/profile/password', passwordData);
+  return response.data;
+};
+
+export const requestRoleUpgrade = async (requestedRole) => {
+  const response = await api.post('/auth/role-upgrade', { requestedRole });
+  return response.data;
+};

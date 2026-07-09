@@ -7,39 +7,18 @@ import useAuthStore from '../../../store/useAuthStore';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import Typography from '../../../shared/components/common/Typography';
 import { useTranslation } from 'react-i18next';
+import useOrderCartStore from '../../../store/useOrderCartStore';
 
 const MenuScreen = ({ navigation }) => {
   const { t, i18n } = useTranslation();
   const { user, logout, isDarkMode, toggleTheme, fetchProfile } = useAuthStore();
-  const [view, setView] = useState('menu'); // 'menu' o 'preferences'
-
+  const cartItems = useOrderCartStore((state) => state.items);
   // Refrescar el perfil cuando la pantalla gana el foco
   useFocusEffect(
     React.useCallback(() => {
       fetchProfile();
     }, [])
   );
-
-  // Controlar el botón de atrás físico en Android
-  useEffect(() => {
-    const backAction = () => {
-      if (view === 'preferences') {
-        setView('menu');
-        return true; // Previene que la navegación retroceda a la pantalla de inicio
-      }
-      return false; // Permite retroceder normalmente
-    };
-
-    const backHandler = BackHandler.addEventListener(
-      'hardwareBackPress',
-      backAction
-    );
-
-    return () => backHandler.remove();
-  }, [view]);
-
-  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
-  const [isLangDropdownOpen, setIsLangDropdownOpen] = useState(false);
 
   const handleLogout = () => {
     Alert.alert(
@@ -52,29 +31,14 @@ const MenuScreen = ({ navigation }) => {
     );
   };
 
-  const changeLanguage = (lng) => {
-    i18n.changeLanguage(lng);
-    setIsLangDropdownOpen(false);
-  };
-
-  const currentLanguageName = () => {
-    switch(i18n.language) {
-      case 'en': return 'English';
-      case 'pt': return 'Português';
-      case 'zh': return '简体中文';
-      case 'es':
-      default: return 'Español';
-    }
-  };
-
   const MENU_OPTIONS = [
-    { id: 'perfil', title: t('menu.myProfile'), icon: 'person-outline' },
+    { id: 'perfil', title: t('menu.myProfile'), icon: 'person-outline', action: () => navigation.navigate('Profile') },
     { id: 'reservas', title: t('menu.myReservations'), icon: 'calendar-outline', action: () => navigation.navigate('MyReservations') },
     { id: 'pedidos', title: t('menu.myOrders'), icon: 'list-outline', action: () => navigation.navigate('MyOrders') },
-    { id: 'eventos', title: t('menu.events'), icon: 'star-outline' },
+    { id: 'eventos', title: t('menu.events'), icon: 'star-outline', action: () => navigation.navigate('Events') },
     { id: 'notificaciones', title: t('menu.notifications'), icon: 'notifications-outline', action: () => navigation.navigate('NotificationHistory') },
-    { id: 'carrito', title: t('menu.cart'), icon: 'cart-outline' },
-    { id: 'preferencias', title: t('menu.preferences'), icon: 'settings-outline', action: () => setView('preferences') },
+    { id: 'carrito', title: t('menu.cart'), icon: 'cart-outline', action: () => navigation.navigate('CreateOrder') },
+    { id: 'preferencias', title: t('menu.preferences'), icon: 'settings-outline', action: () => navigation.navigate('Preferences') },
     { id: 'ayuda', title: t('menu.help'), icon: 'help-circle-outline', action: () => navigation.navigate('HelpSupport') },
   ];
 
@@ -87,138 +51,7 @@ const MenuScreen = ({ navigation }) => {
   // Foto de perfil real o placeholder
   const profileImage = user?.profilePicture || user?.avatar;
 
-  if (view === 'preferences') {
-    return (
-      <View style={[styles.container, { backgroundColor: bgColor }]}>
-        <View style={styles.header}>
-          <SafeAreaView>
-            <TouchableOpacity style={styles.backButton} onPress={() => setView('menu')}>
-              <Ionicons name="chevron-back" size={20} color="white" />
-              <Typography variant="body" color="white">{t('menu.backMenu')}</Typography>
-            </TouchableOpacity>
-            <View style={styles.titleContainer}>
-              <Typography variant="h2" color="white" style={styles.viewTitle}>{t('menu.preferences')}</Typography>
-            </View>
-          </SafeAreaView>
-        </View>
 
-        <ScrollView contentContainerStyle={styles.scrollContent}>
-          <Typography variant="bodyBold" color={textColor} style={{ marginBottom: 15 }}>
-            {t('menu.appearance')}
-          </Typography>
-
-          {/* Dropdown (Dropnav) para el Tema */}
-          <View style={[styles.dropdownContainer, { backgroundColor: cardColor, borderColor }]}>
-            <TouchableOpacity 
-              style={styles.dropdownHeader} 
-              onPress={() => { setIsDropdownOpen(!isDropdownOpen); setIsLangDropdownOpen(false); }}
-            >
-              <View style={styles.dropdownHeaderLeft}>
-                <Ionicons 
-                  name={isDarkMode ? "moon-outline" : "sunny-outline"} 
-                  size={22} 
-                  color={COLORS.primary} 
-                />
-                <Typography variant="body" color={textColor} style={{ marginLeft: 10 }}>
-                  {t('menu.theme')}: {isDarkMode ? t('menu.dark') : t('menu.light')}
-                </Typography>
-              </View>
-              <Ionicons 
-                name={isDropdownOpen ? "chevron-up" : "chevron-down"} 
-                size={20} 
-                color={textSecondary} 
-              />
-            </TouchableOpacity>
-
-            {isDropdownOpen && (
-              <View style={styles.dropdownContent}>
-                <TouchableOpacity 
-                  style={[styles.dropdownItem, !isDarkMode && styles.dropdownItemActive]}
-                  onPress={() => {
-                    if (isDarkMode) toggleTheme();
-                    setIsDropdownOpen(false);
-                  }}
-                >
-                  <Ionicons name="sunny-outline" size={20} color={!isDarkMode ? COLORS.primary : textSecondary} />
-                  <Typography color={!isDarkMode ? COLORS.primary : textColor} style={{ marginLeft: 10 }}>
-                    {t('menu.light')}
-                  </Typography>
-                  {!isDarkMode && <Ionicons name="checkmark" size={20} color={COLORS.primary} />}
-                </TouchableOpacity>
-
-                <TouchableOpacity 
-                  style={[styles.dropdownItem, isDarkMode && styles.dropdownItemActive]}
-                  onPress={() => {
-                    if (!isDarkMode) toggleTheme();
-                    setIsDropdownOpen(false);
-                  }}
-                >
-                  <Ionicons name="moon-outline" size={20} color={isDarkMode ? COLORS.primary : textSecondary} />
-                  <Typography color={isDarkMode ? COLORS.primary : textColor} style={{ marginLeft: 10 }}>
-                    {t('menu.dark')}
-                  </Typography>
-                  {isDarkMode && <Ionicons name="checkmark" size={20} color={COLORS.primary} />}
-                </TouchableOpacity>
-              </View>
-            )}
-          </View>
-
-          {/* Dropdown para Idioma */}
-          <View style={[styles.dropdownContainer, { backgroundColor: cardColor, borderColor, marginTop: 15 }]}>
-            <TouchableOpacity 
-              style={styles.dropdownHeader} 
-              onPress={() => { setIsLangDropdownOpen(!isLangDropdownOpen); setIsDropdownOpen(false); }}
-            >
-              <View style={styles.dropdownHeaderLeft}>
-                <Ionicons 
-                  name="language-outline" 
-                  size={22} 
-                  color={COLORS.primary} 
-                />
-                <Typography variant="body" color={textColor} style={{ marginLeft: 10 }}>
-                  {t('menu.language')}: {currentLanguageName()}
-                </Typography>
-              </View>
-              <Ionicons 
-                name={isLangDropdownOpen ? "chevron-up" : "chevron-down"} 
-                size={20} 
-                color={textSecondary} 
-              />
-            </TouchableOpacity>
-
-            {isLangDropdownOpen && (
-              <View style={styles.dropdownContent}>
-                {[
-                  { code: 'es', label: 'Español' },
-                  { code: 'en', label: 'English' },
-                  { code: 'pt', label: 'Português' },
-                  { code: 'zh', label: '简体中文' }
-                ].map((lang) => {
-                  const isActive = i18n.language === lang.code;
-                  return (
-                    <TouchableOpacity 
-                      key={lang.code}
-                      style={[styles.dropdownItem, isActive && styles.dropdownItemActive]}
-                      onPress={() => changeLanguage(lang.code)}
-                    >
-                      <Typography color={isActive ? COLORS.primary : textColor} style={{ marginLeft: 10 }}>
-                        {lang.label}
-                      </Typography>
-                      {isActive && <Ionicons name="checkmark" size={20} color={COLORS.primary} style={{ marginLeft: 'auto' }}/>}
-                    </TouchableOpacity>
-                  );
-                })}
-              </View>
-            )}
-          </View>
-          
-          <Typography variant="small" color={textSecondary} style={{ marginTop: 10, paddingHorizontal: 5 }}>
-            {t('menu.appearanceDesc')}
-          </Typography>
-        </ScrollView>
-      </View>
-    );
-  }
 
   return (
     <View style={[styles.container, { backgroundColor: bgColor }]}>
@@ -264,7 +97,13 @@ const MenuScreen = ({ navigation }) => {
                     {item.title}
                   </Typography>
                 </View>
-                <Ionicons name="chevron-forward" size={16} color={textSecondary} />
+                {item.id === 'carrito' && cartItems.length > 0 ? (
+                  <View style={styles.cartBadge}>
+                    <Typography variant="smallBold" color={COLORS.white}>{cartItems.length}</Typography>
+                  </View>
+                ) : (
+                  <Ionicons name="chevron-forward" size={16} color={textSecondary} />
+                )}
               </View>
             </TouchableOpacity>
           ))}
@@ -420,6 +259,15 @@ const styles = StyleSheet.create({
   },
   dropdownItemActive: {
     backgroundColor: 'rgba(255, 107, 0, 0.05)',
+  },
+  cartBadge: {
+    backgroundColor: COLORS.primary,
+    minWidth: 24,
+    height: 24,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 6,
   },
   ordersFab: {
     position: 'absolute',

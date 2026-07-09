@@ -15,8 +15,8 @@ export const cancelReservation = async (id) => {
   return response.data;
 };
 
-export const getTablesByRestaurant = async (restaurantId) => {
-  const response = await api.get(`/tables/restaurant/${restaurantId}`);
+export const getTablesByRestaurant = async (restaurantId, params = {}) => {
+  const response = await api.get(`/tables/restaurant/${restaurantId}`, { params });
   return response.data;
 };
 

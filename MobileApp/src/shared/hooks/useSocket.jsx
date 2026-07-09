@@ -1,46 +1,42 @@
 import { useEffect, useCallback } from 'react';
-import { io } from 'socket.io-client';
-
-const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000';
-const SOCKET_URL = API_URL.split('/restaurantManagement')[0] || 'http://localhost:3000';
-
-const socket = io(SOCKET_URL, {
-  autoConnect: false,
-});
+import useAuthStore from '../../store/useAuthStore';
 
 export const useSocket = (rooms = []) => {
-  useEffect(() => {
-    socket.connect();
+  const getSocket = useAuthStore(state => state.getSocket);
+  const socket = getSocket();
 
-    socket.on('connect', () => {
-      console.log('Socket conectado al Gateway (MobileApp)');
-      
-      // Convertir a array si es un string
+  useEffect(() => {
+    if (!socket) return;
+
+    // Join rooms when socket connects or is already connected
+    const joinRooms = () => {
       const roomsToJoin = Array.isArray(rooms) ? rooms : [rooms];
-      
       roomsToJoin.forEach(room => {
         if (room) {
           socket.emit('join_room', room);
-          console.log(`Unido a sala: ${room}`);
+          console.log(`[Socket Hook] Unido a sala: ${room}`);
         }
       });
-    });
+    };
 
-    socket.on('disconnect', () => {
-      console.log('Socket desconectado');
-    });
+    if (socket.connected) {
+      joinRooms();
+    }
+
+    socket.on('connect', joinRooms);
 
     return () => {
-      socket.off('connect');
-      socket.off('disconnect');
-      socket.disconnect();
+      socket.off('connect', joinRooms);
     };
-  }, [JSON.stringify(rooms)]); // Re-conectar si cambian las salas
+  }, [socket, JSON.stringify(rooms)]);
 
   const on = useCallback((event, callback) => {
-    socket.on(event, callback);
-    return () => socket.off(event, callback);
-  }, []);
+    if (socket) {
+      socket.on(event, callback);
+      return () => socket.off(event, callback);
+    }
+    return () => {};
+  }, [socket]);
 
   return { on, socket };
 };

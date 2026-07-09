@@ -26,6 +26,7 @@ import ConfirmDialog from '../../../shared/components/ui/ConfirmDialog'
 const STATUS_MAP = {
   pendiente: { label: 'Pendiente', color: 'text-yellow-500', bg: 'bg-yellow-500/10', icon: Clock },
   confirmada: { label: 'Confirmada', color: 'text-emerald-500', bg: 'bg-emerald-500/10', icon: CheckCircle2 },
+  iniciada: { label: 'Iniciada', color: 'text-orange-500', bg: 'bg-orange-500/10', icon: Timer },
   cancelada: { label: 'Cancelada', color: 'text-red-500', bg: 'bg-red-500/10', icon: XCircle },
   completada: { label: 'Completada', color: 'text-zinc-500', bg: 'bg-zinc-500/10', icon: CheckCircle2 },
 }
@@ -161,6 +162,7 @@ const MyReservations = () => {
             <option value="">Todos los estados</option>
             <option value="pendiente">Pendiente</option>
             <option value="confirmada">Confirmada</option>
+            <option value="iniciada">Iniciada</option>
             <option value="cancelada">Cancelada</option>
             <option value="completada">Completada</option>
           </select>

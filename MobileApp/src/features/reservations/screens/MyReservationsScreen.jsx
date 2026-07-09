@@ -17,9 +17,12 @@ import { useTranslation } from 'react-i18next';
 import { COLORS } from '../../../shared/constants/colors';
 import { COMMON_STYLES } from '../../../shared/constants/theme';
 import useAuthStore from '../../../store/useAuthStore';
+import useReviewStore from '../../../store/useReviewStore';
+import useNotificationStore from '../../../store/useNotificationStore';
 import useSocket from '../../../shared/hooks/useSocket';
 import Typography from '../../../shared/components/common/Typography';
 import Input from '../../../shared/components/common/Input';
+import Header from '../../../shared/components/common/Header';
 import { getMyReservations, cancelReservation } from '../../../api/reservations';
 
 // ── Date and Calendar Helpers ──────────────────────────────────────────────
@@ -174,6 +177,7 @@ const calStyles = StyleSheet.create({
 const STATUS_MAP = {
   pendiente: { label: 'Pendiente', color: '#FFC107', bg: 'rgba(255, 193, 7, 0.1)', icon: 'time-outline' },
   confirmada: { label: 'Confirmada', color: '#28A745', bg: 'rgba(40, 167, 69, 0.1)', icon: 'checkmark-circle-outline' },
+  iniciada: { label: 'Iniciada', color: '#FD7E14', bg: 'rgba(253, 126, 20, 0.1)', icon: 'play-circle-outline' },
   cancelada: { label: 'Cancelada', color: '#DC3545', bg: 'rgba(220, 53, 69, 0.1)', icon: 'close-circle-outline' },
   completada: { label: 'Completada', color: '#6C757D', bg: 'rgba(108, 117, 125, 0.1)', icon: 'checkbox-outline' },
 };
@@ -189,8 +193,22 @@ const MyReservationsScreen = ({ navigation }) => {
   const [selectedDate, setSelectedDate] = useState(null);
   const [calendarModalVisible, setCalendarModalVisible] = useState(false);
   const [, setTick] = useState(0); // Trigger periodic updates for active timers
+  const [selectedRating, setSelectedRating] = useState(0);
+  const [ratingModalVisible, setRatingModalVisible] = useState(false);
+  const { restaurantStats, fetchRestaurantStats } = useReviewStore();
 
   const bgColor = isDarkMode ? COLORS.darkBackground : '#F5F5F5';
+
+  let lastPress = 0;
+  const handleHeaderDoublePress = () => {
+    const time = new Date().getTime();
+    const delta = time - lastPress;
+    const DOUBLE_PRESS_DELAY = 400;
+    if (delta < DOUBLE_PRESS_DELAY) {
+      navigation.navigate('Tabs', { screen: 'ReservacionesTab' });
+    }
+    lastPress = time;
+  };
 
   const formatSelectedDate = (date) => {
     if (!date) return '';
@@ -257,12 +275,32 @@ const MyReservationsScreen = ({ navigation }) => {
     }
   };
 
+  const parseLocalDate = (dateVal) => {
+    if (!dateVal) return new Date();
+    const dateStr = typeof dateVal === 'string' ? dateVal.split('T')[0] : '';
+    if (dateStr) {
+      const [year, month, day] = dateStr.split('-').map(Number);
+      return new Date(year, month - 1, day);
+    }
+    return new Date(dateVal);
+  };
+
   useEffect(() => {
     loadReservations();
     // Timer to update "can cancel" active timers every second
     const interval = setInterval(() => setTick(tick => tick + 1), 1000);
     return () => clearInterval(interval);
   }, []);
+
+  useEffect(() => {
+    reservations.forEach(res => {
+      const rId = res.restaurant?._id || res.restaurant?.id || res.restaurant;
+      const targetId = typeof rId === 'object' ? (rId._id || rId.id) : rId;
+      if (targetId && typeof targetId === 'string') {
+        fetchRestaurantStats(targetId);
+      }
+    });
+  }, [reservations, fetchRestaurantStats]);
 
   // 5 minute grace period for cancellations
   const canCancel = useCallback((res) => {
@@ -306,21 +344,32 @@ const MyReservationsScreen = ({ navigation }) => {
       
       let matchesDate = true;
       if (selectedDate) {
-        const resDate = new Date(res.date);
+        const resDate = parseLocalDate(res.date);
         matchesDate = 
           resDate.getDate() === selectedDate.getDate() &&
           resDate.getMonth() === selectedDate.getMonth() &&
           resDate.getFullYear() === selectedDate.getFullYear();
       }
+
+      let matchesRating = true;
+      if (selectedRating > 0) {
+        const rId = res.restaurant?._id || res.restaurant?.id || res.restaurant;
+        const targetId = typeof rId === 'object' ? (rId._id || rId.id) : rId;
+        if (targetId) {
+          const stats = restaurantStats[targetId];
+          const rating = stats?.promedioRating || 0;
+          matchesRating = rating >= selectedRating;
+        }
+      }
       
-      return matchesSearch && matchesStatus && matchesDate;
+      return matchesSearch && matchesStatus && matchesDate && matchesRating;
     });
-  }, [reservations, searchTerm, statusFilter, selectedDate]);
+  }, [reservations, searchTerm, statusFilter, selectedDate, selectedRating, restaurantStats]);
 
   const renderReservationItem = ({ item }) => {
     const status = STATUS_MAP[item.status] || STATUS_MAP.pendiente;
     const isNew = canCancel(item);
-    const dateStr = new Date(item.date).toLocaleDateString(undefined, { 
+    const dateStr = parseLocalDate(item.date).toLocaleDateString(undefined, { 
       weekday: 'long', 
       year: 'numeric', 
       month: 'long', 
@@ -425,15 +474,13 @@ const MyReservationsScreen = ({ navigation }) => {
       <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} />
 
       {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
-          <Ionicons name="chevron-back" size={24} color={textColor} />
-        </TouchableOpacity>
-        <Typography variant="h2" color={textColor}>
-          {t('menu.myReservations')}
-        </Typography>
-        <View style={{ width: 24 }} />
-      </View>
+      <Header 
+        title={t('menu.myReservations')} 
+        navigation={navigation} 
+        showBack={true} 
+        showNotification={true} 
+        onTitlePress={handleHeaderDoublePress}
+      />
 
       {/* Filter bar */}
       <View style={styles.filtersWrapper}>
@@ -453,7 +500,7 @@ const MyReservationsScreen = ({ navigation }) => {
               styles.dateFilterBtn, 
               { 
                 backgroundColor: selectedDate ? COLORS.primary : cardColor,
-                borderColor: borderColor 
+                borderColor: selectedDate ? COLORS.primary : borderColor 
               }
             ]}
             onPress={() => setCalendarModalVisible(true)}
@@ -464,24 +511,54 @@ const MyReservationsScreen = ({ navigation }) => {
               color={selectedDate ? COLORS.white : COLORS.primary} 
             />
           </TouchableOpacity>
+
+          <TouchableOpacity 
+            style={[
+              styles.dateFilterBtn, 
+              { 
+                backgroundColor: selectedRating > 0 ? COLORS.primary : cardColor,
+                borderColor: selectedRating > 0 ? COLORS.primary : borderColor 
+              }
+            ]}
+            onPress={() => setRatingModalVisible(true)}
+          >
+            <Ionicons 
+              name={selectedRating > 0 ? "star" : "star-outline"} 
+              size={20} 
+              color={COLORS.accent} 
+            />
+          </TouchableOpacity>
         </View>
 
-        {selectedDate && (
+        {(selectedDate || selectedRating > 0) && (
           <View style={styles.activeFiltersRow}>
-            <View style={[styles.activeFilterPill, { backgroundColor: COLORS.primary + '15' }]}>
-              <Ionicons name="calendar" size={12} color={COLORS.primary} style={{ marginRight: 6 }} />
-              <Typography variant="captionBold" color={COLORS.primary}>
-                {formatSelectedDate(selectedDate)}
-              </Typography>
-              <TouchableOpacity onPress={() => setSelectedDate(null)} style={{ marginLeft: 6 }}>
-                <Ionicons name="close-circle" size={14} color={COLORS.primary} />
-              </TouchableOpacity>
-            </View>
+            {selectedDate && (
+              <View style={[styles.activeFilterPill, { backgroundColor: COLORS.primary + '15', marginRight: 8, marginBottom: 8 }]}>
+                <Ionicons name="calendar" size={12} color={COLORS.primary} style={{ marginRight: 6 }} />
+                <Typography variant="captionBold" color={COLORS.primary}>
+                  {formatSelectedDate(selectedDate)}
+                </Typography>
+                <TouchableOpacity onPress={() => setSelectedDate(null)} style={{ marginLeft: 6 }}>
+                  <Ionicons name="close-circle" size={14} color={COLORS.primary} />
+                </TouchableOpacity>
+              </View>
+            )}
+            {selectedRating > 0 && (
+              <View style={[styles.activeFilterPill, { backgroundColor: COLORS.primary + '15', marginBottom: 8 }]}>
+                <Ionicons name="star" size={12} color={COLORS.primary} style={{ marginRight: 6 }} />
+                <Typography variant="captionBold" color={COLORS.primary}>
+                  {selectedRating} ★ o más
+                </Typography>
+                <TouchableOpacity onPress={() => setSelectedRating(0)} style={{ marginLeft: 6 }}>
+                  <Ionicons name="close-circle" size={14} color={COLORS.primary} />
+                </TouchableOpacity>
+              </View>
+            )}
           </View>
         )}
 
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.statusChips}>
-          {['ALL', 'pendiente', 'confirmada', 'cancelada', 'completada'].map((statusKey) => {
+          {['ALL', 'pendiente', 'confirmada', 'iniciada', 'cancelada', 'completada'].map((statusKey) => {
             const isActive = statusFilter === statusKey;
             let label = t('restaurants.all') || 'Todos';
             if (statusKey !== 'ALL') {
@@ -527,12 +604,14 @@ const MyReservationsScreen = ({ navigation }) => {
             />
           }
           ListEmptyComponent={
-            <View style={styles.emptyContainer}>
-              <Ionicons name="calendar-outline" size={48} color={textSecondary} style={{ marginBottom: 12 }} />
-              <Typography variant="body" color={textSecondary}>
-                Sin registros encontrados
-              </Typography>
-            </View>
+            <TouchableOpacity onPress={handleHeaderDoublePress} activeOpacity={1}>
+              <View style={styles.emptyContainer}>
+                <Ionicons name="calendar-outline" size={48} color={textSecondary} style={{ marginBottom: 12 }} />
+                <Typography variant="body" color={textSecondary}>
+                  Sin registros encontrados
+                </Typography>
+              </View>
+            </TouchableOpacity>
           }
         />
       )}
@@ -572,6 +651,60 @@ const MyReservationsScreen = ({ navigation }) => {
           </View>
         </TouchableOpacity>
       </Modal>
+
+      {/* Rating Filter Modal */}
+      <Modal
+        visible={ratingModalVisible}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setRatingModalVisible(false)}
+      >
+        <TouchableOpacity
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPress={() => setRatingModalVisible(false)}
+        >
+          <View style={[styles.bottomSheet, { backgroundColor: cardColor }]}>
+            <View style={[styles.sheetHeader, { borderBottomColor: isDarkMode ? COLORS.darkBorder : '#f1f5f9' }]}>
+              <Typography variant="bodyBold" color={textColor}>
+                Filtrar por Calificación
+              </Typography>
+              <TouchableOpacity onPress={() => setRatingModalVisible(false)} style={styles.closeSheetBtn}>
+                <Ionicons name="close" size={24} color={textColor} />
+              </TouchableOpacity>
+            </View>
+            <View style={styles.sheetContent}>
+              {[
+                { value: 0, label: t('home.allRatings') || 'Todas' },
+                { value: 5, label: '5 ★' },
+                { value: 4, label: '4★ +' },
+                { value: 3, label: '3★ +' },
+                { value: 2, label: '2★ +' },
+              ].map((opt) => {
+                const isSelected = opt.value === selectedRating;
+                return (
+                  <TouchableOpacity
+                    key={opt.value}
+                    onPress={() => {
+                      setSelectedRating(opt.value);
+                      setRatingModalVisible(false);
+                    }}
+                    style={[styles.optionRow, isSelected && { backgroundColor: COLORS.primary + '15' }]}
+                  >
+                    <Typography 
+                      variant={isSelected ? 'bodyBold' : 'body'} 
+                      color={isSelected ? COLORS.primary : textColor}
+                    >
+                      {opt.label}
+                    </Typography>
+                    {isSelected && <Ionicons name="checkmark" size={20} color={COLORS.primary} />}
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          </View>
+        </TouchableOpacity>
+      </Modal>
     </SafeAreaView>
   );
 };
@@ -593,6 +726,7 @@ const styles = StyleSheet.create({
   filtersWrapper: {
     paddingHorizontal: 16,
     paddingBottom: 8,
+    marginBottom: 12,
   },
   searchRow: {
     flexDirection: 'row',
@@ -739,6 +873,15 @@ const styles = StyleSheet.create({
   },
   sheetContent: {
     marginVertical: 8,
+  },
+  optionRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    marginBottom: 6,
   },
 });
 

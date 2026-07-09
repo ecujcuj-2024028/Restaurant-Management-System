@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import {
   View,
   StyleSheet,
@@ -14,19 +14,25 @@ import {
   ActivityIndicator,
   TextInput,
   KeyboardAvoidingView,
+  Animated,
+  Easing,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { COLORS } from '../../../shared/constants/colors';
 import { COMMON_STYLES } from '../../../shared/constants/theme';
 import useAuthStore from '../../../store/useAuthStore';
+import useNotificationStore from '../../../store/useNotificationStore';
 import Typography from '../../../shared/components/common/Typography';
 import Input from '../../../shared/components/common/Input';
 import Skeleton from '../../../shared/components/common/Skeleton';
 import Button from '../../../shared/components/common/Button';
+import Header from '../../../shared/components/common/Header';
 import { getMyOrders, sendOrderInvoice } from '../../../api/orders';
 import api from '../../../api/api';
+import useOrderCartStore from '../../../store/useOrderCartStore';
+import { useSocket } from '../../../shared/hooks/useSocket';
 
 // ── Status helpers ────────────────────────────────────────────────────────────
 const STATUS_COLORS = {
@@ -85,7 +91,9 @@ const OrdersSkeleton = ({ isDark }) => (
 );
 
 // ── Tarjeta de pedido ─────────────────────────────────────────────────────────
-const OrderCard = ({ order, isDark, onPress, t }) => {
+const OrderCard = ({ order, isDark, onPress, t: propT }) => {
+  const { t: hookT } = useTranslation();
+  const t = propT || hookT;
   const bgCard = isDark ? COLORS.darkSurface : COLORS.white;
   const textColor = isDark ? COLORS.darkText : COLORS.text;
   const textSecondary = isDark ? COLORS.darkTextSecondary : COLORS.textSecondary;
@@ -208,15 +216,119 @@ const OrderCard = ({ order, isDark, onPress, t }) => {
   );
 };
 
-// ── Detalle de Pedido Modal ──────────────────────────────────────────────────
-const OrderDetailModal = ({ visible, onClose, order, isDark, t, onProductPress, onSendInvoicePress }) => {
-  const { user } = useAuthStore();
-  if (!order) return null;
+// ── Animated Timeline Step ─────────────────────────────────────────────────────
+const AnimatedTimelineStep = ({ completed, isDark, children, showLine, lineCompleted }) => {
+  const resolvedCompleted = completed || lineCompleted;
 
-  const bgModal = isDark ? COLORS.darkSurface : COLORS.white;
+  const scaleAnim = useRef(new Animated.Value(resolvedCompleted ? 1 : 0.8)).current;
+  const opacityAnim = useRef(new Animated.Value(resolvedCompleted ? 1 : 0.45)).current;
+  const lineAnim = useRef(new Animated.Value(lineCompleted ? 1 : 0)).current;
+  const pulseAnim = useRef(new Animated.Value(1)).current;
+
+  const inactiveColor = isDark ? '#334155' : '#E2E8F0';
+
+  const bgColor = scaleAnim.interpolate({
+    inputRange: [0.8, 1],
+    outputRange: [inactiveColor, COLORS.primary],
+    extrapolate: 'clamp',
+  });
+
+  useEffect(() => {
+    Animated.parallel([
+      Animated.spring(scaleAnim, {
+        toValue: resolvedCompleted ? 1 : 0.8,
+        useNativeDriver: false,
+        tension: 70,
+        friction: 10,
+      }),
+      Animated.timing(opacityAnim, {
+        toValue: resolvedCompleted ? 1 : 0.45,
+        duration: 350,
+        easing: Easing.out(Easing.ease),
+        useNativeDriver: false,
+      }),
+    ]).start();
+  }, [resolvedCompleted]);
+
+  useEffect(() => {
+    Animated.timing(lineAnim, {
+      toValue: lineCompleted ? 1 : 0,
+      duration: 550,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: false,
+    }).start();
+  }, [lineCompleted]);
+
+  return (
+    <View style={odStyles.timelineLeft}>
+      <Animated.View
+        style={[
+          odStyles.timelineCircle,
+          {
+            backgroundColor: bgColor,
+            transform: [{ scale: Animated.multiply(scaleAnim, pulseAnim) }],
+          },
+        ]}
+      >
+        <Animated.View style={[odStyles.innerDot, { opacity: opacityAnim }]} />
+      </Animated.View>
+      {showLine && (
+        <View style={[odStyles.timelineLineTrack, { backgroundColor: inactiveColor }]}>
+          <Animated.View
+            style={[
+              odStyles.timelineLineFill,
+              {
+                height: lineAnim.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: ['0%', '100%'],
+                }),
+                backgroundColor: COLORS.primary,
+              },
+            ]}
+          />
+        </View>
+      )}
+    </View>
+  );
+};
+
+// ── Detalle de Pedido Modal ──────────────────────────────────────────────────
+const OrderDetailModal = ({ visible, onClose, order, isDark, t: propT, onProductPress, onSendInvoicePress }) => {
+  const { t: hookT } = useTranslation();
+  const t = propT || hookT;
+  const { user } = useAuthStore();
+  const insets = useSafeAreaInsets();
+
+  const bgModal = isDark ? COLORS.darkBackground : COLORS.background;
+  const cardBg = isDark ? COLORS.darkSurface : COLORS.white;
   const textColor = isDark ? COLORS.darkText : COLORS.text;
   const textSecondary = isDark ? COLORS.darkTextSecondary : COLORS.textSecondary;
   const borderColor = isDark ? COLORS.darkBorder : COLORS.border;
+
+  // Animated values for status change
+  const statusFadeAnim = useRef(new Animated.Value(1)).current;
+  const statusSlideAnim = useRef(new Animated.Value(0)).current;
+  const prevStatusRef = useRef(order?.status);
+
+  useEffect(() => {
+    const currentStatus = order?.status || order?.estado;
+    if (prevStatusRef.current && prevStatusRef.current !== currentStatus) {
+      // Slide out + fade out old content, then slide in + fade in new
+      Animated.parallel([
+        Animated.timing(statusFadeAnim, { toValue: 0, duration: 200, useNativeDriver: true }),
+        Animated.timing(statusSlideAnim, { toValue: -20, duration: 200, useNativeDriver: true }),
+      ]).start(() => {
+        statusSlideAnim.setValue(20);
+        Animated.parallel([
+          Animated.timing(statusFadeAnim, { toValue: 1, duration: 350, easing: Easing.out(Easing.ease), useNativeDriver: true }),
+          Animated.timing(statusSlideAnim, { toValue: 0, duration: 350, easing: Easing.out(Easing.ease), useNativeDriver: true }),
+        ]).start();
+      });
+    }
+    prevStatusRef.current = currentStatus;
+  }, [order?.status, order?.estado]);
+
+  if (!order) return null;
 
   const restaurantName = order.restaurantId?.name || order.restaurant?.name || order.restaurantName || t('orders.unknownRestaurant', 'Restaurante');
   const statusColor = getStatusColor(order.status || order.estado);
@@ -227,183 +339,311 @@ const OrderDetailModal = ({ visible, onClose, order, isDark, t, onProductPress, 
     ? t(`orders.status.${order.status || order.estado}`)
     : (order.status || order.estado || '');
 
-  const isEntregado = order.status === 'entregado' || order.estado === 'entregado';
+  const statusRaw = order.status || order.estado || 'recibido';
+  const isTrackingView = statusRaw !== 'entregado' && statusRaw !== 'cancelado';
+  const isEntregado = statusRaw === 'entregado';
 
   // Extract products/items from any of the formats
   const items = order.items || order.products || order.orderDetails || [];
 
-  return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <View style={odStyles.overlay}>
-        <TouchableOpacity 
-          style={StyleSheet.absoluteFillObject} 
-          activeOpacity={1} 
-          onPress={onClose}
-        />
-        <View style={[odStyles.card, { backgroundColor: bgModal }]}>
-          {/* Header */}
-          <View style={[odStyles.header, { borderBottomColor: borderColor }]}>
-            <View style={{ flex: 1 }}>
-              <Typography variant="h3" color={textColor}>{restaurantName}</Typography>
-              <Typography variant="small" color={textSecondary}>
-                {t('orders.order', 'Pedido')} #{ (order._id || order.id)?.slice(-6).toUpperCase() }
-              </Typography>
-            </View>
-            <TouchableOpacity onPress={onClose} style={[odStyles.closeBtn, { backgroundColor: isDark ? '#334155' : '#f1f5f9' }]}>
-              <Ionicons name="close" size={20} color={textColor} />
-            </TouchableOpacity>
-          </View>
+  // Helper formatting function
+  const formatTime = (date) => {
+    if (!date) return '';
+    const d = new Date(date);
+    if (isNaN(d.getTime())) return '';
+    let hours = d.getHours();
+    const minutes = String(d.getMinutes()).padStart(2, '0');
+    const ampm = hours >= 12 ? 'PM' : 'AM';
+    hours = hours % 12;
+    hours = hours ? hours : 12;
+    return `${hours}:${minutes} ${ampm}`;
+  };
 
-          <ScrollView style={{ flex: 1 }} contentContainerStyle={odStyles.scroll} showsVerticalScrollIndicator={false}>
-            {/* Estado */}
-            <View style={odStyles.infoRow}>
-              <View>
+  // Estimated arrival time calculation
+  const getEstimatedTime = () => {
+    const createdAt = new Date(order.createdAt || Date.now());
+    const elapsedMinutes = Math.floor((Date.now() - createdAt.getTime()) / 60000);
+    
+    if (statusRaw === 'recibido') {
+      const mins = Math.max(15, 30 - elapsedMinutes);
+      return `${mins} minutos`;
+    } else if (statusRaw === 'en_preparacion') {
+      const mins = Math.max(5, 18 - elapsedMinutes);
+      return `${mins} minutos`;
+    } else if (statusRaw === 'listo') {
+      return '5 minutos';
+    }
+    return '15 minutos';
+  };
+
+  // Build steps
+  const orderCreatedAt = order.createdAt ? new Date(order.createdAt) : new Date();
+  
+  // Step 1: Pedido recibido
+  const step1Completed = true;
+  const step1Time = formatTime(orderCreatedAt);
+
+  // Step 2: Preparando tu pedido
+  const step2Completed = ['en_preparacion', 'listo', 'entregado'].includes(statusRaw);
+  const step2Time = step2Completed
+    ? formatTime(new Date(orderCreatedAt.getTime() + 4 * 60 * 1000))
+    : t('orders.tracking.pending', 'Pendiente');
+
+  // Step 3: En camino / Listo para servir
+  const step3Completed = ['listo', 'entregado'].includes(statusRaw);
+  const isTableService = order.tableNumber != null && order.tableNumber !== '';
+  const step3Title = isTableService ? t('orders.tracking.readyToServe', 'Listo para servir') : t('orders.tracking.inRoute', 'En camino');
+  const step3Detail = step3Completed
+    ? (isTableService ? t('orders.tracking.readyAtTable', 'Listo en mesa #{{tableNumber}}', { tableNumber: order.tableNumber }) : t('orders.tracking.inRouteDetail', 'En ruta - 1.2 km'))
+    : (isTableService ? t('orders.tracking.pendingServe', 'Pendiente de servir') : t('orders.tracking.estimatedInRoute', 'Estimado en camino'));
+  const step3Time = step3Completed
+    ? formatTime(new Date(orderCreatedAt.getTime() + 15 * 60 * 1000))
+    : step3Detail;
+
+  // Step 4: Entregado
+  const step4Completed = statusRaw === 'entregado';
+  const step4Time = step4Completed
+    ? formatTime(new Date(order.updatedAt || Date.now()))
+    : t('orders.tracking.estimatedDelivery', 'Estimado {{time}}', { time: formatTime(new Date(orderCreatedAt.getTime() + 26 * 60 * 1000)) });
+
+  return (
+    <Modal visible={visible} transparent={false} animationType="slide" onRequestClose={onClose} statusBarTranslucent>
+      <StatusBar barStyle="light-content" backgroundColor={COLORS.primary} />
+      <View style={[odStyles.fullScreenContainer, { backgroundColor: bgModal, paddingTop: insets.top, paddingBottom: insets.bottom }]}>
+        
+        {/* Orange Premium Header */}
+        <View style={odStyles.orangeHeader}>
+          <TouchableOpacity onPress={onClose} style={odStyles.volverBtn} activeOpacity={0.7}>
+            <Typography color={COLORS.white} style={odStyles.volverText}>
+              ← {t('orders.tracking.back', 'Volver')}
+            </Typography>
+          </TouchableOpacity>
+          
+          <Typography variant="h2" color={COLORS.white} style={odStyles.headerTitle}>
+            {isTrackingView ? t('orders.tracking.title', 'Seguimiento de Pedido') : t('orders.tracking.detail', 'Detalle')}
+          </Typography>
+          
+          <Typography color={COLORS.white} style={odStyles.headerSubtitle} numberOfLines={1}>
+            Pedido #{ (order._id || order.id)?.slice(-4).toUpperCase() } · {restaurantName}
+          </Typography>
+        </View>
+
+        {isTrackingView ? (
+          /* ==================== VISTA SEGUIMIENTO ==================== */
+          <ScrollView style={{ flex: 1 }} contentContainerStyle={odStyles.trackingScroll} showsVerticalScrollIndicator={false}>
+            {/* Estimated Arrival Box */}
+            <Animated.View
+              style={[
+                odStyles.estimatedBox,
+                { borderColor: COLORS.primary, backgroundColor: isDark ? 'rgba(255, 107, 0, 0.05)' : '#FFF3E0' },
+                { opacity: statusFadeAnim, transform: [{ translateY: statusSlideAnim }] },
+              ]}
+            >
+              <Typography variant="smallBold" color={COLORS.primary} style={{ textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                {t('orders.tracking.estimatedArrival', 'Tiempo estimado de llegada')}
+              </Typography>
+              <Typography variant="h1" color={COLORS.primary} style={odStyles.estimatedTimeText}>
+                {getEstimatedTime()}
+              </Typography>
+            </Animated.View>
+
+            {/* Timeline */}
+            <View style={odStyles.timelineContainer}>
+
+              {/* Step 1 */}
+              <View style={odStyles.timelineRow}>
+                <AnimatedTimelineStep completed={step1Completed} isDark={isDark} showLine lineCompleted={step2Completed} />
+                <Animated.View style={[odStyles.timelineRight, { opacity: statusFadeAnim, transform: [{ translateY: statusSlideAnim }] }]}>
+                  <Typography variant="bodyBold" color={step1Completed ? textColor : textSecondary}>
+                    {t('orders.tracking.received', 'Pedido recibido')}
+                  </Typography>
+                  <Typography variant="small" color={textSecondary}>{step1Time}</Typography>
+                </Animated.View>
+              </View>
+
+              {/* Step 2 */}
+              <View style={odStyles.timelineRow}>
+                <AnimatedTimelineStep completed={step2Completed} isDark={isDark} showLine lineCompleted={step3Completed} />
+                <Animated.View style={[odStyles.timelineRight, { opacity: statusFadeAnim, transform: [{ translateY: statusSlideAnim }] }]}>
+                  <Typography variant="bodyBold" color={step2Completed ? textColor : textSecondary}>
+                    {t('orders.tracking.preparing', 'Preparando tu pedido')}
+                  </Typography>
+                  <Typography variant="small" color={textSecondary}>{step2Time}</Typography>
+                </Animated.View>
+              </View>
+
+              {/* Step 3 */}
+              <View style={odStyles.timelineRow}>
+                <AnimatedTimelineStep completed={step3Completed} isDark={isDark} showLine lineCompleted={step4Completed} />
+                <Animated.View style={[odStyles.timelineRight, { opacity: statusFadeAnim, transform: [{ translateY: statusSlideAnim }] }]}>
+                  <Typography variant="bodyBold" color={step3Completed ? textColor : textSecondary}>
+                    {step3Title}
+                  </Typography>
+                  <Typography variant="small" color={step3Completed ? COLORS.primary : textSecondary} style={{ fontWeight: step3Completed ? '600' : '400' }}>
+                    {step3Time}
+                  </Typography>
+                </Animated.View>
+              </View>
+
+              {/* Step 4 */}
+              <View style={odStyles.timelineRow}>
+                <AnimatedTimelineStep completed={step4Completed} isDark={isDark} showLine={false} lineCompleted={false} />
+                <Animated.View style={[odStyles.timelineRight, { opacity: statusFadeAnim, transform: [{ translateY: statusSlideAnim }] }]}>
+                  <Typography variant="bodyBold" color={step4Completed ? textColor : textSecondary} style={{ opacity: step4Completed ? 1 : 0.6 }}>
+                    {t('orders.tracking.delivered', 'Entregado')}
+                  </Typography>
+                  <Typography variant="small" color={textSecondary} style={{ opacity: step4Completed ? 1 : 0.6 }}>
+                    {step4Time}
+                  </Typography>
+                </Animated.View>
+              </View>
+
+            </View>
+          </ScrollView>
+        ) : (
+          /* ==================== VISTA DETALLE ==================== */
+          <ScrollView style={{ flex: 1 }} contentContainerStyle={odStyles.detailScrollContainer} showsVerticalScrollIndicator={false}>
+            <View style={[odStyles.detailCard, { backgroundColor: cardBg }]}>
+              {/* Estado */}
+              <View style={odStyles.detailSectionHeader}>
                 <Typography variant="bodyBold" color={textColor}>{t('orders.statusTitle', 'Estado')}</Typography>
-                <Typography variant="small" color={statusColor} style={{ fontWeight: '700', marginTop: 2 }}>
+              </View>
+              <View style={odStyles.detailSectionContent}>
+                <Typography variant="body" color={statusColor} style={{ fontWeight: '700' }}>
                   {statusLabel}
                 </Typography>
-              </View>
-              {dateStr ? (
-                <View style={{ alignItems: 'flex-end' }}>
-                  <Typography variant="caption" color={textSecondary}>{t('orders.date', 'Fecha')}</Typography>
-                  <Typography variant="small" color={textColor} style={{ marginTop: 2 }}>{dateStr}</Typography>
-                </View>
-              ) : null}
-            </View>
-
-            {/* Cliente */}
-            <View style={[odStyles.divider, { backgroundColor: borderColor }]} />
-            <View style={odStyles.infoRow}>
-              <View>
-                <Typography variant="bodyBold" color={textColor}>{t('orders.customer', 'Cliente')}</Typography>
-                <Typography variant="small" color={textColor} style={{ marginTop: 2 }}>
-                  {user?.name || (user?.firstName ? `${user.firstName} ${user.lastName}` : '') || user?.username || 'Cliente'}
-                </Typography>
-              </View>
-              {user?.email ? (
-                <View style={{ alignItems: 'flex-end' }}>
-                  <Typography variant="caption" color={textSecondary}>{t('orders.email', 'Correo')}</Typography>
-                  <Typography variant="small" color={textColor} style={{ marginTop: 2 }}>{user.email}</Typography>
-                </View>
-              ) : null}
-            </View>
-
-            {/* Detalles de entrega / Mesa */}
-            <View style={[odStyles.divider, { backgroundColor: borderColor }]} />
-            
-            {order.tableNumber != null ? (
-              <View style={odStyles.detailSection}>
-                <Ionicons name="restaurant-outline" size={16} color={COLORS.primary} />
-                <Typography variant="small" color={textColor} style={{ marginLeft: 8 }}>
-                  {t('reservationForm.tableLabel', 'Mesa')} #{order.tableNumber}
-                </Typography>
-              </View>
-            ) : order.orderType ? (
-              <View style={{ gap: 8 }}>
-                <View style={odStyles.detailSection}>
-                  <Ionicons name="bicycle-outline" size={16} color={COLORS.primary} />
-                  <Typography variant="small" color={textColor} style={{ marginLeft: 8, textTransform: 'capitalize' }}>
-                    {t(`orders.type.${order.orderType}`, order.orderType)}
+                {dateStr ? (
+                  <Typography variant="small" color={textSecondary} style={{ marginTop: 4 }}>
+                    {dateStr}
                   </Typography>
-                </View>
-                {order.deliveryAddress && (
-                  <View style={[odStyles.detailSection, { alignItems: 'flex-start' }]}>
-                    <Ionicons name="location-outline" size={16} color={textSecondary} style={{ marginTop: 2 }} />
-                    <View style={{ flex: 1, marginLeft: 8 }}>
-                      <Typography variant="small" color={textColor}>
+                ) : null}
+              </View>
+
+              <View style={[odStyles.divider, { backgroundColor: borderColor }]} />
+
+              {/* Cliente */}
+              <View style={odStyles.detailSectionHeader}>
+                <Typography variant="bodyBold" color={textColor}>{t('orders.customer', 'Cliente')}</Typography>
+              </View>
+              <View style={odStyles.detailSectionContent}>
+                <Typography variant="body" color={textColor}>
+                  {user?.name || (user?.firstName ? `${user.firstName} ${user.lastName}` : '') || user?.username || t('orders.tracking.clientFallback', 'Cliente')}
+                </Typography>
+                {user?.email ? (
+                  <Typography variant="small" color={textSecondary} style={{ marginTop: 2 }}>
+                    {user.email}
+                  </Typography>
+                ) : null}
+              </View>
+
+              <View style={[odStyles.divider, { backgroundColor: borderColor }]} />
+
+              {/* Detalles de entrega / Mesa */}
+              {order.tableNumber != null && order.tableNumber !== '' ? (
+                <>
+                  <View style={odStyles.detailSectionHeader}>
+                    <Typography variant="bodyBold" color={textColor}>{t('orders.table', 'Mesa')}</Typography>
+                  </View>
+                  <View style={odStyles.detailSectionContent}>
+                    <Typography variant="body" color={textColor}>
+                      {t('orders.tracking.tableNumber', 'Mesa #{{tableNumber}}', { tableNumber: order.tableNumber })}
+                    </Typography>
+                  </View>
+                  <View style={[odStyles.divider, { backgroundColor: borderColor }]} />
+                </>
+              ) : order.orderType ? (
+                <>
+                  <View style={odStyles.detailSectionHeader}>
+                    <Typography variant="bodyBold" color={textColor}>{t('orders.tracking.orderType', 'Tipo de Pedido')}</Typography>
+                  </View>
+                  <View style={odStyles.detailSectionContent}>
+                    <Typography variant="body" color={textColor} style={{ textTransform: 'capitalize' }}>
+                      {t(`orders.type.${order.orderType}`, order.orderType)}
+                    </Typography>
+                    {order.deliveryAddress && (
+                      <Typography variant="small" color={textSecondary} style={{ marginTop: 4 }}>
                         {order.deliveryAddress.street || ''}, {order.deliveryAddress.city || ''}
                       </Typography>
-                      {order.deliveryAddress.reference ? (
-                        <Typography variant="caption" color={textSecondary} style={{ marginTop: 2 }}>
-                          Ref: {order.deliveryAddress.reference}
-                        </Typography>
-                      ) : null}
-                    </View>
+                    )}
                   </View>
-                )}
+                  <View style={[odStyles.divider, { backgroundColor: borderColor }]} />
+                </>
+              ) : null}
+
+              {/* Productos */}
+              <View style={odStyles.detailSectionHeader}>
+                <Typography variant="bodyBold" color={textColor}>{t('orders.items', 'Productos')}</Typography>
               </View>
-            ) : null}
+              <View style={{ gap: 12, marginTop: 8 }}>
+                {items.map((item, index) => {
+                  const prodName = item.name || item.product?.name || t('orders.product', 'Producto');
+                  const qty = item.quantity || 1;
+                  const price = item.price || item.product?.price || 0;
+                  const subtotal = item.subtotal || (qty * price);
+                  const actualProduct = item.product || item;
 
-            {/* Productos */}
-            <View style={[odStyles.divider, { backgroundColor: borderColor }]} />
-            <Typography variant="bodyBold" color={textColor} style={{ marginBottom: 12 }}>
-              {t('orders.items', 'Productos')}
-            </Typography>
+                  return (
+                    <TouchableOpacity
+                      key={index}
+                      style={odStyles.itemRow}
+                      onPress={() => onProductPress(actualProduct)}
+                      activeOpacity={0.7}
+                    >
+                      <View style={{ flex: 1 }}>
+                        <Typography variant="body" color={textColor}>{prodName}</Typography>
+                        <Typography variant="caption" color={textSecondary}>
+                          {qty} x Q {price.toFixed(2)}
+                        </Typography>
+                      </View>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                        <Typography variant="bodyBold" color={textColor}>
+                          Q {subtotal.toFixed(2)}
+                        </Typography>
+                        <Ionicons name="chevron-forward" size={14} color={textSecondary} />
+                      </View>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
 
-            <View style={{ gap: 10 }}>
-              {items.map((item, index) => {
-                const prodName = item.name || item.product?.name || t('orders.product', 'Producto');
-                const qty = item.quantity || 1;
-                const price = item.price || item.product?.price || 0;
-                const subtotal = item.subtotal || (qty * price);
-                const actualProduct = item.product || item;
+              {/* Nota de Cliente */}
+              {(order.customerNote || order.notes) ? (
+                <>
+                  <View style={[odStyles.divider, { backgroundColor: borderColor }]} />
+                  <View style={odStyles.detailSectionHeader}>
+                    <Typography variant="bodyBold" color={textColor}>{t('orders.notes', 'Notas especiales')}</Typography>
+                  </View>
+                  <View style={[odStyles.noteBox, { backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)', borderColor }]}>
+                    <Typography variant="caption" color={textSecondary}>
+                      {order.customerNote || order.notes}
+                    </Typography>
+                  </View>
+                </>
+              ) : null}
 
-                return (
-                  <TouchableOpacity
-                    key={index}
-                    style={[odStyles.itemRow, { borderBottomColor: borderColor, paddingVertical: 4 }]}
-                    onPress={() => onProductPress(actualProduct)}
-                    activeOpacity={0.7}
-                  >
-                    <View style={{ flex: 1 }}>
-                      <Typography variant="body" color={textColor}>{prodName}</Typography>
-                      <Typography variant="caption" color={textSecondary}>
-                        {qty} x Q {price.toFixed(2)}
-                      </Typography>
-                    </View>
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                      <Typography variant="bodyBold" color={textColor}>
-                        Q {subtotal.toFixed(2)}
-                      </Typography>
-                      <Ionicons name="chevron-forward" size={16} color={textSecondary} />
-                    </View>
-                  </TouchableOpacity>
-                );
-              })}
+              <View style={[odStyles.divider, { backgroundColor: borderColor }]} />
+
+              {/* Total Row */}
+              <View style={odStyles.totalRow}>
+                <Typography variant="bodyBold" color={textColor}>Total</Typography>
+                <Typography variant="h2" color={COLORS.primary}>Q {total.toFixed(2)}</Typography>
+              </View>
             </View>
 
-            {/* Nota de Cliente */}
-            {(order.customerNote || order.notes) ? (
-              <>
-                <View style={[odStyles.divider, { backgroundColor: borderColor }]} />
-                <Typography variant="bodyBold" color={textColor} style={{ marginBottom: 6 }}>
-                  {t('orders.notes', 'Notas especiales')}
-                </Typography>
-                <View style={[odStyles.noteBox, { backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)', borderColor }]}>
-                  <Typography variant="caption" color={textSecondary}>
-                    {order.customerNote || order.notes}
-                  </Typography>
-                </View>
-              </>
-            ) : null}
-          </ScrollView>
-
-          {/* Footer Total & Close */}
-          <View style={[odStyles.footer, { borderTopColor: borderColor }]}>
-            <View style={odStyles.totalRow}>
-              <Typography variant="bodyBold" color={textColor}>{t('orders.total', 'Total')}</Typography>
-              <Typography variant="h2" color={COLORS.primary}>Q {total.toFixed(2)}</Typography>
-            </View>
-
+            {/* Enviar Factura Button */}
             {isEntregado && (
               <TouchableOpacity 
-                style={[odStyles.invoiceBtn, { borderColor: COLORS.primary }]} 
+                style={odStyles.fullOrangeBtn} 
                 onPress={onSendInvoicePress}
+                activeOpacity={0.9}
               >
-                <Ionicons name="mail-outline" size={18} color={COLORS.primary} style={{ marginRight: 8 }} />
-                <Typography variant="bodyBold" color={COLORS.primary}>
-                  {t('orders.invoice.button', 'Enviar factura al correo')}
+                <Typography variant="bodyBold" color={COLORS.white}>
+                  Enviar Factura
                 </Typography>
               </TouchableOpacity>
             )}
-
-            <TouchableOpacity style={odStyles.closeActionBtn} onPress={onClose}>
-              <Typography variant="bodyBold" color={COLORS.white}>
-                {t('common.close', 'Cerrar')}
-              </Typography>
-            </TouchableOpacity>
-          </View>
-        </View>
+          </ScrollView>
+        )}
       </View>
     </Modal>
   );
@@ -429,7 +669,9 @@ const StarRating = ({ rating, size = 16, editable = false, onRate }) => (
   </View>
 );
 
-const ProductReviewModal = ({ visible, onClose, onSubmit, isDark, editingReview, t }) => {
+const ProductReviewModal = ({ visible, onClose, onSubmit, isDark, editingReview, t: propT }) => {
+  const { t: hookT } = useTranslation();
+  const t = propT || hookT;
   const [rating, setRating] = useState(5);
   const [comment, setComment] = useState('');
   const [loading, setLoading] = useState(false);
@@ -526,8 +768,12 @@ const rmStyles = StyleSheet.create({
 });
 
 // ── Detalle de Producto Modal ────────────────────────────────────────────────
-const ProductDetailModal = ({ visible, onClose, product, isDark, t }) => {
+const ProductDetailModal = ({ visible, onClose, product, isDark, t: propT, navigation, restaurantId }) => {
+  const { t: hookT } = useTranslation();
+  const t = propT || hookT;
   const { user } = useAuthStore();
+  const addItem = useOrderCartStore((state) => state.addItem);
+  const setRestaurant = useOrderCartStore((state) => state.setRestaurant);
   const [fullProduct, setFullProduct] = useState(null);
   const [reviews, setReviews] = useState([]);
   const [averageRating, setAverageRating] = useState(0);
@@ -601,10 +847,36 @@ const ProductDetailModal = ({ visible, onClose, product, isDark, t }) => {
   const colorIndex = (prodName?.charCodeAt(0) || 0) % bannerColors.length;
 
   const handleOrderProduct = () => {
-    Alert.alert(
-      t('common.success', 'Éxito'),
-      `${prodName} ${t('restaurantDetail.addedToOrder', 'ha sido agregado al pedido.')}`
-    );
+    onClose();
+    addItem({
+      id: resolvedProduct._id || resolvedProduct.id,
+      _id: resolvedProduct._id || resolvedProduct.id,
+      name: prodName,
+      price: price,
+      quantity: 1,
+      isMenu: false,
+    });
+
+    if (resolvedProduct?.restaurant) {
+      setRestaurant(resolvedProduct.restaurant);
+    }
+
+    if (navigation && restaurantId) {
+      navigation.navigate('CreateOrder', {
+        restaurantId: restaurantId,
+        initialProduct: {
+          id: resolvedProduct._id || resolvedProduct.id,
+          name: prodName,
+          price: price,
+          quantity: 1,
+        }
+      });
+    } else {
+      Alert.alert(
+        t('common.success', 'Éxito'),
+        `${prodName} ${t('restaurantDetail.addedToOrder', 'ha sido agregado al pedido.')}`
+      );
+    }
   };
 
   const handleOpenWrite = () => {
@@ -841,7 +1113,9 @@ const ProductDetailModal = ({ visible, onClose, product, isDark, t }) => {
 };
 
 // ── Enviar Factura Modal ─────────────────────────────────────────────────────
-const SendInvoiceModal = ({ visible, onClose, order, isDark, t }) => {
+const SendInvoiceModal = ({ visible, onClose, order, isDark, t: propT }) => {
+  const { t: hookT } = useTranslation();
+  const t = propT || hookT;
   const [sending, setSending] = useState(false);
   const [sent, setSent] = useState(false);
 
@@ -931,6 +1205,154 @@ const SendInvoiceModal = ({ visible, onClose, order, isDark, t }) => {
 };
 
 const odStyles = StyleSheet.create({
+  fullScreenContainer: {
+    flex: 1,
+    width: '100%',
+    height: '100%',
+  },
+  orangeHeader: {
+    backgroundColor: COLORS.primary,
+    paddingHorizontal: 20,
+    paddingTop: 16,
+    paddingBottom: 24,
+  },
+  volverBtn: {
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+    marginLeft: -8,
+    marginBottom: 12,
+    alignSelf: 'flex-start',
+  },
+  volverText: {
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  headerTitle: {
+    fontSize: 28,
+    fontWeight: 'bold',
+    lineHeight: 34,
+  },
+  headerSubtitle: {
+    fontSize: 14,
+    marginTop: 4,
+    opacity: 0.9,
+  },
+  // Tracking Specific Styles
+  trackingScroll: {
+    padding: 20,
+  },
+  estimatedBox: {
+    borderWidth: 1.5,
+    borderRadius: 16,
+    padding: 20,
+    alignItems: 'center',
+    marginBottom: 30,
+  },
+  estimatedTimeText: {
+    fontSize: 32,
+    fontWeight: '800',
+    marginTop: 8,
+  },
+  timelineContainer: {
+    paddingLeft: 10,
+  },
+  timelineRow: {
+    flexDirection: 'row',
+    minHeight: 90,
+  },
+  timelineLeft: {
+    width: 40,
+    alignItems: 'center',
+  },
+  timelineCircle: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#E2E8F0',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 2,
+  },
+  innerDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: COLORS.white,
+  },
+  timelineLineTrack: {
+    position: 'absolute',
+    top: 32,
+    bottom: -15,
+    width: 2,
+    zIndex: 1,
+    overflow: 'hidden',
+  },
+  timelineLineFill: {
+    width: '100%',
+  },
+  timelineRight: {
+    flex: 1,
+    paddingLeft: 16,
+    paddingTop: 4,
+  },
+  // Detail Specific Styles
+  detailScrollContainer: {
+    padding: 20,
+    paddingBottom: 40,
+  },
+  detailCard: {
+    borderRadius: 20,
+    padding: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 10,
+    elevation: 2,
+    marginBottom: 20,
+  },
+  detailSectionHeader: {
+    marginBottom: 4,
+  },
+  detailSectionContent: {
+    marginBottom: 4,
+  },
+  divider: {
+    height: 1,
+    marginVertical: 14,
+  },
+  itemRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 6,
+  },
+  noteBox: {
+    borderWidth: 1,
+    borderRadius: 12,
+    padding: 12,
+    marginTop: 6,
+  },
+  totalRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: 6,
+  },
+  fullOrangeBtn: {
+    backgroundColor: COLORS.primary,
+    paddingVertical: 16,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 10,
+    shadowColor: COLORS.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  
+  // Keep original modal styles for compatibility if needed
   overlay: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.5)',
@@ -965,36 +1387,14 @@ const odStyles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
   },
-  divider: {
-    height: 1,
-    marginVertical: 16,
-  },
   detailSection: {
     flexDirection: 'row',
     alignItems: 'center',
-  },
-  itemRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingBottom: 10,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-  },
-  noteBox: {
-    borderWidth: 1,
-    borderRadius: 12,
-    padding: 12,
   },
   footer: {
     padding: 20,
     borderTopWidth: 1,
     paddingBottom: Platform.OS === 'ios' ? 30 : 20,
-  },
-  totalRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 16,
   },
   closeActionBtn: {
     backgroundColor: COLORS.primary,
@@ -1173,6 +1573,7 @@ const invStyles = StyleSheet.create({
 const MyOrdersScreen = ({ navigation }) => {
   const { t } = useTranslation();
   const { isDarkMode, user } = useAuthStore();
+  const unreadCount = useNotificationStore(state => state.unreadCount);
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -1212,6 +1613,7 @@ const MyOrdersScreen = ({ navigation }) => {
   const textColor = isDarkMode ? COLORS.darkText : COLORS.text;
   const textSecondary = isDarkMode ? COLORS.darkTextSecondary : COLORS.textSecondary;
   const surfaceColor = isDarkMode ? COLORS.darkSurface : COLORS.white;
+  const borderColor = isDarkMode ? COLORS.darkBorder : COLORS.border;
 
   const STATUS_OPTIONS = [
     { value: 'ALL', label: t('orders.filter.all', 'Todos') },
@@ -1254,7 +1656,40 @@ const MyOrdersScreen = ({ navigation }) => {
     }
   };
 
+  const userId = user?._id || user?.id;
+  const socketRooms = useMemo(() => (userId ? [`user_${userId}`] : []), [userId]);
+  const { on } = useSocket(socketRooms);
+
   useEffect(() => { fetchOrders(); }, []);
+
+  // ── Real-time order updates via WebSocket ─────────────────────────────────
+  useEffect(() => {
+    const handleOrderUpdate = (data) => {
+      const updatedId = data._id || data.id;
+      if (!updatedId) return;
+
+      // Update the orders list in place
+      setOrders(prev =>
+        prev.map(o => (o._id === updatedId || o.id === updatedId) ? { ...o, ...data } : o)
+      );
+
+      // If the tracking modal is open for this order, update it live
+      setSelectedOrder(prev => {
+        if (!prev) return prev;
+        const prevId = prev._id || prev.id;
+        return prevId === updatedId ? { ...prev, ...data } : prev;
+      });
+    };
+
+    const unsub1 = on('order_status_updated', handleOrderUpdate);
+    const unsub2 = on('order_cancelled', handleOrderUpdate);
+
+    return () => {
+      unsub1?.();
+      unsub2?.();
+    };
+  }, [on]);
+
 
   const filtered = useMemo(() => {
     return orders.filter(o => {
@@ -1433,22 +1868,58 @@ const MyOrdersScreen = ({ navigation }) => {
       <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} />
 
       {/* Header */}
-      <View style={styles.header}>
-        <View style={styles.headerTop}>
-          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-            <Ionicons name="arrow-back" size={22} color={textColor} />
-          </TouchableOpacity>
-          <Typography variant="h2" color={textColor} style={{ flex: 1, marginLeft: 12 }}>
-            {t('orders.title')}
-          </Typography>
-          <TouchableOpacity
-            style={[styles.bellBtn, { backgroundColor: COLORS.accent }]}
-            onPress={() => navigation.navigate('CreateOrder')}
-          >
-            <Ionicons name="add" size={24} color={COLORS.white} />
-          </TouchableOpacity>
-        </View>
-
+      <Header 
+        title={t('orders.title')} 
+        navigation={navigation} 
+        showBack={true} 
+        rightComponent={
+          <View style={{ flexDirection: 'row', gap: 10, alignItems: 'center' }}>
+            <TouchableOpacity
+              style={{
+                width: 44,
+                height: 44,
+                borderRadius: 12,
+                backgroundColor: COLORS.primary,
+                justifyContent: 'center',
+                alignItems: 'center',
+              }}
+              onPress={() => navigation.navigate('CreateOrder')}
+            >
+              <Ionicons name="add" size={24} color={COLORS.white} />
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={{
+                width: 44,
+                height: 44,
+                borderRadius: 12,
+                backgroundColor: surfaceColor,
+                borderColor: borderColor,
+                borderWidth: 1,
+                justifyContent: 'center',
+                alignItems: 'center',
+                position: 'relative',
+              }}
+              onPress={() => navigation.navigate('NotificationHistory')}
+            >
+              <Ionicons name="notifications" size={22} color={textColor} />
+              {unreadCount > 0 && (
+                <View
+                  style={{
+                    position: 'absolute',
+                    top: 10,
+                    right: 10,
+                    width: 8,
+                    height: 8,
+                    borderRadius: 4,
+                    backgroundColor: COLORS.primary,
+                  }}
+                />
+              )}
+            </TouchableOpacity>
+          </View>
+        }
+      />
+      <View style={{ paddingHorizontal: 16, paddingTop: 12 }}>
         <Input
           placeholder={t('orders.searchPlaceholder')}
           value={search}
@@ -1526,13 +1997,14 @@ const MyOrdersScreen = ({ navigation }) => {
         onSendInvoicePress={() => setInvoiceModalVisible(true)}
       />
 
-      {/* Product Detail Modal */}
       <ProductDetailModal
         visible={productModalVisible}
         onClose={() => { setProductModalVisible(false); setSelectedProduct(null); }}
         product={selectedProduct}
         isDark={isDarkMode}
         t={t}
+        navigation={navigation}
+        restaurantId={selectedOrder?.restaurantId || selectedOrder?.restaurant?._id || selectedOrder?.restaurant?.id || selectedOrder?.restaurant}
       />
 
       {/* Send Invoice Modal */}

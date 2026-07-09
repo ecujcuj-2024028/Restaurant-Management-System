@@ -20,6 +20,7 @@ import { getRestaurants } from '../../../api/restaurants';
 import useAuthStore from '../../../store/useAuthStore';
 import useReviewStore from '../../../store/useReviewStore';
 import useNotificationStore from '../../../store/useNotificationStore';
+import Header from '../../../shared/components/common/Header';
 import Typography from '../../../shared/components/common/Typography';
 import Input from '../../../shared/components/common/Input';
 import Skeleton from '../../../shared/components/common/Skeleton';
@@ -210,79 +211,9 @@ const RestaurantsScreen = ({ navigation }) => {
         <SafeAreaView style={[styles.container, { backgroundColor: bgColor }]} edges={['top', 'left', 'right']}>
             <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} />
 
-            <View style={styles.header}>
-                <View style={styles.headerTop}>
-                    <Typography variant="h2" color={textColor}>
-                        {t('restaurants.title')}
-                    </Typography>
+            <Header title={t('restaurants.title')} navigation={navigation} />
 
-                    {/* Campana con dropdown */}
-                    <View style={styles.bellWrapper}>
-                        <TouchableOpacity
-                            style={[styles.bellBtn, { backgroundColor: surfaceColor }]}
-                            onPress={() => setNotifDropdownVisible(!notifDropdownVisible)}
-                        >
-                            <Ionicons name="notifications" size={22} color={textColor} />
-                            {unreadCount > 0 && <View style={styles.notifBadge} />}
-                        </TouchableOpacity>
-
-                        {/* Dropdown de notificaciones */}
-                        {notifDropdownVisible && (
-                            <TouchableWithoutFeedback onPress={() => setNotifDropdownVisible(false)}>
-                                <View style={styles.dropdownBackdrop} />
-                            </TouchableWithoutFeedback>
-                        )}
-                        {notifDropdownVisible && (
-                            <View style={[styles.dropdown, { backgroundColor: cardColor }]}>
-                                {notifications.length === 0 ? (
-                                    <View style={styles.dropdownEmpty}>
-                                        <Typography variant="caption" color={textSecondary}>
-                                            No hay notificaciones
-                                        </Typography>
-                                    </View>
-                                ) : (
-                                    <ScrollView style={{ maxHeight: 320 }} showsVerticalScrollIndicator={false}>
-                                        {notifications.slice(0, 5).map((notif) => {
-                                            const id = notif.id || notif._id;
-                                            return (
-                                                <View
-                                                    key={id}
-                                                    style={[
-                                                        styles.notifCard,
-                                                        { backgroundColor: isDarkMode ? '#333' : '#f9f9f9' },
-                                                        !notif.isRead && { borderLeftWidth: 3, borderLeftColor: COLORS.primary },
-                                                    ]}
-                                                >
-                                                    <Typography variant="bodyBold" color={textColor} numberOfLines={1}>
-                                                        {notif.title || 'Notificacion'}
-                                                    </Typography>
-                                                    <Typography variant="caption" color={textSecondary} numberOfLines={2} style={{ marginTop: 2 }}>
-                                                        {notif.message || 'Descripcion'}
-                                                    </Typography>
-                                                    <View style={styles.notifActions}>
-                                                        {!notif.isRead && (
-                                                            <TouchableOpacity onPress={() => handleMarkAsRead(id)}>
-                                                                <Typography variant="small" color={COLORS.primary}>
-                                                                    Marcar como visto
-                                                                </Typography>
-                                                            </TouchableOpacity>
-                                                        )}
-                                                        <TouchableOpacity onPress={() => handleDelete(id)}>
-                                                            <Typography variant="small" color="#e53935">
-                                                                Eliminar
-                                                            </Typography>
-                                                        </TouchableOpacity>
-                                                    </View>
-                                                </View>
-                                            );
-                                        })}
-                                    </ScrollView>
-                                )}
-                            </View>
-                        )}
-                    </View>
-                </View>
-
+            <View style={{ paddingHorizontal: 16, paddingTop: 12 }}>
                 <Input
                     placeholder={t('restaurants.searchPlaceholder')}
                     value={search}
@@ -295,7 +226,7 @@ const RestaurantsScreen = ({ navigation }) => {
 
             <View style={styles.categoriesWrapper}>
                 <View style={styles.categoriesHeaderRow}>
-                    <Typography variant="bodyBold" color={textColor} style={styles.categoriesTitle}>
+                    <Typography variant="h3" color={textColor} style={styles.categoriesTitle}>
                         {t('restaurants.categories')}
                     </Typography>
                     <TouchableOpacity

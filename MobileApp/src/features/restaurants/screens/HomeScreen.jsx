@@ -82,6 +82,7 @@ const HomeScreen = ({ navigation }) => {
   const textColor = isDarkMode ? COLORS.darkText : COLORS.text;
   const textSecondary = isDarkMode ? COLORS.darkTextSecondary : COLORS.textSecondary;
   const surfaceColor = isDarkMode ? COLORS.darkSurface : COLORS.white;
+  const borderColor = isDarkMode ? COLORS.darkBorder : COLORS.border;
 
   useEffect(() => {
     setActiveCategory(t('home.all'));
@@ -199,12 +200,12 @@ const HomeScreen = ({ navigation }) => {
               </Typography>
             </View>
             <TouchableOpacity
-              style={[styles.notificationIcon, { backgroundColor: surfaceColor }]}
+              style={[styles.notificationIcon, { backgroundColor: surfaceColor, borderColor, borderWidth: 1 }]}
               onPress={() => navigation.navigate('NotificationHistory')}
             >
-              <Ionicons name="notifications" size={24} color={textColor} />
+              <Ionicons name="notifications" size={22} color={textColor} />
               {unreadCount > 0 && (
-                <View style={[styles.notificationDot, { borderColor: surfaceColor }]} />
+                <View style={styles.notificationDot} />
               )}
             </TouchableOpacity>
           </View>
@@ -220,7 +221,7 @@ const HomeScreen = ({ navigation }) => {
         </View>
 
         {/* Categorías */}
-        <View style={styles.sectionContainer}>
+        <View style={[styles.sectionContainer, { marginTop: 8 }]}>
           <Typography variant="h3" color={textColor} style={styles.sectionTitle}>
             {t('home.categories')}
           </Typography>
@@ -408,7 +409,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 20,
   },
-  notificationIcon: { padding: 10, borderRadius: 12 },
+  notificationIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+    position: 'relative',
+  },
   notificationDot: {
     position: 'absolute',
     top: 10,
@@ -417,7 +425,6 @@ const styles = StyleSheet.create({
     height: 8,
     borderRadius: 4,
     backgroundColor: COLORS.primary,
-    borderWidth: 1.5,
   },
   searchContainer: { marginBottom: 0 },
   searchInput: { borderColor: 'transparent', borderRadius: 12, height: 52, paddingHorizontal: 12 },

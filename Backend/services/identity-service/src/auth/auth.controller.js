@@ -133,7 +133,7 @@ export const login = async (req, res) => {
             success: true,
             message: `Bienvenido, ${user.Name}`,
             token,
-            user: { id: user.Id, username: user.Username, name: user.Name, surname: user.Surname, email: user.Email, roles }
+            user: { id: user.Id, username: user.Username || user.username, name: user.Name, surname: user.Surname, email: user.Email, roles }
         });
     } catch (error) {
         return res.status(500).json({ success: false, message: 'Error interno.' });

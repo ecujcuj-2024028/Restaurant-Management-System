@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   View,
   StyleSheet,
@@ -19,15 +19,16 @@ import { useTranslation } from 'react-i18next';
 import { COLORS } from '../../../shared/constants/colors';
 import { COMMON_STYLES } from '../../../shared/constants/theme';
 import useAuthStore from '../../../store/useAuthStore';
+import useNotificationStore from '../../../store/useNotificationStore';
 import Typography from '../../../shared/components/common/Typography';
 import Input from '../../../shared/components/common/Input';
 import Button from '../../../shared/components/common/Button';
+import Header from '../../../shared/components/common/Header';
 import Skeleton from '../../../shared/components/common/Skeleton';
 import { getEvents, getEventsByRestaurant, registerEventAttendance, cancelEventAttendance } from '../../../api/events';
 import { getRestaurants } from '../../../api/restaurants';
 
-// ── Event Card Component ──────────────────────────────────────────────────────
-const EventCard = ({ event, isDark, onPress, onAttendPress, isAttending }) => {
+const EventCard = ({ event, isDark, onPress, restaurantName }) => {
   const bgCard = isDark ? COLORS.darkSurface : COLORS.white;
   const textColor = isDark ? COLORS.darkText : COLORS.text;
   const textSecondary = isDark ? COLORS.darkTextSecondary : COLORS.textSecondary;
@@ -36,7 +37,6 @@ const EventCard = ({ event, isDark, onPress, onAttendPress, isAttending }) => {
   const eventName = event.name || event.title || 'Evento';
   const eventDescription = event.description || event.tipo || 'Evento especial';
   const eventImage = event.image || event.photo || event.imagen || null;
-  const restaurantName = event.restaurantId?.name || event.restaurant?.name || 'Restaurante';
   const eventDate = event.date || event.fecha || null;
   const eventPrice = event.price || event.precio || 0;
 
@@ -80,46 +80,19 @@ const EventCard = ({ event, isDark, onPress, onAttendPress, isAttending }) => {
               {eventDescription}
             </Typography>
           </View>
-          {isAttending && (
-            <View style={[styles.attendingBadge, { backgroundColor: COLORS.accent + '22' }]}>
-              <Ionicons name="checkmark-circle" size={18} color={COLORS.accent} />
-            </View>
-          )}
         </View>
 
-        <Typography variant="small" color={textSecondary} style={{ marginTop: 8 }} numberOfLines={1}>
-          🏪 {restaurantName}
-        </Typography>
+        <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 8 }}>
+          <Ionicons name="restaurant-outline" size={14} color={textSecondary} style={{ marginRight: 4 }} />
+          <Typography variant="small" color={textSecondary} numberOfLines={1} style={{ flex: 1 }}>
+            {restaurantName}
+          </Typography>
+        </View>
 
         <View style={styles.eventFooter}>
-          <View>
-            <Typography variant="small" color={textSecondary}>
-              {eventPrice > 0 ? `Q ${eventPrice.toFixed(2)}` : 'Gratis'}
-            </Typography>
-          </View>
-          <TouchableOpacity
-            style={[
-              styles.attendBtn,
-              {
-                backgroundColor: isAttending ? COLORS.error + '22' : COLORS.accent + '22',
-                borderColor: isAttending ? COLORS.error : COLORS.accent,
-              },
-            ]}
-            onPress={() => onAttendPress(!isAttending)}
-          >
-            <Ionicons
-              name={isAttending ? 'close' : 'checkmark'}
-              size={14}
-              color={isAttending ? COLORS.error : COLORS.accent}
-            />
-            <Typography
-              variant="caption"
-              color={isAttending ? COLORS.error : COLORS.accent}
-              style={{ marginLeft: 4, fontWeight: '600' }}
-            >
-              {isAttending ? 'Cancelar' : 'Asistir'}
-            </Typography>
-          </TouchableOpacity>
+          <Typography variant="small" color={textColor} style={{ fontWeight: '600' }}>
+            {eventPrice > 0 ? 'Q ' + eventPrice.toFixed(2) : 'Gratis'}
+          </Typography>
         </View>
       </View>
     </TouchableOpacity>
@@ -127,7 +100,7 @@ const EventCard = ({ event, isDark, onPress, onAttendPress, isAttending }) => {
 };
 
 // ── Event Detail Modal ────────────────────────────────────────────────────────
-const EventDetailModal = ({ visible, onClose, event, isDark, isAttending, onAttendPress, t }) => {
+const EventDetailModal = ({ visible, onClose, event, isDark, restaurantName, t }) => {
   if (!event) return null;
 
   const bgModal = isDark ? COLORS.darkSurface : COLORS.white;
@@ -138,27 +111,51 @@ const EventDetailModal = ({ visible, onClose, event, isDark, isAttending, onAtte
   const eventName = event.name || event.title || 'Evento';
   const eventDescription = event.description || event.tipo || '';
   const eventImage = event.image || event.photo || event.imagen || null;
-  const restaurantName = event.restaurantId?.name || event.restaurant?.name || 'Restaurante';
-  const eventDate = event.date || event.fecha || null;
-  const eventTime = event.time || event.hora || null;
-  const eventLocation = event.location || event.ubicacion || restaurantName;
   const eventPrice = event.price || event.precio || 0;
-  const eventCapacity = event.capacity || event.capacidad || 0;
-  const eventAttendees = event.attendees || event.asistentes || 0;
 
   const bannerColors = ['#FF6B00', '#B8860B', '#1A237E', '#2E7D32', '#6A1B9A', '#C2185B'];
   const colorIndex = (eventName?.charCodeAt(0) || 0) % bannerColors.length;
 
-  const formatDate = (dateStr) => {
-    if (!dateStr) return '';
-    const date = new Date(dateStr);
-    return date.toLocaleDateString('es-ES', {
+  const formatDateRange = (startStr) => {
+    if (!startStr) return '';
+    const start = new Date(startStr);
+    const datePart = start.toLocaleDateString('es-ES', {
       weekday: 'long',
       year: 'numeric',
       month: 'long',
       day: 'numeric',
     });
+    return datePart.charAt(0).toUpperCase() + datePart.slice(1);
   };
+
+  const formatTimeRange = (startStr, endStr) => {
+    if (!startStr) return '';
+    const start = new Date(startStr);
+    const startOpt = { hour: '2-digit', minute: '2-digit', hour12: true };
+    const startTime = start.toLocaleTimeString('es-ES', startOpt);
+    
+    if (endStr) {
+      const end = new Date(endStr);
+      const endTime = end.toLocaleTimeString('es-ES', startOpt);
+      return `${startTime} - ${endTime}`;
+    }
+    return startTime;
+  };
+
+  const getEventLocation = () => {
+    if (event.restaurant && typeof event.restaurant === 'object') {
+      const addr = event.restaurant.address;
+      if (addr) {
+        const parts = [addr.street, addr.city].filter(Boolean);
+        if (parts.length > 0) return parts.join(', ');
+      }
+    }
+    return event.location || event.ubicacion || restaurantName;
+  };
+
+  const eventDateText = formatDateRange(event.startDate);
+  const eventTimeText = formatTimeRange(event.startDate, event.endDate);
+  const eventLocation = getEventLocation();
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
@@ -188,7 +185,7 @@ const EventDetailModal = ({ visible, onClose, event, isDark, isAttending, onAtte
 
               {/* Info Grid */}
               <View style={[edStyles.infoGrid, { borderTopColor: borderColor, borderBottomColor: borderColor }]}>
-                {eventDate && (
+                {eventDateText ? (
                   <View style={edStyles.infoItem}>
                     <View style={[edStyles.infoIcon, { backgroundColor: COLORS.primary + '22' }]}>
                       <Ionicons name="calendar-outline" size={18} color={COLORS.primary} />
@@ -198,31 +195,31 @@ const EventDetailModal = ({ visible, onClose, event, isDark, isAttending, onAtte
                         {t('events.date')}
                       </Typography>
                       <Typography variant="body" color={textColor}>
-                        {formatDate(eventDate)}
+                        {eventDateText}
                       </Typography>
                     </View>
                   </View>
-                )}
+                ) : null}
 
-                {eventTime && (
+                {eventTimeText ? (
                   <View style={edStyles.infoItem}>
                     <View style={[edStyles.infoIcon, { backgroundColor: COLORS.accent + '22' }]}>
                       <Ionicons name="time-outline" size={18} color={COLORS.accent} />
                     </View>
                     <View style={{ flex: 1 }}>
                       <Typography variant="caption" color={textSecondary}>
-                        {t('events.time')}
+                        Hora
                       </Typography>
                       <Typography variant="body" color={textColor}>
-                        {eventTime}
+                        {eventTimeText}
                       </Typography>
                     </View>
                   </View>
-                )}
+                ) : null}
 
                 <View style={edStyles.infoItem}>
-                  <View style={[edStyles.infoIcon, { backgroundColor: COLORS.secondary + '22' }]}>
-                    <Ionicons name="location-outline" size={18} color={COLORS.secondary} />
+                  <View style={[edStyles.infoIcon, { backgroundColor: (isDark ? '#38BDF8' : COLORS.secondary) + '22' }]}>
+                    <Ionicons name="location-outline" size={18} color={isDark ? '#38BDF8' : COLORS.secondary} />
                   </View>
                   <View style={{ flex: 1 }}>
                     <Typography variant="caption" color={textSecondary}>
@@ -249,31 +246,6 @@ const EventDetailModal = ({ visible, onClose, event, isDark, isAttending, onAtte
                 </View>
               </View>
 
-              {/* Capacity */}
-              {eventCapacity > 0 && (
-                <View style={[edStyles.capacitySection, { backgroundColor: isDark ? COLORS.darkBackground : '#F1F5F9' }]}>
-                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                    <Typography variant="bodyBold" color={textColor}>
-                      {t('events.attendees')}
-                    </Typography>
-                    <Typography variant="body" color={textSecondary}>
-                      {eventAttendees || 0} / {eventCapacity}
-                    </Typography>
-                  </View>
-                  <View style={[edStyles.capacityBar, { backgroundColor: isDark ? COLORS.darkBorder : COLORS.border }]}>
-                    <View
-                      style={[
-                        edStyles.capacityFill,
-                        {
-                          width: `${((eventAttendees || 0) / eventCapacity) * 100}%`,
-                          backgroundColor: eventAttendees >= eventCapacity ? COLORS.error : COLORS.accent,
-                        },
-                      ]}
-                    />
-                  </View>
-                </View>
-              )}
-
               {/* Full Description */}
               {event.fullDescription && (
                 <>
@@ -287,20 +259,6 @@ const EventDetailModal = ({ visible, onClose, event, isDark, isAttending, onAtte
               )}
             </View>
           </ScrollView>
-
-          {/* Action Button */}
-          <View style={[edStyles.footer, { borderTopColor: borderColor }]}>
-            <Button
-              title={isAttending ? t('events.cancelAttendance') : t('events.attendEvent')}
-              onPress={() => {
-                onAttendPress(!isAttending);
-                onClose();
-              }}
-              style={{
-                backgroundColor: isAttending ? COLORS.error : COLORS.accent,
-              }}
-            />
-          </View>
         </View>
       </View>
     </Modal>
@@ -389,6 +347,7 @@ const EventsSkeleton = ({ isDark }) => (
 const EventsScreen = ({ navigation }) => {
   const { isDarkMode } = useAuthStore();
   const { t } = useTranslation();
+  const unreadCount = useNotificationStore((state) => state.unreadCount);
 
   // States
   const [events, setEvents] = useState([]);
@@ -396,17 +355,48 @@ const EventsScreen = ({ navigation }) => {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [search, setSearch] = useState('');
+  
+  // Filter States
   const [selectedRestaurant, setSelectedRestaurant] = useState(null);
-  const [attending, setAttending] = useState({});
+  const [restaurantSearch, setRestaurantSearch] = useState('');
+  const [selectedDateFilter, setSelectedDateFilter] = useState('ALL');
+  const [selectedPriceFilter, setSelectedPriceFilter] = useState('ALL');
+  const [customMinPrice, setCustomMinPrice] = useState('');
+  const [customMaxPrice, setCustomMaxPrice] = useState('');
+
+  // Temp states for modal inputs
+  const [tempPriceFilter, setTempPriceFilter] = useState('ALL');
+  const [tempMinPrice, setTempMinPrice] = useState('');
+  const [tempMaxPrice, setTempMaxPrice] = useState('');
+
+  // Modal Visibility States
+  const [restaurantModalVisible, setRestaurantModalVisible] = useState(false);
+  const [dateModalVisible, setDateModalVisible] = useState(false);
+  const [priceModalVisible, setPriceModalVisible] = useState(false);
+
   const [selectedEvent, setSelectedEvent] = useState(null);
   const [detailModalVisible, setDetailModalVisible] = useState(false);
-  const [attendLoading, setAttendLoading] = useState(false);
 
   const bgColor = isDarkMode ? COLORS.darkBackground : COLORS.background;
   const textColor = isDarkMode ? COLORS.darkText : COLORS.text;
   const textSecondary = isDarkMode ? COLORS.darkTextSecondary : COLORS.textSecondary;
   const surfaceColor = isDarkMode ? COLORS.darkSurface : COLORS.white;
   const borderColor = isDarkMode ? COLORS.darkBorder : COLORS.border;
+
+  const DATE_OPTIONS = [
+    { value: 'ALL', label: 'Cualquier fecha' },
+    { value: 'TODAY', label: 'Hoy' },
+    { value: 'WEEK', label: 'Próximos 7 días' },
+    { value: 'MONTH', label: 'Próximos 30 días' },
+  ];
+
+  const PRICE_OPTIONS = [
+    { value: 'ALL', label: 'Cualquier precio' },
+    { value: 'FREE', label: 'Gratis' },
+    { value: 'LOW', label: 'Menos de Q 100' },
+    { value: 'HIGH', label: 'Más de Q 100 o igual' },
+    { value: 'CUSTOM', label: 'Rango personalizado' },
+  ];
 
   // Load initial data
   useEffect(() => {
@@ -419,13 +409,7 @@ const EventsScreen = ({ navigation }) => {
       if (isRefresh) setRefreshing(true);
       else setLoading(true);
 
-      let response;
-      if (selectedRestaurant) {
-        response = await getEventsByRestaurant(selectedRestaurant.id);
-      } else {
-        response = await getEvents();
-      }
-
+      const response = await getEvents();
       const eventsData = Array.isArray(response) ? response : response.data || response.events || [];
       setEvents(eventsData);
     } catch (error) {
@@ -440,47 +424,156 @@ const EventsScreen = ({ navigation }) => {
   const loadRestaurants = async () => {
     try {
       const response = await getRestaurants();
-      const restaurantsList = Array.isArray(response) ? response : response.data || [];
+      const restaurantsList = Array.isArray(response) 
+        ? response 
+        : (response.restaurants || response.data || []);
       setRestaurants(restaurantsList);
     } catch (error) {
       console.error('Error loading restaurants:', error);
     }
   };
 
-  // Filter events based on search
-  const filteredEvents = events.filter((event) => {
-    const eventName = (event.name || event.title || '').toLowerCase();
-    const eventDescription = (event.description || event.tipo || '').toLowerCase();
-    const searchLower = search.toLowerCase();
-    return eventName.includes(searchLower) || eventDescription.includes(searchLower);
-  });
+  const getRestaurantName = (ev) => {
+    if (!ev) return '';
+    
+    // 1. If populated as object
+    if (ev.restaurant && typeof ev.restaurant === 'object' && ev.restaurant.name) {
+      return ev.restaurant.name;
+    }
+    if (ev.restaurantId && typeof ev.restaurantId === 'object' && ev.restaurantId.name) {
+      return ev.restaurantId.name;
+    }
+    
+    // 2. Fallback: Search in loaded restaurants list
+    const rId = ev.restaurant || ev.restaurantId;
+    if (rId) {
+      const targetId = typeof rId === 'object' ? (rId._id || rId.id) : rId;
+      if (targetId) {
+        const found = restaurants.find(r => (r._id || r.id)?.toString() === targetId.toString());
+        if (found) return found.name;
+      }
+    }
+    return 'Restaurante';
+  };
 
-  // Handle attendance toggle
-  const handleAttendanceToggle = async (eventId, isAttending) => {
-    try {
-      setAttendLoading(true);
-      if (isAttending) {
-        await cancelEventAttendance(eventId);
-      } else {
-        await registerEventAttendance(eventId);
+  // Filter events based on search and selected filters
+  const filteredEvents = useMemo(() => {
+    return events.filter((event) => {
+      // 1. Search Query
+      const eventName = (event.name || event.title || '').toLowerCase();
+      const eventDescription = (event.description || event.tipo || '').toLowerCase();
+      const searchLower = search.toLowerCase();
+      const matchesSearch = !search.trim() || eventName.includes(searchLower) || eventDescription.includes(searchLower);
+
+      // 2. Restaurant Filter
+      const rId = event.restaurant?._id || event.restaurant || event.restaurantId?._id || event.restaurantId;
+      const matchesRestaurant = !selectedRestaurant || (rId && (rId === selectedRestaurant._id || rId === selectedRestaurant.id));
+
+      // 3. Date Filter
+      let matchesDate = true;
+      if (selectedDateFilter !== 'ALL' && event.startDate) {
+        const eventDate = new Date(event.startDate);
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        
+        if (selectedDateFilter === 'TODAY') {
+          const compDate = new Date(event.startDate);
+          compDate.setHours(0, 0, 0, 0);
+          matchesDate = compDate.getTime() === today.getTime();
+        } else if (selectedDateFilter === 'WEEK') {
+          const endOfWeek = new Date();
+          endOfWeek.setDate(today.getDate() + 7);
+          matchesDate = eventDate >= today && eventDate <= endOfWeek;
+        } else if (selectedDateFilter === 'MONTH') {
+          const endOfMonth = new Date();
+          endOfMonth.setDate(today.getDate() + 30);
+          matchesDate = eventDate >= today && eventDate <= endOfMonth;
+        }
       }
 
-      setAttending((prev) => ({
-        ...prev,
-        [eventId]: !isAttending,
-      }));
-    } catch (error) {
-      console.error('Error updating attendance:', error);
-      Alert.alert(t('common.error'), error.message || t('events.errorUpdatingAttendance'));
-    } finally {
-      setAttendLoading(false);
-    }
-  };
+      // 4. Price Filter
+      const price = event.price || event.precio || 0;
+      let matchesPrice = true;
+      if (selectedPriceFilter === 'FREE') {
+        matchesPrice = price === 0;
+      } else if (selectedPriceFilter === 'LOW') {
+        matchesPrice = price > 0 && price < 100;
+      } else if (selectedPriceFilter === 'HIGH') {
+        matchesPrice = price >= 100;
+      } else if (selectedPriceFilter === 'CUSTOM') {
+        const minPriceVal = parseFloat(customMinPrice);
+        const maxPriceVal = parseFloat(customMaxPrice);
+        const hasMin = !isNaN(minPriceVal);
+        const hasMax = !isNaN(maxPriceVal);
+        if (hasMin && hasMax) {
+          matchesPrice = price >= minPriceVal && price <= maxPriceVal;
+        } else if (hasMin) {
+          matchesPrice = price >= minPriceVal;
+        } else if (hasMax) {
+          matchesPrice = price <= maxPriceVal;
+        }
+      }
+
+      return matchesSearch && matchesRestaurant && matchesDate && matchesPrice;
+    });
+  }, [events, search, selectedRestaurant, selectedDateFilter, selectedPriceFilter, customMinPrice, customMaxPrice, restaurants]);
 
   const handleClearFilters = () => {
     setSelectedRestaurant(null);
+    setSelectedDateFilter('ALL');
+    setSelectedPriceFilter('ALL');
+    setCustomMinPrice('');
+    setCustomMaxPrice('');
+    setTempPriceFilter('ALL');
+    setTempMinPrice('');
+    setTempMaxPrice('');
+    setRestaurantSearch('');
     setSearch('');
-    loadEvents();
+  };
+
+  const handleOpenPriceModal = () => {
+    setTempPriceFilter(selectedPriceFilter);
+    setTempMinPrice(customMinPrice);
+    setTempMaxPrice(customMaxPrice);
+    setPriceModalVisible(true);
+  };
+
+  const handleSelectPriceOption = (val) => {
+    if (val === 'CUSTOM') {
+      setTempPriceFilter('CUSTOM');
+    } else {
+      setTempPriceFilter(val);
+      setSelectedPriceFilter(val);
+      setCustomMinPrice('');
+      setCustomMaxPrice('');
+      setPriceModalVisible(false);
+    }
+  };
+
+  const handleApplyCustomPrice = () => {
+    setCustomMinPrice(tempMinPrice);
+    setCustomMaxPrice(tempMaxPrice);
+    setSelectedPriceFilter('CUSTOM');
+    setPriceModalVisible(false);
+  };
+
+  const getPricePillLabel = () => {
+    if (selectedPriceFilter === 'ALL') return 'Precio';
+    if (selectedPriceFilter === 'CUSTOM') {
+      const minVal = parseFloat(customMinPrice);
+      const maxVal = parseFloat(customMaxPrice);
+      const hasMin = !isNaN(minVal);
+      const hasMax = !isNaN(maxVal);
+      if (hasMin && hasMax) {
+        return `Q ${minVal} - Q ${maxVal}`;
+      } else if (hasMin) {
+        return `≥ Q ${minVal}`;
+      } else if (hasMax) {
+        return `≤ Q ${maxVal}`;
+      }
+      return 'Rango pers.';
+    }
+    return PRICE_OPTIONS.find(o => o.value === selectedPriceFilter)?.label || 'Precio';
   };
 
   if (loading) {
@@ -492,17 +585,10 @@ const EventsScreen = ({ navigation }) => {
       <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} backgroundColor={bgColor} />
 
       {/* Header */}
-      <View style={[styles.header, { borderBottomColor: borderColor }]}>
-        <View style={styles.headerTop}>
-          <Typography variant="h2" color={textColor}>
-            {t('events.title')}
-          </Typography>
-          <TouchableOpacity onPress={() => navigation.openDrawer?.()}>
-            <Ionicons name="notifications-outline" size={24} color={textColor} />
-          </TouchableOpacity>
-        </View>
+      <Header title={t('events.title')} navigation={navigation} />
 
-        {/* Search Bar */}
+      {/* Search Bar */}
+      <View style={{ paddingHorizontal: 16, paddingTop: 12 }}>
         <Input
           placeholder={t('events.searchPlaceholder')}
           value={search}
@@ -513,7 +599,7 @@ const EventsScreen = ({ navigation }) => {
         />
       </View>
 
-      {/* Filters */}
+      {/* Filters Scroll Row */}
       <View style={[styles.filtersContainer, { backgroundColor: bgColor }]}>
         <ScrollView
           horizontal
@@ -526,40 +612,87 @@ const EventsScreen = ({ navigation }) => {
               styles.filterButton,
               {
                 backgroundColor: selectedRestaurant ? COLORS.primary : surfaceColor,
-                borderColor: borderColor,
+                borderColor: selectedRestaurant ? COLORS.primary : borderColor,
               },
             ]}
-            onPress={() => {
-              const newRestaurant = selectedRestaurant ? null : restaurants[0];
-              setSelectedRestaurant(newRestaurant);
-              if (newRestaurant) {
-                loadEvents();
-              }
-            }}
+            onPress={() => setRestaurantModalVisible(true)}
           >
             <Ionicons
               name="restaurant-outline"
               size={16}
-              color={selectedRestaurant ? COLORS.white : textColor}
+              color={selectedRestaurant ? COLORS.white : COLORS.primary}
             />
             <Typography
               variant="caption"
               color={selectedRestaurant ? COLORS.white : textColor}
               style={{ marginLeft: 6, fontWeight: '600' }}
             >
-              {selectedRestaurant ? selectedRestaurant.name : t('events.allRestaurants')}
+              {selectedRestaurant ? selectedRestaurant.name : 'Restaurantes'}
             </Typography>
+            <Ionicons name="chevron-down" size={10} color={selectedRestaurant ? COLORS.white : textSecondary} style={{ marginLeft: 4 }} />
+          </TouchableOpacity>
+
+          {/* Date Filter */}
+          <TouchableOpacity
+            style={[
+              styles.filterButton,
+              {
+                backgroundColor: selectedDateFilter !== 'ALL' ? COLORS.primary : surfaceColor,
+                borderColor: selectedDateFilter !== 'ALL' ? COLORS.primary : borderColor,
+              },
+            ]}
+            onPress={() => setDateModalVisible(true)}
+          >
+            <Ionicons
+              name="calendar-outline"
+              size={16}
+              color={selectedDateFilter !== 'ALL' ? COLORS.white : COLORS.primary}
+            />
+            <Typography
+              variant="caption"
+              color={selectedDateFilter !== 'ALL' ? COLORS.white : textColor}
+              style={{ marginLeft: 6, fontWeight: '600' }}
+            >
+              {selectedDateFilter === 'ALL' ? 'Fecha' : DATE_OPTIONS.find(o => o.value === selectedDateFilter)?.label}
+            </Typography>
+            <Ionicons name="chevron-down" size={10} color={selectedDateFilter !== 'ALL' ? COLORS.white : textSecondary} style={{ marginLeft: 4 }} />
+          </TouchableOpacity>
+
+          {/* Price Filter */}
+          <TouchableOpacity
+            style={[
+              styles.filterButton,
+              {
+                backgroundColor: selectedPriceFilter !== 'ALL' ? COLORS.primary : surfaceColor,
+                borderColor: selectedPriceFilter !== 'ALL' ? COLORS.primary : borderColor,
+              },
+            ]}
+            onPress={handleOpenPriceModal}
+          >
+            <Ionicons
+              name="cash-outline"
+              size={16}
+              color={selectedPriceFilter !== 'ALL' ? COLORS.white : COLORS.primary}
+            />
+            <Typography
+              variant="caption"
+              color={selectedPriceFilter !== 'ALL' ? COLORS.white : textColor}
+              style={{ marginLeft: 6, fontWeight: '600' }}
+            >
+              {getPricePillLabel()}
+            </Typography>
+            <Ionicons name="chevron-down" size={10} color={selectedPriceFilter !== 'ALL' ? COLORS.white : textSecondary} style={{ marginLeft: 4 }} />
           </TouchableOpacity>
 
           {/* Clear Button */}
-          {(search || selectedRestaurant) && (
+          {(search || selectedRestaurant || selectedDateFilter !== 'ALL' || selectedPriceFilter !== 'ALL') && (
             <TouchableOpacity
               style={[styles.filterButton, { backgroundColor: COLORS.error + '22', borderColor: COLORS.error }]}
               onPress={handleClearFilters}
             >
               <Ionicons name="close" size={16} color={COLORS.error} />
               <Typography variant="caption" color={COLORS.error} style={{ marginLeft: 6, fontWeight: '600' }}>
-                {t('events.clear')}
+                Limpiar
               </Typography>
             </TouchableOpacity>
           )}
@@ -579,12 +712,11 @@ const EventsScreen = ({ navigation }) => {
           <EventCard
             event={item}
             isDark={isDarkMode}
+            restaurantName={getRestaurantName(item)}
             onPress={() => {
               setSelectedEvent(item);
               setDetailModalVisible(true);
             }}
-            onAttendPress={(shouldAttend) => handleAttendanceToggle(item._id || item.id, shouldAttend)}
-            isAttending={attending[item._id || item.id] || false}
           />
         )}
         ListEmptyComponent={
@@ -603,12 +735,185 @@ const EventsScreen = ({ navigation }) => {
         onClose={() => setDetailModalVisible(false)}
         event={selectedEvent}
         isDark={isDarkMode}
-        isAttending={attending[selectedEvent?._id || selectedEvent?.id] || false}
-        onAttendPress={(shouldAttend) =>
-          handleAttendanceToggle(selectedEvent._id || selectedEvent.id, shouldAttend)
-        }
+        restaurantName={getRestaurantName(selectedEvent)}
         t={t}
       />
+
+      {/* Restaurant Filter Modal */}
+      <Modal 
+        visible={restaurantModalVisible} 
+        transparent 
+        animationType="slide" 
+        onRequestClose={() => { setRestaurantModalVisible(false); setRestaurantSearch(''); }}
+      >
+        <TouchableOpacity 
+          style={styles.modalOverlay} 
+          activeOpacity={1} 
+          onPress={() => { setRestaurantModalVisible(false); setRestaurantSearch(''); }}
+        >
+          <View style={[styles.bottomSheet, { backgroundColor: surfaceColor, maxHeight: '80%' }]}>
+            <View style={styles.sheetHeader}>
+              <Typography variant="bodyBold" color={textColor}>Filtrar por Restaurante</Typography>
+              <TouchableOpacity 
+                onPress={() => { setRestaurantModalVisible(false); setRestaurantSearch(''); }} 
+                style={styles.closeSheetBtn}
+              >
+                <Ionicons name="close" size={24} color={textColor} />
+              </TouchableOpacity>
+            </View>
+
+            {/* Modal Search Bar */}
+            <View style={{ marginBottom: 12 }}>
+              <Input
+                placeholder="Buscar restaurante..."
+                value={restaurantSearch}
+                onChangeText={setRestaurantSearch}
+                inputStyle={{ borderRadius: 10, height: 40 }}
+                leftIcon={<Ionicons name="search-outline" size={18} color={textSecondary} />}
+              />
+            </View>
+
+            <ScrollView style={{ flexGrow: 0 }} showsVerticalScrollIndicator={false}>
+              <View style={styles.sheetContent}>
+                {/* Only show "Todos los Restaurantes" when search query is empty */}
+                {!restaurantSearch.trim() && (
+                  <TouchableOpacity
+                    onPress={() => { setSelectedRestaurant(null); setRestaurantModalVisible(false); setRestaurantSearch(''); }}
+                    style={[styles.optionRow, !selectedRestaurant && { backgroundColor: COLORS.primary + '15' }]}
+                  >
+                    <Typography variant={!selectedRestaurant ? 'bodyBold' : 'body'} color={!selectedRestaurant ? COLORS.primary : textColor}>
+                      Todos los Restaurantes
+                    </Typography>
+                    {!selectedRestaurant && <Ionicons name="checkmark" size={20} color={COLORS.primary} />}
+                  </TouchableOpacity>
+                )}
+
+                {restaurants
+                  .filter(r => r.name.toLowerCase().includes(restaurantSearch.toLowerCase()))
+                  .map((r) => {
+                    const isSelected = selectedRestaurant && (selectedRestaurant._id === r._id || selectedRestaurant.id === r.id);
+                    return (
+                      <TouchableOpacity
+                        key={r._id || r.id}
+                        onPress={() => { setSelectedRestaurant(r); setRestaurantModalVisible(false); setRestaurantSearch(''); }}
+                        style={[styles.optionRow, isSelected && { backgroundColor: COLORS.primary + '15' }]}
+                      >
+                        <Typography variant={isSelected ? 'bodyBold' : 'body'} color={isSelected ? COLORS.primary : textColor}>
+                          {r.name}
+                        </Typography>
+                        {isSelected && <Ionicons name="checkmark" size={20} color={COLORS.primary} />}
+                      </TouchableOpacity>
+                    );
+                  })
+                }
+              </View>
+            </ScrollView>
+          </View>
+        </TouchableOpacity>
+      </Modal>
+
+      {/* Date Filter Modal */}
+      <Modal visible={dateModalVisible} transparent animationType="slide" onRequestClose={() => setDateModalVisible(false)}>
+        <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={() => setDateModalVisible(false)}>
+          <View style={[styles.bottomSheet, { backgroundColor: surfaceColor }]}>
+            <View style={styles.sheetHeader}>
+              <Typography variant="bodyBold" color={textColor}>Filtrar por Fecha</Typography>
+              <TouchableOpacity onPress={() => setDateModalVisible(false)} style={styles.closeSheetBtn}>
+                <Ionicons name="close" size={24} color={textColor} />
+              </TouchableOpacity>
+            </View>
+            <View style={styles.sheetContent}>
+              {DATE_OPTIONS.map((opt) => {
+                const isSelected = opt.value === selectedDateFilter;
+                return (
+                  <TouchableOpacity
+                    key={opt.value}
+                    onPress={() => { setSelectedDateFilter(opt.value); setDateModalVisible(false); }}
+                    style={[styles.optionRow, isSelected && { backgroundColor: COLORS.primary + '15' }]}
+                  >
+                    <Typography variant={isSelected ? 'bodyBold' : 'body'} color={isSelected ? COLORS.primary : textColor}>
+                      {opt.label}
+                    </Typography>
+                    {isSelected && <Ionicons name="checkmark" size={20} color={COLORS.primary} />}
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          </View>
+        </TouchableOpacity>
+      </Modal>
+
+      {/* Price Filter Modal */}
+      <Modal visible={priceModalVisible} transparent animationType="slide" onRequestClose={() => setPriceModalVisible(false)}>
+        <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={() => setPriceModalVisible(false)}>
+          <View style={[styles.bottomSheet, { backgroundColor: surfaceColor }]}>
+            <View style={styles.sheetHeader}>
+              <Typography variant="bodyBold" color={textColor}>Filtrar por Precio</Typography>
+              <TouchableOpacity onPress={() => setPriceModalVisible(false)} style={styles.closeSheetBtn}>
+                <Ionicons name="close" size={24} color={textColor} />
+              </TouchableOpacity>
+            </View>
+            <ScrollView style={{ flexGrow: 0 }} showsVerticalScrollIndicator={false}>
+              <View style={styles.sheetContent}>
+                {PRICE_OPTIONS.map((opt) => {
+                  const isSelected = opt.value === tempPriceFilter;
+                  return (
+                    <TouchableOpacity
+                      key={opt.value}
+                      onPress={() => handleSelectPriceOption(opt.value)}
+                      style={[styles.optionRow, isSelected && { backgroundColor: COLORS.primary + '15' }]}
+                    >
+                      <Typography variant={isSelected ? 'bodyBold' : 'body'} color={isSelected ? COLORS.primary : textColor}>
+                        {opt.label}
+                      </Typography>
+                      {isSelected && <Ionicons name="checkmark" size={20} color={COLORS.primary} />}
+                    </TouchableOpacity>
+                  );
+                })}
+
+                {tempPriceFilter === 'CUSTOM' && (
+                  <View style={styles.customRangeContainer}>
+                    <View style={styles.customRangeRow}>
+                      <View style={{ flex: 1 }}>
+                        <Input
+                          label="Precio Mínimo"
+                          placeholder="0.00"
+                          value={tempMinPrice}
+                          onChangeText={setTempMinPrice}
+                          keyboardType="numeric"
+                          leftIcon={<Typography color={textSecondary}>Q</Typography>}
+                          style={{ marginBottom: 0 }}
+                        />
+                      </View>
+                      <View style={{ width: 12 }} />
+                      <View style={{ flex: 1 }}>
+                        <Input
+                          label="Precio Máximo"
+                          placeholder="0.00"
+                          value={tempMaxPrice}
+                          onChangeText={setTempMaxPrice}
+                          keyboardType="numeric"
+                          leftIcon={<Typography color={textSecondary}>Q</Typography>}
+                          style={{ marginBottom: 0 }}
+                        />
+                      </View>
+                    </View>
+
+                    <TouchableOpacity 
+                      style={styles.applyCustomBtn}
+                      onPress={handleApplyCustomPrice}
+                    >
+                      <Typography variant="bodyBold" color={COLORS.white}>
+                        Confirmar
+                      </Typography>
+                    </TouchableOpacity>
+                  </View>
+                )}
+              </View>
+            </ScrollView>
+          </View>
+        </TouchableOpacity>
+      </Modal>
     </SafeAreaView>
   );
 };
@@ -642,6 +947,7 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     borderRadius: 8,
     borderWidth: 1,
+    marginRight: 8,
   },
   listContent: {
     paddingHorizontal: 16,
@@ -677,32 +983,72 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 8,
   },
-  attendingBadge: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
   eventFooter: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     marginTop: 8,
   },
-  attendBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 6,
-    borderWidth: 1,
-  },
   empty: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
     paddingVertical: 60,
+  },
+  // Modal Bottom Sheet Styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+    justifyContent: 'flex-end',
+  },
+  bottomSheet: {
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    paddingTop: 20,
+    paddingHorizontal: 20,
+    paddingBottom: Platform.OS === 'ios' ? 40 : 24,
+    maxHeight: '60%',
+  },
+  sheetHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(0,0,0,0.05)',
+    paddingBottom: 12,
+  },
+  closeSheetBtn: {
+    padding: 4,
+  },
+  sheetContent: {
+    marginVertical: 8,
+  },
+  optionRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    marginBottom: 6,
+  },
+  customRangeContainer: {
+    marginTop: 12,
+    paddingTop: 16,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(0,0,0,0.08)',
+  },
+  customRangeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  applyCustomBtn: {
+    backgroundColor: COLORS.primary,
+    paddingVertical: 14,
+    borderRadius: 12,
+    alignItems: 'center',
   },
 });
 

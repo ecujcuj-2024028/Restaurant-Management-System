@@ -327,6 +327,24 @@ const ReservationFormScreen = ({ route, navigation }) => {
     setSelectedTime(null);
   };
 
+  const isTodaySelected = useCallback(() => {
+    if (!selectedDate) return false;
+    const today = new Date();
+    return selectedDate.getDate() === today.getDate() &&
+      selectedDate.getMonth() === today.getMonth() &&
+      selectedDate.getFullYear() === today.getFullYear();
+  }, [selectedDate]);
+
+  const isSlotInPast = useCallback((slotTime) => {
+    if (!isTodaySelected()) return false;
+    const [hours, minutes] = slotTime.split(':').map(Number);
+    if (isNaN(hours) || isNaN(minutes)) return false;
+    const slotDate = new Date(selectedDate);
+    slotDate.setHours(hours, minutes, 0, 0);
+    const now = new Date();
+    return slotDate < now;
+  }, [selectedDate, isTodaySelected]);
+
   const userName = user?.firstName
     ? `${user.firstName} ${user.lastName || ''}`.trim()
     : user?.name || user?.username || '';
@@ -338,6 +356,7 @@ const ReservationFormScreen = ({ route, navigation }) => {
     if (!selectedTable) return Alert.alert(t('reservationForm.error'), t('reservationForm.errorTable'));
     if (!selectedDate) return Alert.alert(t('reservationForm.error'), t('reservationForm.errorDate'));
     if (!selectedTime) return Alert.alert(t('reservationForm.error'), t('reservationForm.errorTime'));
+    if (isSlotInPast(selectedTime)) return Alert.alert(t('reservationForm.error'), "La hora seleccionada ya ha pasado hoy.");
     if (!finalGuests || finalGuests < 1) return Alert.alert(t('reservationForm.error'), t('reservationForm.errorGuests'));
 
     const dateStr = `${selectedDate.getFullYear()}-${String(selectedDate.getMonth()+1).padStart(2,'0')}-${String(selectedDate.getDate()).padStart(2,'0')}`;
@@ -475,7 +494,7 @@ const ReservationFormScreen = ({ route, navigation }) => {
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.timesRow}>
             {hourSlots.map(slot => {
               const isActive = slot.time === selectedTime;
-              const disabled = !slot.available;
+              const disabled = !slot.available || isSlotInPast(slot.time);
               return (
                 <TouchableOpacity
                   key={slot.time}

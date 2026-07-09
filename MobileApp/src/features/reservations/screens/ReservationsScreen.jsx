@@ -8,6 +8,7 @@ import {
     StatusBar,
     RefreshControl,
     Image,
+    Modal,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -17,6 +18,8 @@ import { COMMON_STYLES } from '../../../shared/constants/theme';
 import { getRestaurants } from '../../../api/restaurants';
 import useAuthStore from '../../../store/useAuthStore';
 import useReviewStore from '../../../store/useReviewStore';
+import useNotificationStore from '../../../store/useNotificationStore';
+import Header from '../../../shared/components/common/Header';
 import Typography from '../../../shared/components/common/Typography';
 import Input from '../../../shared/components/common/Input';
 import Skeleton from '../../../shared/components/common/Skeleton';
@@ -136,6 +139,12 @@ const ReservationsScreen = ({ navigation }) => {
     const [refreshing, setRefreshing] = useState(false);
     const [search, setSearch] = useState('');
     const [activeCategory, setActiveCategory] = useState(t('reservations.all'));
+    const [selectedRating, setSelectedRating] = useState(0);
+    const [ratingModalVisible, setRatingModalVisible] = useState(false);
+    const { unreadCount } = useNotificationStore();
+    const { restaurantStats, fetchRestaurantStats } = useReviewStore();
+
+    const borderColor = isDarkMode ? COLORS.darkBorder : COLORS.border;
 
     const bgColor = isDarkMode ? COLORS.darkBackground : COLORS.background;
     const textColor = isDarkMode ? COLORS.darkText : COLORS.text;
@@ -145,6 +154,13 @@ const ReservationsScreen = ({ navigation }) => {
     useEffect(() => {
         fetchData();
     }, []);
+
+    useEffect(() => {
+        restaurants.forEach((r) => {
+            const id = r._id || r.id;
+            if (id) fetchRestaurantStats(id);
+        });
+    }, [restaurants, fetchRestaurantStats]);
 
     useEffect(() => {
         setActiveCategory(t('reservations.all'));
@@ -179,9 +195,12 @@ const ReservationsScreen = ({ navigation }) => {
             const matchCat =
                 activeCategory === t('reservations.all') ||
                 r?.category?.toLowerCase() === activeCategory.toLowerCase();
-            return matchSearch && matchCat;
+            const id = r?._id || r?.id;
+            const rating = restaurantStats[id]?.promedioRating || 0;
+            const matchRating = selectedRating === 0 || rating >= selectedRating;
+            return matchSearch && matchCat && matchRating;
         });
-    }, [restaurants, search, activeCategory, t]);
+    }, [restaurants, search, activeCategory, selectedRating, restaurantStats, t]);
 
     if (loading) return <ReservationsSkeleton isDark={isDarkMode} />;
 
@@ -189,24 +208,118 @@ const ReservationsScreen = ({ navigation }) => {
         <SafeAreaView style={[styles.container, { backgroundColor: bgColor }]} edges={['top', 'left', 'right']}>
             <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} />
 
-            <View style={styles.header}>
-                <View style={styles.headerTop}>
-                    <Typography variant="h2" color={textColor}>
-                        {t('reservations.title')}
-                    </Typography>
-                    <View style={{ flexDirection: 'row', gap: 10 }}>
+            <Header 
+                title={t('reservations.title')} 
+                navigation={navigation} 
+                showNotification={false}
+                rightComponent={
+                    <View style={{ flexDirection: 'row', gap: 10, alignItems: 'center' }}>
                         <TouchableOpacity 
-                            style={[styles.bellBtn, { backgroundColor: surfaceColor }]}
+                            style={{
+                                width: 44,
+                                height: 44,
+                                borderRadius: 12,
+                                backgroundColor: surfaceColor,
+                                borderColor: borderColor,
+                                borderWidth: 1,
+                                justifyContent: 'center',
+                                alignItems: 'center',
+                            }}
                             onPress={() => navigation.navigate('MyReservations')}
                         >
                             <Ionicons name="calendar-outline" size={22} color={textColor} />
                         </TouchableOpacity>
-                        <TouchableOpacity style={[styles.bellBtn, { backgroundColor: surfaceColor }]}>
+                        <TouchableOpacity 
+                            style={{
+                                width: 44,
+                                height: 44,
+                                borderRadius: 12,
+                                backgroundColor: surfaceColor,
+                                borderColor: borderColor,
+                                borderWidth: 1,
+                                justifyContent: 'center',
+                                alignItems: 'center',
+                                position: 'relative',
+                            }}
+                            onPress={() => navigation.navigate('NotificationHistory')}
+                        >
                             <Ionicons name="notifications" size={22} color={textColor} />
+                            {unreadCount > 0 && (
+                                <View 
+                                    style={{
+                                        position: 'absolute',
+                                        top: 10,
+                                        right: 10,
+                                        width: 8,
+                                        height: 8,
+                                        borderRadius: 4,
+                                        backgroundColor: COLORS.primary,
+                                    }}
+                                />
+                            )}
                         </TouchableOpacity>
                     </View>
-                </View>
+                }
+            />
 
+            {/* Rating Filter Modal */}
+            <Modal
+                visible={ratingModalVisible}
+                transparent
+                animationType="slide"
+                onRequestClose={() => setRatingModalVisible(false)}
+            >
+                <TouchableOpacity
+                    style={styles.modalOverlay}
+                    activeOpacity={1}
+                    onPress={() => setRatingModalVisible(false)}
+                >
+                    <View style={[styles.bottomSheet, { backgroundColor: surfaceColor }]}>
+                        <View style={[styles.sheetHeader, { borderBottomColor: isDarkMode ? COLORS.darkBorder : '#f1f5f9' }]}>
+                            <Typography variant="bodyBold" color={textColor}>
+                                Filtrar por Calificación
+                            </Typography>
+                            <TouchableOpacity onPress={() => setRatingModalVisible(false)} style={styles.closeSheetBtn}>
+                                <Ionicons name="close" size={24} color={textColor} />
+                            </TouchableOpacity>
+                        </View>
+                        <View style={styles.sheetContent}>
+                            {[
+                                { value: 0, label: t('home.allRatings') || 'Todas' },
+                                { value: 5, label: '5 ★' },
+                                { value: 4, label: '4★ +' },
+                                { value: 3, label: '3★ +' },
+                                { value: 2, label: '2★ +' },
+                            ].map((opt) => {
+                                const isSelected = opt.value === selectedRating;
+                                return (
+                                    <TouchableOpacity
+                                        key={opt.value}
+                                        onPress={() => {
+                                            setSelectedRating(opt.value);
+                                            setRatingModalVisible(false);
+                                        }}
+                                        style={[
+                                            styles.optionRow,
+                                            isSelected && { backgroundColor: COLORS.primary + '15' },
+                                        ]}
+                                    >
+                                        <Typography
+                                            variant={isSelected ? 'bodyBold' : 'body'}
+                                            color={isSelected ? COLORS.primary : textColor}
+                                        >
+                                            {opt.label}
+                                        </Typography>
+                                        {isSelected && <Ionicons name="checkmark" size={20} color={COLORS.primary} />}
+                                    </TouchableOpacity>
+                                );
+                            })}
+                        </View>
+                    </View>
+                </TouchableOpacity>
+            </Modal>
+
+            <View style={{ paddingHorizontal: 16, paddingTop: 12 }}>
                 <Input
                     placeholder={t('reservations.searchPlaceholder')}
                     value={search}
@@ -218,9 +331,21 @@ const ReservationsScreen = ({ navigation }) => {
             </View>
 
             <View style={styles.categoriesWrapper}>
-                <Typography variant="bodyBold" color={textColor} style={styles.categoriesTitle}>
-                    {t('reservations.categories')}
-                </Typography>
+                <View style={styles.categoriesHeaderRow}>
+                    <Typography variant="h3" color={textColor} style={styles.categoriesTitle}>
+                        {t('reservations.categories')}
+                    </Typography>
+                    <TouchableOpacity
+                        onPress={() => setRatingModalVisible(true)}
+                        style={[styles.filterPill, { backgroundColor: surfaceColor, borderColor: 'transparent' }]}
+                    >
+                        <Ionicons name="star" size={12} color={COLORS.accent} style={{ marginRight: 4 }} />
+                        <Typography variant="caption" color={textColor}>
+                            {selectedRating === 0 ? t('home.allRatings') || 'Todas' : `${selectedRating}★`}
+                        </Typography>
+                        <Ionicons name="chevron-down" size={10} color={textSecondary} style={{ marginLeft: 4 }} />
+                    </TouchableOpacity>
+                </View>
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.categoriesList}>
                     {categories.map((cat) => {
                         const isActive = cat === activeCategory;
@@ -301,7 +426,7 @@ const styles = StyleSheet.create({
         paddingBottom: 4,
     },
     categoryChip: {
-        paddingHorizontal: 20,
+        paddingHorizontal: 16,
         paddingVertical: 8,
         borderRadius: 20,
     },
@@ -361,6 +486,56 @@ const styles = StyleSheet.create({
     emptyContainer: {
         alignItems: 'center',
         paddingTop: 60,
+    },
+    categoriesHeaderRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 10,
+    },
+    filterPill: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingHorizontal: 10,
+        paddingVertical: 5,
+        borderRadius: 12,
+        borderWidth: 1,
+    },
+    modalOverlay: {
+        flex: 1,
+        backgroundColor: 'rgba(0,0,0,0.5)',
+        justifyContent: 'flex-end',
+    },
+    bottomSheet: {
+        borderTopLeftRadius: 24,
+        borderTopRightRadius: 24,
+        paddingTop: 20,
+        paddingHorizontal: 20,
+        paddingBottom: 40,
+        maxHeight: '60%',
+    },
+    sheetHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 16,
+        borderBottomWidth: 1,
+        paddingBottom: 12,
+    },
+    closeSheetBtn: {
+        padding: 4,
+    },
+    sheetContent: {
+        marginVertical: 8,
+    },
+    optionRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        paddingVertical: 14,
+        paddingHorizontal: 16,
+        borderRadius: 12,
+        marginBottom: 6,
     },
 });
 

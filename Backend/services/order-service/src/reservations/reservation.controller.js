@@ -206,7 +206,7 @@ export const updateReservation = async (req, res) => {
 
         const previousStatus = reservation.status;
 
-        if (status === 'confirmada' && previousStatus !== 'confirmada') {
+        if (['confirmada', 'iniciada'].includes(status) && !['confirmada', 'iniciada'].includes(previousStatus)) {
             await Table.update({ availability: 'reservado' }, { where: { id: reservation.tableId } });
             if (reservation.customerEmail) {
                 sendReservationConfirmationEmail({

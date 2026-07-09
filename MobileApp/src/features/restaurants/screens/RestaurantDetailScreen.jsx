@@ -431,11 +431,19 @@ const RestaurantDetailScreen = ({ route, navigation }) => {
 
   const handleOrderProduct = (product) => {
     if (!product) return;
-    Alert.alert(
-      t('common.success') || 'Éxito',
-      `${product.name} ${t('restaurantDetail.addedToOrder') || 'ha sido agregado al pedido.'}`
-    );
     setProductModalVisible(false);
+    const isCombo = product.type === 'combo' || product.isMenu;
+    navigation.navigate('CreateOrder', {
+      restaurantId: id,
+      initialProduct: {
+        id: (product._id || product.id)?.toString(),
+        name: product.name,
+        price: product.price ?? 0,
+        quantity: 1,
+        isMenu: isCombo,
+        ...(isCombo ? { menuId: (product._id || product.id)?.toString() } : { productId: (product._id || product.id)?.toString() }),
+      }
+    });
   };
 
   const handleOpenAddReview = () => {
@@ -758,7 +766,22 @@ const RestaurantDetailScreen = ({ route, navigation }) => {
                   item={item}
                   isDark={isDarkMode}
                   t={t}
-                  onOrder={() => console.log('Pedir menu:', item.name)}
+                  onOrder={() => {
+                    const menuId = (item._id || item.id)?.toString();
+                    const menuPrice = item.price ??
+                      (item.items || []).reduce((s, i) => s + (i.product?.price || i.price || 0), 0);
+                    navigation.navigate('CreateOrder', {
+                      restaurantId: id,
+                      initialProduct: {
+                        id: menuId,
+                        name: item.name,
+                        price: menuPrice,
+                        quantity: 1,
+                        isMenu: true,
+                        menuId,
+                      },
+                    });
+                  }}
                   onItemPress={handleOpenProductDetail}
                 />
               ))}
@@ -792,7 +815,14 @@ const RestaurantDetailScreen = ({ route, navigation }) => {
           <Typography variant="bodyBold" color={COLORS.white}>{t('restaurantDetail.reserve')}</Typography>
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.pedirBtn}>
+        <TouchableOpacity 
+          style={styles.pedirBtn}
+          onPress={() => {
+            navigation.navigate('CreateOrder', {
+              restaurantId: id,
+            });
+          }}
+        >
           <Ionicons name="cart-outline" size={20} color={COLORS.white} />
           <Typography variant="bodyBold" color={COLORS.white}>{t('restaurantDetail.order')}</Typography>
         </TouchableOpacity>
