@@ -73,7 +73,6 @@ export const getTables = async (req, res) => {
                 try {
                     const today = new Date().toISOString().split('T')[0];
                     const url = new URL(`${ORDER_SERVICE_URL}/reservations`);
-                    url.searchParams.append('status', 'confirmada');
                     url.searchParams.append('date', today);
 
                     const response = await fetch(url.toString(), {
@@ -90,18 +89,25 @@ export const getTables = async (req, res) => {
                         const activeTableIds = myReservations
                             .filter(res => {
                                 const resRestId = res.restaurantId?._id || res.restaurantId;
-                                if (resRestId.toString() !== restaurantId) return false;
+                                if (resRestId?.toString() !== restaurantId) return false;
 
-                                const [resH, resM] = res.time.split(':').map(Number);
+                                const normalizedStatus = (res.status || '').toLowerCase();
+                                const isActiveReservation = ['aceptada', 'confirmada', 'iniciada'].includes(normalizedStatus);
+                                if (!isActiveReservation) return false;
+
+                                // Si está iniciada, se salta la validación horaria (el admin ya dio acceso)
+                                if (normalizedStatus === 'iniciada') return true;
+
+                                const [resH, resM] = String(res.time || '00:00').split(':').map(Number);
                                 const resTime = new Date();
                                 resTime.setHours(resH, resM, 0, 0);
                                 
                                 const endTime = new Date(resTime.getTime() + 120 * 60000);
                                 const endHHMM = `${String(endTime.getHours()).padStart(2, '0')}:${String(endTime.getMinutes()).padStart(2, '0')}`;
                                 
-                                return currentHHMM >= res.time && currentHHMM <= endHHMM;
+                                return currentHHMM >= String(res.time || '00:00') && currentHHMM <= endHHMM;
                             })
-                            .map(res => res.tableId);
+                            .map(res => res.tableId?._id || res.tableId);
 
                         if (activeTableIds.length === 0) {
                             return res.status(200).json({ success: true, count: 0, tables: [] });
