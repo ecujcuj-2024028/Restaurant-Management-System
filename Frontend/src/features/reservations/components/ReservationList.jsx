@@ -25,6 +25,7 @@ import ConfirmDialog from '../../../shared/components/ui/ConfirmDialog'
 const STATUS_COLORS = {
   pendiente: 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20',
   confirmada: 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20',
+  iniciada: 'bg-orange-500/10 text-orange-500 border-orange-500/20',
   cancelada: 'bg-red-500/10 text-red-500 border-red-500/20',
   completada: 'bg-zinc-500/10 text-zinc-400 border-zinc-500/20',
 }
@@ -176,6 +177,7 @@ const ReservationList = () => {
             <option value="">Estados</option>
             <option value="pendiente">Pendiente</option>
             <option value="confirmada">Confirmada</option>
+            <option value="iniciada">Iniciada</option>
             <option value="cancelada">Cancelada</option>
             <option value="completada">Completada</option>
           </select>
@@ -240,7 +242,20 @@ const ReservationList = () => {
                     <div className="flex items-center gap-2 text-zinc-400"><User size={16} className="text-orange-500" /><span className="text-sm font-bold">{res.guestCount} pers.</span></div>
                   </div>
                   {res.status === 'confirmada' && (
-                    <button onClick={() => handleStatusUpdate(res._id || res.id, 'completada')} className="w-full mt-2 py-3 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 rounded-2xl text-xs font-black uppercase tracking-widest transition-all border border-white/5">Marcar como Finalizada</button>
+                    <button 
+                      onClick={() => handleStatusUpdate(res._id || res.id, 'iniciada')} 
+                      className="w-full mt-2 py-3 bg-orange-500 hover:bg-orange-600 text-white rounded-2xl text-xs font-black uppercase tracking-widest transition-all shadow-md"
+                    >
+                      Iniciar Reserva
+                    </button>
+                  )}
+                  {(res.status === 'confirmada' || res.status === 'iniciada') && (
+                    <button 
+                      onClick={() => handleStatusUpdate(res._id || res.id, 'completada')} 
+                      className="w-full mt-2 py-3 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 rounded-2xl text-xs font-black uppercase tracking-widest transition-all border border-white/5"
+                    >
+                      Marcar como Finalizada
+                    </button>
                   )}
                   {res.status !== 'cancelada' && res.status !== 'completada' && (
                     <button onClick={() => handleStatusUpdate(res._id || res.id, 'cancelada')} className="w-full py-3 text-red-500/60 hover:text-red-500 text-[10px] font-black uppercase tracking-widest transition-all">Cancelar Reservación</button>
