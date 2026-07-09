@@ -9,7 +9,8 @@ import Event from '../src/events/events-model.js';
  */
 export const checkAndUpdateEventStatus = async (eventId) => {
     try {
-        const event = await Event.findById(eventId);
+        const event = await Event.findById(eventId)
+            .populate("restaurant", "name location address photos");
         
         if (!event || event.status === 'cancelled') {
             return event;
