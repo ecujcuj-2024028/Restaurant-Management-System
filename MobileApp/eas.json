@@ -10,6 +10,10 @@
     "preview": {
       "android": {
         "buildType": "apk"
+      },
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://rms-api-gateway.onrender.com/restaurantManagement/v1",
+        "EXPO_PUBLIC_WEB_URL": "https://restaurant-management-system-fronte-psi.vercel.app/"
       }
     },
     "production": {}
