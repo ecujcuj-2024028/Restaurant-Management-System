@@ -58,7 +58,7 @@ const RegisterScreen = ({ navigation }) => {
         phone: formData.phone
       });
       
-      Alert.alert('¡Éxito!', 'Cuenta creada correctamente. Por favor, inicia sesión.', [
+      Alert.alert('¡Éxito!', 'Cuenta creada correctamente. Por favor, valida tu correo electrónico y luego inicia sesión.', [
         { text: 'OK', onPress: () => navigation.navigate('Login') }
       ]);
     } catch (error) {
