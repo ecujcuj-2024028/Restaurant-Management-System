@@ -781,7 +781,7 @@ const ProductDetailModal = ({ visible, onClose, product, isDark, t: propT, navig
   const [writeModalVisible, setWriteModalVisible] = useState(false);
   const [editingReview, setEditingReview] = useState(null);
 
-  const productId = product?._id || product?.id || product?.productId;
+  const productId = product?.productId || product?.menuId || product?._id || product?.id;
 
   const fetchReviews = async () => {
     if (!productId) return;
@@ -799,33 +799,40 @@ const ProductDetailModal = ({ visible, onClose, product, isDark, t: propT, navig
     if (visible && product) {
       if (!productId) return;
 
-      setLoading(true);
-      setFullProduct(null);
-      setReviews([]);
-      setAverageRating(0);
+      const loadData = async () => {
+        setLoading(true);
+        setFullProduct(null);
+        setReviews([]);
+        setAverageRating(0);
 
-      // Fetch product details
-      api.get(`/products/${productId}`)
-        .then(r => {
+        // 1. Cargar detalles del producto o menú
+        try {
+          const r = await api.get(`/products/${productId}`);
           setFullProduct(r.data?.product || r.data);
-        })
-        .catch(err => {
-          console.warn('Error fetching product details:', err.message);
-        });
+        } catch (err) {
+          console.warn('Error fetching product, trying menus:', err.message);
+          try {
+            const rMenu = await api.get(`/menus/${productId}`);
+            setFullProduct(rMenu.data?.menu || rMenu.data);
+          } catch (menuErr) {
+            console.warn('Error fetching menu details:', menuErr.message);
+          }
+        }
 
-      // Fetch reviews
-      api.get(`/analytics/reviews/plato/${productId}`)
-        .then(r => {
+        // 2. Cargar reviews
+        try {
+          const r = await api.get(`/analytics/reviews/plato/${productId}`);
           const data = r.data || {};
           setReviews(data.reviews || data.data?.reviews || []);
           setAverageRating(data.promedioRating || data.data?.promedioRating || 0);
-        })
-        .catch(err => {
+        } catch (err) {
           console.warn('Error fetching reviews:', err.message);
-        })
-        .finally(() => {
+        } finally {
           setLoading(false);
-        });
+        }
+      };
+
+      loadData();
     }
   }, [visible, product]);
 
@@ -854,7 +861,7 @@ const ProductDetailModal = ({ visible, onClose, product, isDark, t: propT, navig
       name: prodName,
       price: price,
       quantity: 1,
-      isMenu: false,
+      isMenu: Boolean(resolvedProduct.items || resolvedProduct.menuType || resolvedProduct.isMenu || resolvedProduct.menuId || product.isMenu || product.menuId),
     });
 
     if (resolvedProduct?.restaurant) {

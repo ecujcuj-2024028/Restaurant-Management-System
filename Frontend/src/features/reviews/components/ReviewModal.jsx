@@ -81,7 +81,7 @@ const ReviewModal = ({ product, restauranteId, onClose, onSuccess, reviewToEdit 
           usuarioId: user?._id || user?.id || user?.uid,
           username: user?.username || user?.Username || user?.name || 'Usuario',
           restauranteId,
-          platoId: product._id || product.id || product.productId,
+          platoId: product._id || product.id || product.productId || product.menuId,
           rating,
           comentario,
         })

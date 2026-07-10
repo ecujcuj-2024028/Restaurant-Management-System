@@ -24,7 +24,13 @@ const getOwnedRestaurantIds = async (req) => {
 ─────────────────────────────────────────────── */
 export const crearReview = async (req, res) => {
     try {
-        const { usuarioId, username, restauranteId, platoId, rating, comentario, consumo } = req.body;
+        // Obtener usuarioId de forma flexible (priorizando el token JWT decodificado)
+        const usuarioId = req.userId || req.body.usuarioId || req.body.userId;
+        
+        // Obtener platoId de forma flexible (soportando platos individuales o combos/menús)
+        const platoId = req.body.platoId || req.body.productId || req.body.menuId;
+
+        const { username, restauranteId, rating, comentario, consumo } = req.body;
 
         if (!usuarioId || !restauranteId || !platoId) {
             return res.status(400).json({
