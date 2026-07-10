@@ -1,3 +1,4 @@
+import { Platform } from 'react-native';
 import api from './api';
 
 export const getProfile = async () => {
@@ -22,5 +23,24 @@ export const updatePassword = async (passwordData) => {
 
 export const requestRoleUpgrade = async (requestedRole) => {
   const response = await api.post('/auth/role-upgrade', { requestedRole });
+  return response.data;
+};
+
+export const updateProfilePicture = async (imageUri) => {
+  const formData = new FormData();
+  const uriParts = imageUri.split('.');
+  const fileType = uriParts[uriParts.length - 1];
+
+  formData.append('image', {
+    uri: Platform.OS === 'android' ? imageUri : imageUri.replace('file://', ''),
+    name: `photo.${fileType}`,
+    type: `image/${fileType === 'jpg' ? 'jpeg' : fileType}`,
+  });
+
+  const response = await api.patch('/users/profile/picture', formData, {
+    headers: {
+      'Content-Type': 'multipart/form-data',
+    },
+  });
   return response.data;
 };
