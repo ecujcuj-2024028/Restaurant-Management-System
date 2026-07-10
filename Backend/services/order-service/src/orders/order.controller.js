@@ -62,7 +62,9 @@ export const createOrder = async (req, res) => {
 
     // ── VALIDACIÓN DE RESERVA PARA CLIENTES ──────────────────────────────────
     if (isClient) {
-      const today = new Date().toISOString().split('T')[0]; 
+      // Ajuste de zona horaria UTC-6 (Guatemala/México)
+      const offsetCST = -6; 
+      const today = new Date(Date.now() + offsetCST * 3600 * 1000).toISOString().split('T')[0]; 
       
       // Obtener todas las reservaciones confirmadas o iniciadas del usuario para hoy en este restaurante y mesa
       const activeReservations = await Reservation.findAll({
@@ -81,8 +83,8 @@ export const createOrder = async (req, res) => {
       // Validar ventana de tiempo (2 horas desde la hora de la reserva), omitir si está iniciada
       const hasIniciada = activeReservations.some(res => res.status === 'iniciada');
       if (!hasIniciada) {
-        const now = new Date();
-        const currentHHMM = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+        const now = new Date(Date.now() + offsetCST * 3600 * 1000);
+        const currentHHMM = `${String(now.getUTCHours()).padStart(2, '0')}:${String(now.getUTCMinutes()).padStart(2, '0')}`;
         
         const isWithinWindow = activeReservations.some(res => {
             const [resH, resM] = res.time.split(':').map(Number);
