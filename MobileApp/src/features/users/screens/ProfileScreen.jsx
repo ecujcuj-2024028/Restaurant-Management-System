@@ -9,16 +9,18 @@ import {
   Platform,
   StatusBar,
   Image,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
+import * as ImagePicker from 'expo-image-picker';
 import { COLORS } from '../../../shared/constants/colors';
 import useAuthStore from '../../../store/useAuthStore';
 import Typography from '../../../shared/components/common/Typography';
 import Input from '../../../shared/components/common/Input';
 import Button from '../../../shared/components/common/Button';
-import { updateProfile, updatePassword, requestRoleUpgrade } from '../../../api/users';
+import { updateProfile, updatePassword, requestRoleUpgrade, updateProfilePicture } from '../../../api/users';
 
 const ProfileScreen = ({ navigation }) => {
   const { t } = useTranslation();
@@ -64,8 +66,47 @@ const ProfileScreen = ({ navigation }) => {
   const borderColor = isDarkMode ? COLORS.darkBorder : COLORS.border;
 
   const profileImage = user?.profilePicture || user?.avatar;
-
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
+ 
   // Handlers
+  const handlePickImage = async () => {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert(
+        t('common.error', 'Error'),
+        t('profile.permissionRequired', 'Se necesitan permisos de galería para cambiar tu foto')
+      );
+      return;
+    }
+ 
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.8,
+    });
+ 
+    if (!result.canceled && result.assets && result.assets.length > 0) {
+      const selectedImageUri = result.assets[0].uri;
+      setIsUploadingImage(true);
+      try {
+        const response = await updateProfilePicture(selectedImageUri);
+        if (response.success && response.user) {
+          await updateUser(response.user);
+          Alert.alert(t('common.success', 'Éxito'), t('profile.successAvatar', 'Foto de perfil actualizada correctamente'));
+          fetchProfile(); // Refrescar los datos del almacén local
+        } else {
+          Alert.alert(t('common.error', 'Error'), response.message || t('profile.errorAvatar', 'No se pudo actualizar la foto'));
+        }
+      } catch (error) {
+        console.error('Error uploading avatar:', error);
+        Alert.alert(t('common.error', 'Error'), error.message || t('profile.errorAvatar', 'Ocurrió un error al subir la imagen'));
+      } finally {
+        setIsUploadingImage(false);
+      }
+    }
+  };
+ 
   const handleUpdateProfile = async () => {
     if (!name.trim() || !surname.trim() || !phone.trim() || !username.trim()) {
       Alert.alert(t('common.error', 'Error'), t('profile.errorFields', 'Por favor, completa los campos requeridos'));
@@ -153,13 +194,25 @@ const ProfileScreen = ({ navigation }) => {
             <Typography variant="body" color="white">{t('menu.backMenu', 'Volver al Menú')}</Typography>
           </TouchableOpacity>
           <View style={styles.headerProfile}>
-            <View style={styles.avatarContainer}>
-              {profileImage ? (
-                <Image source={{ uri: profileImage }} style={styles.avatar} resizeMode="cover" />
-              ) : (
-                <Ionicons name="person-circle-outline" size={70} color="white" />
-              )}
-            </View>
+            <TouchableOpacity 
+              style={styles.avatarContainer} 
+              onPress={handlePickImage}
+              disabled={isUploadingImage}
+              activeOpacity={0.8}
+            >
+              <View style={styles.avatarWrapper}>
+                {isUploadingImage ? (
+                  <ActivityIndicator size="small" color="white" />
+                ) : profileImage ? (
+                  <Image source={{ uri: profileImage }} style={styles.avatar} resizeMode="cover" />
+                ) : (
+                  <Ionicons name="person-circle-outline" size={60} color="white" />
+                )}
+              </View>
+              <View style={styles.editBadge}>
+                <Ionicons name="camera" size={12} color="white" />
+              </View>
+            </TouchableOpacity>
             <View style={styles.headerInfo}>
               <Typography variant="h2" color="white" style={styles.userName}>
                 {user?.name} {user?.surname}
@@ -418,6 +471,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   avatarContainer: {
+    width: 66,
+    height: 66,
+    position: 'relative',
+  },
+  avatarWrapper: {
     width: 64,
     height: 64,
     borderRadius: 32,
@@ -425,10 +483,30 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.2)',
     justifyContent: 'center',
     alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.4)',
   },
   avatar: {
     width: '100%',
     height: '100%',
+  },
+  editBadge: {
+    position: 'absolute',
+    bottom: 0,
+    right: 0,
+    backgroundColor: COLORS.primary || '#FF6B00',
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: 'white',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
   },
   headerInfo: {
     marginLeft: 16,
