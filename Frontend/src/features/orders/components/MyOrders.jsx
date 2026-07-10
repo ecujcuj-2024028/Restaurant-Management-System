@@ -83,7 +83,7 @@ const OrderRow = ({ order, onViewDetail, onOpenReview }) => {
 
               <div className="divide-y divide-white/5">
                 {order.items.map((item, idx) => {
-                  const platoId = item.productId || item._id || item.id
+                  const platoId = item.productId || item.menuId || item._id || item.id
                   const isViewingThis = viewingReviews === platoId
 
                   return (

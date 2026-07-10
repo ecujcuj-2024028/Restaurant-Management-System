@@ -259,15 +259,26 @@ const ProductDetailScreen = ({ route, navigation }) => {
   const surfaceColor = isDarkMode ? COLORS.darkSurface : COLORS.white;
   const borderColor = isDarkMode ? COLORS.darkBorder : COLORS.border;
 
-  const productId = product?._id || product?.id || idParam;
+  const productId = product?.productId || product?.menuId || product?._id || product?.id || idParam;
 
-  // Cargar producto si no viene completo
+  // Cargar producto o combo si no viene completo
   useEffect(() => {
     if (!product && idParam) {
+      setLoading(true);
       api.get(`/products/${idParam}`)
-        .then(r => setProduct(r.data?.product || r.data))
-        .catch(() => {})
-        .finally(() => setLoading(false));
+        .then(r => {
+          setProduct(r.data?.product || r.data);
+          setLoading(false);
+        })
+        .catch(() => {
+          // Si falla en productos, intentamos cargar desde menus (combos)
+          api.get(`/menus/${idParam}`)
+            .then(r => {
+              setProduct(r.data?.menu || r.data);
+            })
+            .catch(() => {})
+            .finally(() => setLoading(false));
+        });
     }
   }, [idParam]);
 
@@ -317,7 +328,7 @@ const ProductDetailScreen = ({ route, navigation }) => {
       name: product.name,
       price: product.price,
       quantity: 1,
-      isMenu: false,
+      isMenu: Boolean(product.items || product.menuType || product.isMenu || product.menuId),
     });
 
     if (product?.restaurant) {
