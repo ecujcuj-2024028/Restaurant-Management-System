@@ -585,7 +585,7 @@ const EventsScreen = ({ navigation }) => {
       <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} backgroundColor={bgColor} />
 
       {/* Header */}
-      <Header title={t('events.title')} navigation={navigation} />
+      <Header title={t('events.title')} navigation={navigation} showBack={true} />
 
       {/* Search Bar */}
       <View style={{ paddingHorizontal: 16, paddingTop: 12 }}>
